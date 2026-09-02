@@ -1,0 +1,465 @@
+---
+layout: api
+page_title: /sys/internal/counters - HTTP API
+description: >-
+  The `/sys/internal/counters` endpoints are used to return data about Vault usage.
+# START AUTO GENERATED METADATA, DO NOT EDIT
+created_at: 2025-07-22T12:58:23-07:00
+last_modified: 2026-03-17T15:38:42.000Z
+# END AUTO GENERATED METADATA
+---
+
+# `/sys/internal/counters`
+
+The `/sys/internal/counters` endpoints are used to return data about the number of Clients in Vault. They return information for the entire cluster.
+
+The endpoints under `/sys/internal/counters` only support monthly granularity. As a
+result, Vault normalizes `start_time` and `end_time` values in API reponses to
+align with full calendar months.
+
+Vault always normalizes the count data before returning it:
+
+- `start_time` normalizes to the start of the month in which the effective `start_time` falls.
+- `end_time` normalizes to the end of the month in which the effective `end_time` falls.
+
+If you make an API call with `end_date` set to the current month, Vault returns
+the exact activity information for all months in the queried period except the
+current month. Vault estimates the `new_clients` count for the current month and
+returns the estimate as the last element in the `months` response stanza.
+
+@include 'counters-api-new-clients-behavior-change.mdx'
+
+## Behavior Differences between Vault Enterprise and Vault Community ((#count-difference))
+
+The `start_time` and `end_time` request parameters behave differently between
+Vault Enterprise and Vault Community edition.
+
+In Vault Enterprise edition, the time parameters must align with the entire default
+billing period of 12 months. In Vault Community edition, the Get Client Count endpoint
+supports flexible historical time ranges, but excludes the current month and any
+future dates.
+
+
+
+
+
+
+
+## Entities
+
+This endpoint returns the total number of Entities.
+
+| Method | Path                              |
+| :----- | :-------------------------------- |
+| `GET`  | `/sys/internal/counters/entities` |
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request GET \
+    http://127.0.0.1:8200/v1/sys/internal/counters/entities
+```
+
+### Sample response
+
+
+## Client count
+
+This endpoint returns client activity information for a given billing
+period, which is represented by the `start_time` and `end_time` parameters.
+
+- The response contains the total activity for the billing period and the
+attributions of the total activity against specific components in Vault. This
+helps in understanding the total activity better by knowing which components in
+Vault lead to that top-level activity count. First-level of attribution
+breakdowns are by namespaces and months, under the `by_namespaces` and `months`
+JSON block, respectively.
+
+
+- `by_namespaces` breakdowns provide attributions of each namespace to the total
+activity count. Mount level attributions further break down these namespaces
+attributions, wherein information can be found on the attributions of each mount
+path within a given namespace to the overall activity of the namespace.
+
+
+- `months` breakdowns provide attributions of each month to the total activity
+count. These month-level attributions are further broken down into namespace and mount
+level attributions for each month.
+
+
+- Each entry in the `months` breakdown contains a `new_clients` block. When a
+token is first used within a billing period, it is considered a new client for
+that billing period. This means that all the active clients in the first month
+of the billing period will be considered new clients for that billing period.
+While these tokens could be generated and counted in the previous billing
+period, they are still considered new clients in the context of the given
+billing period. For each subsequent month in the same billing period, the tokens
+used in those months that were unused in previous months of the same billing
+period are considered new clients for that month. Hence, the computation of new
+clients differs for each combination of `start_time` and `end_time`.
+
+- The `new_clients` block within the `months` breakdown will also be further
+broken down by namespaces and mounts for visibility into which components in
+Vault lead to the new clients for each month.
+
+
+- The response includes month data for the entire queried period, but may
+not exactly match the `start_time` and `end_time` returned in the response.
+The `start_time` in the response is the earliest time there is activity data
+in the queried period. The `end_time` is the end of the final month of the queried
+period.
+
+### Sample response
+
+The following is an example of the `months` breakdown with just the current month information.
+
+@include 'auto-roll-billing-start-example.mdx'
+
+
+Refer to the [client count](/vault/docs/concepts/client-count) concepts page for
+more information on how clients map to these client IDs and how they are
+counted, or for more information about how the new clients for the current month
+are calculated.
+
+The response will include all child namespaces of the namespace in which the
+request was made. If some namespace has subsequently been deleted, its path will
+be listed as `deleted namespace :ID:`. Deleted namespaces are reported only for
+queries in the root namespace because the information about the namespace path
+is unknown.
+
+
+@include 'alerts/restricted-root.mdx'
+
+| Method | Path                              |
+| :----- | :-------------------------------- |
+| `GET`  | `/sys/internal/counters/activity` |
+
+### Parameters
+
+- `start_time` `(string, optional)` - An RFC3339 timestamp or Unix epoch time.
+  Specifies the start of the period for which client counts will be reported.
+  Vault uses the [billing start date](/vault/docs/concepts/billing-start-date)
+  by default, which automatically rolls over to the latest billing year at the
+  end of the last cycle. Vault Community **requires** `start_time`, but Vault
+  Enterprise uses the billing start date as defined by the cluster license by
+  default. Vault Community does not have a billing start time, so ommitting
+  `start_time` can lead to undefined behavior. We recommend setting an explicit
+  start time to ensure reliable behavior in all Vault versions.
+- `end_time` `(string, optional)` - An RFC3339 timestamp or Unix epoch time. Specifies the end of the period
+  for which client counts will be reported. If no end time is specified, the end of the current month will be used.
+- `limit_namespaces` `(int, optional)` - Controls the total number of by_namespace data returned. This can
+   be used to return the client counts for the specified number of namespaces having highest activity.
+   If no `limit_namespaces` parameter is specified, client counts for all namespaces in specified usage period is returned.
+- `current_billing_period` `(bool, optional)` - **DEPRECATED** Uses the builtin billing start
+  timestamp as `start_time` and the current time as the `end_time`, returning a
+  response with the current billing period information without having to
+  explicitly provide a start and end time. This parameter is deprecated, as this option is now the default, so no parameter is needed to specify.
+
+@include 'counters-api-new-clients-behavior-change.mdx'
+
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request GET \
+    http://127.0.0.1:8200/v1/sys/internal/counters/activity
+```
+
+### Sample response
+
+
+### Sample request
+
+The following example retrieves the client count for a single month.
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request GET \
+    http://127.0.0.1:8200/v1/sys/internal/counters/activity?end_time=2020-06-30T00%3A00%3A00Z&start_time=2020-06-01T00%3A00%3A00Z
+```
+
+### Sample request
+
+The following example retrieves the client counts for top 2 namespaces with
+highest activity for a usage period.
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request GET \
+    http://127.0.0.1:8200/v1/sys/internal/counters/activity?end_time=2020-06-30T00%3A00%3A00Z&start_time=2020-06-01T00%3A00%3A00Z&limit_namespaces=2
+```
+
+## Cumulative namespace client count
+
+@include 'alerts/enterprise-only.mdx'
+
+@include 'alerts/tech-preview.mdx'
+
+The cumulative client count endpoint returns, for each namespace, the total number of clients in that namespace and all its descendant namespaces.
+
+You can call the cumulative client count endpoint from any namespace. However, to query client counts for deleted namespaces, you must call the endpoint from `root` since the original namespace path is unknown. Client counts in deleted namespaces also do not contribute to the cumulative counts of any namespace other than `root`.
+
+
+Regardless of the values provided for `start_time` and `end_time`, Vault can
+only return totals for whole billing periods. If the requested time parameters
+do not align with a complete billing period, Vault adjusts the request to the
+full billing period associated with the provided times.
+
+The endpoint response always includes the actual time period covered in addition
+to the client counts. If Vault adjusts the query period, the result also
+includes a warning about the adjusted query times.
+
+If `start_time` and `end_time` do not fall within the same billing period, Vault
+uses the billing period associated with `start_time`.
+
+
+| Method | Path                                         |
+|:-------|:---------------------------------------------|
+| `GET`  | `/sys/internal/counters/activity/cumulative` |
+
+### Parameters
+
+- `start_time` `(string, optional)` - An RFC3339 timestamp or Unix epoch time
+  specifying the start of the billing period to query. Leave `start_time`
+  unset to use the billing start date as the start time.
+- `end_time` `(string, optional)` - An RFC3339 timestamp or Unix epoch time
+  specifying the end of the billing period to query. Leave `end_time`
+  unset to use the end of the current month as the end time.
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request GET \
+    http://127.0.0.1:8200/v1/sys/internal/counters/activity/cumulative
+```
+
+### Response fields
+
+- `by_namespace` - maps the namespace path to an object containing the namespace
+  ID and cumulative client counts for that namespace and all its descendants. Vault
+  uses the pattern `deleted namespace :ID:` for paths associated with deleted
+  namespaces.
+
+- `total` - the total cumulative client counts for the requested billing period across all included namespaces.
+
+- `start_time` - the start time used to query client counts after aligning to
+  the start of a billing period.
+
+- `end_time` - the end time used to query client counts after aligning to
+  the end of a billing period.
+
+### Sample response
+
+In the example response below, every namespace has 50 direct clients.
+
+
+### Sample request
+
+The following example retrieves the cumulative client count in the `ns1` namespace
+and all its children.
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --header "X-Vault-Namespace: ns1" \
+    --request GET \
+    http://127.0.0.1:8200/v1/sys/internal/counters/activity/cumulative
+```
+
+### Sample response
+
+
+## Partial month client count
+
+This endpoint returns the client activity in the current month. The response
+will have activity attributions per namespace, per mount within each namespaces,
+and new clients information.
+
+The time period is from the start of the current month, up until the time that
+this request was made.
+
+
+@include 'alerts/restricted-root.mdx'
+
+| Method | Path                                      |
+| :----- | :---------------------------------------- |
+| `GET`  | `/sys/internal/counters/activity/monthly` |
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request GET \
+    http://127.0.0.1:8200/v1/sys/internal/counters/activity/monthly
+```
+
+### Sample response
+
+
+## Update the client count configuration
+
+@include 'alerts/restricted-root.mdx'
+
+The `/sys/internal/counters/config` endpoint is used to configure logging of active clients.
+
+| Method | Path                            |
+| :----- | :------------------------------ |
+| `POST` | `/sys/internal/counters/config` |
+
+### Parameters
+
+- `default_report_months` `(integer: 12)` - **DEPRECATED** The number
+   of months to report if no `start_time` is specified in a query.
+- `enabled` `(string: enable, disable, default)` - Enable or disable counting of client activity. When set to `default`, the client
+  counts are enabled on Enterprise builds and disabled on community builds. Disabling the feature during the middle of a month will
+  discard any data recorded for that month, but does not delete previous months.
+- `retention_months` `(integer: 48)` - The number of months of history to retain. The minimum is 48 months and the maximum is 60 months.
+
+Any missing parameters are left at their existing value.
+
+### Sample payload
+
+```json
+{
+  "enabled": "enable",
+  "retention_months": 54
+}
+```
+
+### Sample request
+
+```shell-session
+$ curl \
+    --request POST
+    --header "X-Vault-Token: ..." \
+    --data @payload.json
+    http://127.0.0.1:8200/v1/sys/internal/counters/config
+```
+
+## Read the client count configuration
+
+Reading the configuration shows the current settings, as well as a flag as to whether any data can be queried.
+
+| Method | Path                            |
+| :----- | :------------------------------ |
+| `GET` | `/sys/internal/counters/config` |
+
+- `enabled` `(string)` - returns `default-enabled` or `default-disabled` if the configuration is `default`.
+- `queries_available` `(bool)` - indicates whether any usage report is available. This will initially be
+  false until the end of the first calendar month after the feature is enabled.
+
+### Sample request
+
+```shell-session
+$ curl \
+    --request GET
+    --header "X-Vault-Token: ..." \
+    http://127.0.0.1:8200/v1/sys/internal/counters/config
+```
+
+### Sample response
+
+
+
+## Activity export
+
+@include 'alerts/tech-preview.mdx'
+
+This endpoint returns an export of the clients that had activity within the
+provided start and end times. The returned set of client information will be
+deduplicated over the time window and will show the earliest activity logged for
+each client. The output will be ordered chronologically by month of activity.
+
+There are a few things to keep in mind while using this API.
+
+- The response includes the actual time period covered, which may not exactly
+match the query parameters due to the month granularity of data or missing
+months in the requested time range. Vault always normalizes the effective
+`start_time` and `end_time` to full calendar months by adjusting `start_time` to
+the beginning of the month and `end_time` to the end of the month.
+
+- If the `end_date` supplied to the API is for the current month, the activity
+information returned by this API will include activity for this month, however
+it may be up to 20 minutes delayed.
+
+- This endpoint can be called from all namespaces. The requested namespace will act as a filter. The exported data will include activity for the requested
+  namespace and all of its children.
+
+- **`sudo` required** – This endpoint requires `sudo` capability in addition to
+  any path-specific capabilities.
+
+| Method | Path                                     |
+|:-------|:-----------------------------------------|
+| `GET`  | `/sys/internal/counters/activity/export` |
+
+### Parameters
+
+- `start_time` `(string, optional)` - An RFC3339 timestamp or Unix epoch time.
+  Specifies the start of the period for which client counts will be reported.
+  Vault uses the [billing start date](/vault/docs/concepts/billing-start-date)
+  by default, which automatically rolls over to the latest billing year at the
+  end of the last cycle. Vault Community **requires** `start_time`, but Vault
+  Enterprise uses the billing start date as defined by the cluster license by
+  default. Vault Community does not have a billing start time, so ommitting
+  `start_time` can lead to undefined behavior. We recommend setting an explicit
+  start time to ensure reliable behavior in all Vault versions.
+- `end_time` `(string, optional)` - An RFC3339 timestamp or Unix epoch time. Specifies the end of the period
+  for which client counts will be reported. If no end time is specified, the end of current month will be used.
+- `format` `(string, optional)` - The desired format of the output file. Allowed
+    values are `csv` and `json`. If no format is provided a default of `json`
+    will be used.
+
+The response will include all child namespaces of the namespace in which the
+request was made. If some namespace has subsequently been deleted, its path will
+be listed as `deleted namespace :ID:`.
+
+### Sample request
+
+```shell-session
+$ curl \
+    --header "X-Vault-Token: ..." \
+    --request GET \
+    http://127.0.0.1:8200/v1/sys/internal/counters/activity/export
+```
+
+### Response fields
+
+- `token_creation_time` - the creation time of the token used by the client to
+  perform the request (previously `timestamp`). Token creation time is distinct
+  from the time the client was created and may lie outside of the queried time
+  period.
+
+- `client_first_usage_time` - timestamp representing the earliest usage of the
+  client during the queried time period.
+
+### Sample JSON response
+
+The entity alias names for userpass in the sample response records below are user-provided. They are
+system-provided for AWS and Kubernetes based on how the auth backend has been configured. In the case of
+AWS, an IAM role ID is used but this can be configured via the [iam_alias](/vault/api-docs/auth/aws#iam_alias)
+or [ec2_alias](/vault/api-docs/auth/aws#ec2_alias) configuration parameters. In the case of Kubernetes, the entity
+alias name has been populated with the service account ID though this can be configured via the
+[alias_name_source](/vault/api-docs/auth/kubernetes#alias_name_source) configuration parameter.
+
+
+
+
+### Sample CSV response
+
+Nested fields within the exported records will be flattened into individual CSV columns. Columns for arrays (`policies` and `entity_group_ids`)
+will be named using the field name and underlying index (e.g. `policies.0`, `policies.1`). Columns for key-value pairs
+(`entity_metadata`, `entity_alias_metadata`, and `entity_alias_custom_metadata`) will be named using the field name and underlying key
+(e.g. `entity_metadata.email_address`, `entity_alias_metadata.region`). A flattened field will only be added if at least one record contains
+it. If a top-level field (e.g. `entity_metadata`) is not populated in any of the
+records then there will not be any flattened fields of prefix
+`entity_metadata.`.
+

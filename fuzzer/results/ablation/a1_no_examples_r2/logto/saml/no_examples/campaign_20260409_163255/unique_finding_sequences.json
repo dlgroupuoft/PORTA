@@ -1,0 +1,409 @@
+[
+  {
+    "finding": {
+      "finding_id": "658809ae44dbed54",
+      "sequence_id": "seq_I1_oidc_sso_unverified_email_linking_proof_confusion",
+      "sequence_description": "I1: Attempt to confuse proof integrity by presenting an OIDC SSO proof (id_token) whose semantic identity (email) matches an existing local user while the upstream proof marks email_verified=false. Broker must not treat unverified email as authenticated identity for account linking.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: victim_create_http_status == 201\nEvaluation: victim_create_http_status=200 == 201 \u2192 False\nImplication: Test setup failed: victim user not created.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "victim_create_http_status == 201",
+        "evaluation": "victim_create_http_status=200 == 201 \u2192 False",
+        "captured_values": {
+          "victim_create_http_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I1_oidc_sso_unverified_email_linking_proof_confusion",
+      "description": "I1: Attempt to confuse proof integrity by presenting an OIDC SSO proof (id_token) whose semantic identity (email) matches an existing local user while the upstream proof marks email_verified=false. Broker must not treat unverified email as authenticated identity for account linking.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: The broker must not consume (link/login as) a local principal based on unverified upstream email claims; the verified semantic proof must match the consumed identity mapping policy.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 4,
+      "events_failed": 1,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "victim_i1_oidc_link",
+            "password": "P@ssw0rd!victim1",
+            "name": "Victim I1",
+            "primary_email": "victim_i1_oidc_link@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_user_id": "identity_id",
+            "victim_username": "username",
+            "victim_create_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "attacker-sub-i1-unverified-email",
+            "email": "victim_i1_oidc_link@example.com",
+            "name": "Attacker As Victim",
+            "groups": "attacker-group",
+            "email_verified": "false"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "set_claims_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "gley1kfhus03",
+            "saml_response": "mutation_type=i1_oidc_sso_unverified_email_linking",
+            "relay_state": "rs_i1_oidc_unverified_email_linking"
+          },
+          "auth_as": "session_user_attacker_oidc_unverified",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_oidc_unverified_session_token": "session_token",
+            "user_attacker_oidc_unverified_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_oidc_unverified",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_oidc_unverified_entity_id": "sub",
+            "user_attacker_oidc_unverified_display_name": "username",
+            "user_attacker_oidc_unverified_email": "email",
+            "user_attacker_oidc_unverified_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_entity_details",
+          "params": {
+            "userId": "{{victim_user_id}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I1_oidc_sso_unverified_email_linking_proof_confusion_0",
+          "invariant": "I1",
+          "assertion": "victim_create_http_status == 201",
+          "violation_description": "Test setup failed: victim user not created.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I1_oidc_sso_unverified_email_linking_proof_confusion_1",
+          "invariant": "I1",
+          "assertion": "set_claims_http_status == 200",
+          "violation_description": "Test setup failed: could not set mock IdP claims.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I1_oidc_sso_unverified_email_linking_proof_confusion_2",
+          "invariant": "I1",
+          "assertion": "user_attacker_oidc_unverified_login_status >= 400 OR user_attacker_oidc_unverified_entity_id != victim_identity_id",
+          "violation_description": "I1 violation: broker consumed an unverified-email upstream proof as if it authenticated the victim principal (account linking/login as victim).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "gley1kfhus03",
+        "saml_sso_connector_id": "2yjnrwhzplko",
+        "test_app_client_id": "6unxjx3ulg2uzj99lrogf",
+        "test_app_client_secret": "#internal:CQf5r7wp8tCBoImblq8799QiqtAfJqVL",
+        "m2m_app_client_id": "bir8kg969b9vp0lpfxk1b",
+        "m2m_app_client_secret": "#internal:YYdZ6LVaugo3ODrIMcr9g40kQbipr2Sd",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "2kk4r2w11g9u",
+        "username": "victim_i1_oidc_link",
+        "victim_user_id": "2kk4r2w11g9u",
+        "victim_username": "victim_i1_oidc_link",
+        "victim_create_http_status": "200",
+        "set_claims_http_status": "200",
+        "user_attacker_oidc_unverified_session_token": "qm3TYJ5i4yOQmUB2FEFSYPK1MToOx27qT6D0KRAv3or",
+        "user_attacker_oidc_unverified_http_status": "200",
+        "session_user_attacker_oidc_unverified_session_token": "qm3TYJ5i4yOQmUB2FEFSYPK1MToOx27qT6D0KRAv3or",
+        "session_user_attacker_oidc_unverified_login_success": "True",
+        "session_user_attacker_oidc_unverified_login_status": "200",
+        "session_user_attacker_oidc_unverified_login_http_status": "200",
+        "user_attacker_oidc_unverified_entity_id": "None",
+        "user_attacker_oidc_unverified_display_name": "victim_i1_oidc_link",
+        "user_attacker_oidc_unverified_email": "None",
+        "user_attacker_oidc_unverified_groups": "None",
+        "metadata": "{'id': '2kk4r2w11g9u', 'username': 'victim_i1_oidc_link', 'primaryEmail': 'victim_i1_oidc_link@example.com', 'primaryPhone': None, 'name': 'Victim I1', 'avatar': None, 'customData': {}, 'identities': ",
+        "admin_identity_id": "2kk4r2w11g9u",
+        "admin_metadata": "{'id': '2kk4r2w11g9u', 'username': 'victim_i1_oidc_link', 'primaryEmail': 'victim_i1_oidc_link@example.com', 'primaryPhone': None, 'name': 'Victim I1', 'avatar': None, 'customData': {}, 'identities': "
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "2fc1ab5588fb3431",
+      "sequence_id": "seq_I1_saml_app_config_integrity_encrypt_toggle_without_cert",
+      "sequence_description": "I1: Change SAML app config to require encrypted assertions but omit SP certificate; then attempt re-auth. Broker must not proceed with a semantically different proof (unencrypted/invalid) under an encryption-required policy.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: saml_app_create_http_status == 201\nEvaluation: saml_app_create_http_status=400 == 201 \u2192 False\nImplication: Test setup failed: could not create SAML application.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "saml_app_create_http_status == 201",
+        "evaluation": "saml_app_create_http_status=400 == 201 \u2192 False",
+        "captured_values": {
+          "saml_app_create_http_status": 400
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I1_saml_app_config_integrity_encrypt_toggle_without_cert",
+      "description": "I1: Change SAML app config to require encrypted assertions but omit SP certificate; then attempt re-auth. Broker must not proceed with a semantically different proof (unencrypted/invalid) under an encryption-required policy.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: When SAML assertion encryption is required by policy, the broker must not accept or emit a proof that does not satisfy that policy (e.g., unencrypted assertion or encryption with missing/invalid SP cert).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 2,
+      "events_failed": 5,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_application",
+          "params": {
+            "name": "i1_saml_encrypt_toggle_app",
+            "type": "SAML",
+            "description": "SAML app for I1 proof-integrity encryption toggle test",
+            "redirect_uris": [
+              "http://localhost:9090/callback"
+            ],
+            "post_logout_redirect_uris": [
+              "http://localhost:9090/callback"
+            ]
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "saml_app_id": "app_id",
+            "saml_app_client_id": "client_id",
+            "saml_app_create_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "modify_role_config",
+          "params": {
+            "applicationId": "{{saml_app_id}}",
+            "acs_url": "http://localhost:9090/callback",
+            "sp_entity_id": "https://sp.example/i1-saml-encrypt-toggle",
+            "name_id_format": "persistent",
+            "encrypt_assertion": false,
+            "sp_certificate": ""
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "saml_app_cfg1_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "attacker_i1_tx",
+            "password": "P@ssw0rd!attacker2",
+            "client_id": "6unxjx3ulg2uzj99lrogf",
+            "grant_type": "password"
+          },
+          "auth_as": "session_user_control_saml_encrypt",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_saml_encrypt_session_token": "session_token",
+            "user_control_saml_encrypt_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_saml_encrypt",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_saml_encrypt_entity_id": "sub",
+            "user_control_saml_encrypt_display_name": "username",
+            "user_control_saml_encrypt_email": "email",
+            "user_control_saml_encrypt_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "modify_role_config",
+          "params": {
+            "applicationId": "{{saml_app_id}}",
+            "acs_url": "http://localhost:9090/callback",
+            "sp_entity_id": "https://sp.example/i1-saml-encrypt-toggle",
+            "name_id_format": "persistent",
+            "encrypt_assertion": true,
+            "sp_certificate": ""
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "saml_app_cfg2_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "2yjnrwhzplko",
+            "saml_response": "mutation_type=i1_saml_encrypt_required_missing_sp_cert",
+            "relay_state": "rs_i1_saml_encrypt_required_missing_sp_cert"
+          },
+          "auth_as": "session_user_saml_encrypt_toggle",
+          "expected_outcome": "any",
+          "captures": {
+            "user_saml_encrypt_toggle_session_token": "session_token",
+            "user_saml_encrypt_toggle_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_saml_encrypt_toggle",
+          "expected_outcome": "any",
+          "captures": {
+            "user_saml_encrypt_toggle_entity_id": "sub",
+            "user_saml_encrypt_toggle_display_name": "username",
+            "user_saml_encrypt_toggle_email": "email",
+            "user_saml_encrypt_toggle_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I1_saml_app_config_integrity_encrypt_toggle_without_cert_0",
+          "invariant": "I1",
+          "assertion": "saml_app_create_http_status == 201",
+          "violation_description": "Test setup failed: could not create SAML application.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I1_saml_app_config_integrity_encrypt_toggle_without_cert_1",
+          "invariant": "I1",
+          "assertion": "saml_app_cfg1_http_status == 200 AND saml_app_cfg2_http_status == 200",
+          "violation_description": "Test setup failed: could not apply SAML app configuration changes.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I1_saml_app_config_integrity_encrypt_toggle_without_cert_2",
+          "invariant": "I1",
+          "assertion": "user_control_saml_encrypt_login_status == 200 AND user_control_saml_encrypt_http_status == 200",
+          "violation_description": "Test setup failed: control login/verify did not succeed.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I1_saml_app_config_integrity_encrypt_toggle_without_cert_3",
+          "invariant": "I1",
+          "assertion": "user_saml_encrypt_toggle_login_status >= 400",
+          "violation_description": "I1 violation: login succeeded even though SAML assertion encryption was required but SP certificate was missing; indicates policy/proof mismatch (verification not applied to consumed proof semantics).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "gley1kfhus03",
+        "saml_sso_connector_id": "2yjnrwhzplko",
+        "test_app_client_id": "6unxjx3ulg2uzj99lrogf",
+        "test_app_client_secret": "#internal:CQf5r7wp8tCBoImblq8799QiqtAfJqVL",
+        "m2m_app_client_id": "bir8kg969b9vp0lpfxk1b",
+        "m2m_app_client_secret": "#internal:YYdZ6LVaugo3ODrIMcr9g40kQbipr2Sd",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "saml_app_id": "None",
+        "saml_app_client_id": "None",
+        "saml_app_create_http_status": "400",
+        "saml_app_cfg1_http_status": "405",
+        "user_control_saml_encrypt_session_token": "rQx0Wm_R9s_BLoUCi36RdMT4R-TQYSoWaUn2wcmwDQD",
+        "user_control_saml_encrypt_http_status": "200",
+        "session_user_control_saml_encrypt_session_token": "rQx0Wm_R9s_BLoUCi36RdMT4R-TQYSoWaUn2wcmwDQD",
+        "session_user_control_saml_encrypt_login_success": "True",
+        "session_user_control_saml_encrypt_login_status": "200",
+        "session_user_control_saml_encrypt_login_http_status": "200",
+        "user_control_saml_encrypt_entity_id": "None",
+        "user_control_saml_encrypt_display_name": "None",
+        "user_control_saml_encrypt_email": "None",
+        "user_control_saml_encrypt_groups": "None",
+        "saml_app_cfg2_http_status": "405",
+        "user_saml_encrypt_toggle_session_token": "aebQ1f0OEDOPurjI9cS-ThhtJIFAYzFMveNH2X0RRoG",
+        "user_saml_encrypt_toggle_http_status": "200",
+        "session_user_saml_encrypt_toggle_session_token": "aebQ1f0OEDOPurjI9cS-ThhtJIFAYzFMveNH2X0RRoG",
+        "session_user_saml_encrypt_toggle_login_success": "True",
+        "session_user_saml_encrypt_toggle_login_status": "200",
+        "session_user_saml_encrypt_toggle_login_http_status": "200",
+        "user_saml_encrypt_toggle_entity_id": "None",
+        "user_saml_encrypt_toggle_display_name": "None",
+        "user_saml_encrypt_toggle_email": "None",
+        "user_saml_encrypt_toggle_groups": "None"
+      }
+    }
+  }
+]

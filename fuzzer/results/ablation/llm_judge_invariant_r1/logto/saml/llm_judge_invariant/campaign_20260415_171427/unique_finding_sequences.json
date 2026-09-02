@@ -1,0 +1,3745 @@
+[
+  {
+    "finding": {
+      "finding_id": "33d18fc3fe458759",
+      "sequence_id": "seq_i1_oidc_trust_anchor_substitution_via_mock_claims",
+      "sequence_description": "I1 trust-anchor substitution: attempt to log in via preconfigured OIDC SSO connector after setting mock IdP claims to impersonate a victim; broker must not accept identity proof without proper upstream verification/binding.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I1",
+      "identified_invariant": "",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "[LLM-Judge] Trust-anchor substitution / proof-integrity failure: by changing mock OIDC IdP claims, the attacker session was issued as the victim (same downstream subject), indicating the broker accepted attacker-controlled upstream identity assertions without proper binding/verification.",
+      "cve_analog": "CVE-2022-23647",
+      "evidence": {
+        "set_claims_status": 200,
+        "mock_idp_host_url": "http://localhost:9090",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "victim_user_id": "m7il700eytig",
+        "admin_identity_id": "m7il700eytig",
+        "admin_metadata": {
+          "id": "m7il700eytig",
+          "username": "victim_i1_oidc_anchor",
+          "primaryEmail": "victim_i1_oidc_anchor@example.com",
+          "primaryPhone": null,
+          "name": "Victim I1 OIDC Anchor",
+          "avatar": null,
+          "customData": {},
+          "identities": {},
+          "lastSignInAt": 1776273901910,
+          "createdAt": 1776273901607,
+          "updatedAt": 1776273902000,
+          "profile": {},
+          "applicationId": "m8gp6ml6zrxyswkn952e2",
+          "isSuspended": false,
+          "hasPassword": true
+        },
+        "user_attacker_oidc_anchor_session_token": "8otSl8t97BNGNv3ztqKRI7lIQne3rnVozImS9v7QHy4",
+        "user_attacker_oidc_anchor_entity_id": "m7il700eytig",
+        "user_attacker_oidc_anchor_identity_id": "m7il700eytig",
+        "user_attacker_oidc_anchor_display_name": "victim_i1_oidc_anchor",
+        "user_attacker_oidc_anchor_email": "victim_i1_oidc_anchor@example.com",
+        "user_attacker_oidc_anchor_login_success": true,
+        "llm_judge_description": "Trust-anchor substitution / proof-integrity failure: by changing mock OIDC IdP claims, the attacker session was issued as the victim (same downstream subject), indicating the broker accepted attacker-controlled upstream identity assertions without proper binding/verification."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_oidc_trust_anchor_substitution_via_mock_claims",
+      "description": "I1 trust-anchor substitution: attempt to log in via preconfigured OIDC SSO connector after setting mock IdP claims to impersonate a victim; broker must not accept identity proof without proper upstream verification/binding.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: The broker must verify the upstream OIDC proof under the intended trust anchor and must not accept a substituted/forged upstream principal (e.g., attacker-controlled subject/email) as an authenticated victim.",
+      "cve_analog": "CVE-2022-23647",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 5,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "victim_i1_oidc_anchor",
+            "password": "P@ssw0rd!victim1",
+            "name": "Victim I1 OIDC Anchor",
+            "primary_email": "victim_i1_oidc_anchor@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_user_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "attacker-sub-anchor-1",
+            "email": "victim_i1_oidc_anchor@example.com",
+            "name": "Victim I1 OIDC Anchor",
+            "groups": "admins",
+            "email_verified": "true"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "set_claims_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "saml_response": "mutation_type=i1_trust_anchor_substitution",
+            "relay_state": "state-anchor-substitution"
+          },
+          "auth_as": "user_attacker_oidc_anchor",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_oidc_anchor",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_oidc_anchor_entity_id": "sub",
+            "user_attacker_oidc_anchor_display_name": "username",
+            "user_attacker_oidc_anchor_email": "email",
+            "user_attacker_oidc_anchor_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_entity_details",
+          "params": {
+            "userId": "{{victim_user_id}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_oidc_anchor_substitution_rejected",
+          "invariant": "I1",
+          "assertion": "user_attacker_oidc_anchor_login_status >= 400",
+          "violation_description": "Broker accepted an OIDC SSO login under a substituted/forged upstream identity proof (trust anchor substitution) when it should have been rejected.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_oidc_anchor_substitution_no_victim_impersonation",
+          "invariant": "I1",
+          "assertion": "user_attacker_oidc_anchor_http_status >= 400 OR user_attacker_oidc_anchor_email != \"victim_i1_oidc_anchor@example.com\"",
+          "violation_description": "Broker treated attacker-controlled upstream proof as the victim identity (email-based impersonation) instead of rejecting or isolating it.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "m7il700eytig",
+        "username": "victim_i1_oidc_anchor",
+        "victim_user_id": "m7il700eytig",
+        "set_claims_status": "200",
+        "user_attacker_oidc_anchor_session_token": "8otSl8t97BNGNv3ztqKRI7lIQne3rnVozImS9v7QHy4",
+        "user_attacker_oidc_anchor_login_success": "True",
+        "user_attacker_oidc_anchor_login_status": "200",
+        "user_attacker_oidc_anchor_login_http_status": "200",
+        "display_name": "victim_i1_oidc_anchor",
+        "email": "victim_i1_oidc_anchor@example.com",
+        "user_attacker_oidc_anchor_entity_id": "m7il700eytig",
+        "user_attacker_oidc_anchor_display_name": "victim_i1_oidc_anchor",
+        "user_attacker_oidc_anchor_email": "victim_i1_oidc_anchor@example.com",
+        "user_attacker_oidc_anchor_groups": "None",
+        "user_attacker_oidc_anchor_identity_id": "m7il700eytig",
+        "metadata": "{'id': 'm7il700eytig', 'username': 'victim_i1_oidc_anchor', 'primaryEmail': 'victim_i1_oidc_anchor@example.com', 'primaryPhone': None, 'name': 'Victim I1 OIDC Anchor', 'avatar': None, 'customData': {}",
+        "admin_identity_id": "m7il700eytig",
+        "admin_metadata": "{'id': 'm7il700eytig', 'username': 'victim_i1_oidc_anchor', 'primaryEmail': 'victim_i1_oidc_anchor@example.com', 'primaryPhone': None, 'name': 'Victim I1 OIDC Anchor', 'avatar': None, 'customData': {}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "5e4ce397ee68c1d7",
+      "sequence_id": "seq_i1_token_exchange_subject_token_confusion",
+      "sequence_description": "I1 proof/consumer mismatch via token exchange: obtain a subject token for one identity, then attempt token exchange for a different audience/resource; broker must not treat the exchanged token as proof for a different semantic context without proper verification.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I1",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "LOW",
+      "description": "[LLM-Judge] Token introspection returned an entity_id (subject) even though the token was inactive after a failed token-exchange attempt, suggesting possible response/variable mix-up or introspection leakage.",
+      "cve_analog": "CVE-2020-26877",
+      "evidence": {
+        "user_alice_tokenex_login_http_status": 400,
+        "user_alice_tokenex_login_success": false,
+        "user_alice_tokenex_active": false,
+        "user_alice_tokenex_entity_id": "9a7c6ul3v2vy",
+        "alice_user_id": "g188rr7n34z6",
+        "bob_user_id": "9a7c6ul3v2vy",
+        "llm_judge_description": "Token introspection returned an entity_id (subject) even though the token was inactive after a failed token-exchange attempt, suggesting possible response/variable mix-up or introspection leakage."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_token_exchange_subject_token_confusion",
+      "description": "I1 proof/consumer mismatch via token exchange: obtain a subject token for one identity, then attempt token exchange for a different audience/resource; broker must not treat the exchanged token as proof for a different semantic context without proper verification.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: The broker must ensure the proof verified (subject_token) is the same semantic proof consumed for issuing a new token; token exchange must not allow signature/claims confusion to mint tokens for unintended resources.",
+      "cve_analog": "CVE-2020-26877",
+      "status": "COMPLETED",
+      "events_total": 9,
+      "events_succeeded": 8,
+      "events_failed": 1,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i1_tokenex_alice",
+            "password": "P@ssw0rd!alice1",
+            "name": "I1 TokenEx Alice",
+            "primary_email": "i1_tokenex_alice@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "alice_user_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i1_tokenex_bob",
+            "password": "P@ssw0rd!bob1",
+            "name": "I1 TokenEx Bob",
+            "primary_email": "i1_tokenex_bob@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "bob_user_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "update_application",
+          "params": {
+            "app_id": "{{test_app_client_id}}",
+            "allow_token_exchange": true
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "app_update_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "i1_tokenex_alice",
+            "password": "P@ssw0rd!alice1",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_entity_id": "sub",
+            "user_alice_pwd_display_name": "username",
+            "user_alice_pwd_email": "email",
+            "user_alice_pwd_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "i1_tokenex_bob",
+            "password": "P@ssw0rd!bob1",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_bob_pwd_entity_id": "sub",
+            "user_bob_pwd_display_name": "username",
+            "user_bob_pwd_email": "email",
+            "user_bob_pwd_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "subject_token": "{{session_user_alice_pwd}}",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "client_id": "{{test_app_client_id}}",
+            "client_secret": "{{test_app_client_secret}}",
+            "resource": "{{test_api_resource}}"
+          },
+          "auth_as": "user_alice_tokenex",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{session_user_alice_tokenex}}",
+            "client_id": "{{test_app_client_id}}",
+            "client_secret": "{{test_app_client_secret}}",
+            "token": "{{session_user_alice_tokenex}}"
+          },
+          "auth_as": "session_user_alice_tokenex",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_tokenex_active": "active",
+            "user_alice_tokenex_entity_id": "identity_id",
+            "user_alice_tokenex_http_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_token_exchange_subject_token_must_be_valid",
+          "invariant": "I1",
+          "assertion": "user_alice_tokenex_http_status >= 400 OR user_alice_tokenex_active == true",
+          "violation_description": "Token exchange produced a token that cannot be introspected as active/valid; indicates proof consumption/verification mismatch in exchange pipeline.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_token_exchange_no_principal_confusion",
+          "invariant": "I1",
+          "assertion": "user_alice_tokenex_http_status >= 400 OR user_alice_tokenex_entity_id == user_alice_pwd_entity_id",
+          "violation_description": "Token exchange changed the authenticated principal (subject_token for Alice resulted in a token for a different identity), indicating proof integrity failure.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "9a7c6ul3v2vy",
+        "username": "i1_tokenex_bob",
+        "alice_user_id": "g188rr7n34z6",
+        "bob_user_id": "9a7c6ul3v2vy",
+        "app_update_status": "200",
+        "user_alice_pwd_session_token": "dlT-aUMm0aPArFQv571yk_nqh88I02P4VH37U62sy1M",
+        "user_alice_pwd_login_success": "True",
+        "user_alice_pwd_login_status": "200",
+        "user_alice_pwd_login_http_status": "200",
+        "display_name": "i1_tokenex_bob",
+        "email": "i1_tokenex_bob@example.com",
+        "user_alice_pwd_entity_id": "g188rr7n34z6",
+        "user_alice_pwd_display_name": "i1_tokenex_alice",
+        "user_alice_pwd_email": "i1_tokenex_alice@example.com",
+        "user_alice_pwd_groups": "None",
+        "user_alice_pwd_identity_id": "g188rr7n34z6",
+        "user_bob_pwd_session_token": "Fvb0suD6e9Ca2pRwl5VTRCMVbVnsmNcklwkDyQEwCfo",
+        "user_bob_pwd_login_success": "True",
+        "user_bob_pwd_login_status": "200",
+        "user_bob_pwd_login_http_status": "200",
+        "user_bob_pwd_entity_id": "9a7c6ul3v2vy",
+        "user_bob_pwd_display_name": "i1_tokenex_bob",
+        "user_bob_pwd_email": "i1_tokenex_bob@example.com",
+        "user_bob_pwd_groups": "None",
+        "user_bob_pwd_identity_id": "9a7c6ul3v2vy",
+        "user_alice_tokenex_login_success": "False",
+        "user_alice_tokenex_login_status": "400",
+        "user_alice_tokenex_login_http_status": "400",
+        "active": "False",
+        "metadata": "{'active': False}",
+        "user_alice_tokenex_active": "False",
+        "user_alice_tokenex_entity_id": "9a7c6ul3v2vy",
+        "user_alice_tokenex_http_status": "200"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "e456932a3bed4cca",
+      "sequence_id": "seq_i1_oidc_sso_nonce_absent_reject",
+      "sequence_description": "I1: OIDC SSO proof integrity \u2014 reject IdP tokens missing required anti-mixup/nonce binding when nonce was expected (mock IdP omits nonce).",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I1",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] OIDC SSO login succeeded even though the test intended a missing-nonce IdP token to be rejected, suggesting nonce/anti-mixup binding may not be enforced (or the flow did not actually require nonce).",
+      "cve_analog": "none",
+      "evidence": {
+        "set_claims_status": 200,
+        "user_nonce_missing_oidc_login_http_status": 200,
+        "user_nonce_missing_oidc_login_success": true,
+        "user_nonce_missing_oidc_session_token": "JFiMgFhHBu9ZYiCW3PYVmiERwD8VPVsxJwqbezfatJ5",
+        "user_nonce_missing_oidc_entity_id": "9zdb4w6pnvkz",
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "redirect_uri": "http://localhost:9090/callback",
+        "email": "nonce_missing_test@example.com",
+        "llm_judge_description": "OIDC SSO login succeeded even though the test intended a missing-nonce IdP token to be rejected, suggesting nonce/anti-mixup binding may not be enforced (or the flow did not actually require nonce)."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_oidc_sso_nonce_absent_reject",
+      "description": "I1: OIDC SSO proof integrity \u2014 reject IdP tokens missing required anti-mixup/nonce binding when nonce was expected (mock IdP omits nonce).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: The broker must verify the exact semantic proof under the intended OIDC verification policy; if nonce is required by the request context, consuming a nonce-less id_token indicates verification/consumption mismatch.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 3,
+      "events_succeeded": 3,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "user-nonce-missing-test",
+            "email": "nonce_missing_test@example.com",
+            "name": "Nonce Missing Test",
+            "groups": "[]",
+            "email_verified": "true"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "set_claims_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "saml_response": "mutation_type=i2_oidc_sso_nonce_bypass",
+            "relay_state": "rs_i1_nonce_missing"
+          },
+          "auth_as": "user_nonce_missing_oidc",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_nonce_missing_oidc",
+          "expected_outcome": "any",
+          "captures": {
+            "user_nonce_missing_oidc_entity_id": "sub",
+            "user_nonce_missing_oidc_display_name": "username",
+            "user_nonce_missing_oidc_email": "email",
+            "user_nonce_missing_oidc_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_oidc_nonce_missing_must_be_rejected",
+          "invariant": "I1",
+          "assertion": "user_nonce_missing_oidc_http_status >= 400",
+          "violation_description": "Broker accepted an OIDC SSO login where the id_token omitted nonce despite nonce being required by the request context (proof verified under weaker policy than consumed).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "set_claims_status": "200",
+        "user_nonce_missing_oidc_session_token": "JFiMgFhHBu9ZYiCW3PYVmiERwD8VPVsxJwqbezfatJ5",
+        "user_nonce_missing_oidc_login_success": "True",
+        "user_nonce_missing_oidc_login_status": "200",
+        "user_nonce_missing_oidc_login_http_status": "200",
+        "identity_id": "9zdb4w6pnvkz",
+        "email": "nonce_missing_test@example.com",
+        "user_nonce_missing_oidc_entity_id": "9zdb4w6pnvkz",
+        "user_nonce_missing_oidc_display_name": "None",
+        "user_nonce_missing_oidc_email": "nonce_missing_test@example.com",
+        "user_nonce_missing_oidc_groups": "None",
+        "user_nonce_missing_oidc_identity_id": "9zdb4w6pnvkz"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "ff2b87a959c8e604",
+      "sequence_id": "seq_i1_token_exchange_subject_token_substitution",
+      "sequence_description": "I1: Token exchange proof integrity \u2014 exchanged token must remain bound to the verified subject_token identity; swapping subject_token should not yield a token that is treated as the other principal without proper verification.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I1",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Token introspection returned a concrete subject/entity_id for an inactive token, suggesting identity data leakage or inconsistent introspection semantics.",
+      "cve_analog": "none",
+      "evidence": {
+        "user_alice_exchanged_active": false,
+        "user_alice_exchanged_entity_id": "isz1c4ukzr26",
+        "user_bob_exchanged_active": false,
+        "user_bob_exchanged_entity_id": "isz1c4ukzr26",
+        "metadata": {
+          "active": false
+        },
+        "llm_judge_description": "Token introspection returned a concrete subject/entity_id for an inactive token, suggesting identity data leakage or inconsistent introspection semantics."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_token_exchange_subject_token_substitution",
+      "description": "I1: Token exchange proof integrity \u2014 exchanged token must remain bound to the verified subject_token identity; swapping subject_token should not yield a token that is treated as the other principal without proper verification.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: The broker must apply authenticity checks to the exact subject_token being consumed in token exchange; it must not confuse or substitute principals across exchanges.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 10,
+      "events_succeeded": 8,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "alice_i1_tx",
+            "password": "P@ssw0rd!alice1",
+            "name": "Alice I1 TX",
+            "primary_email": "alice_i1_tx@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "alice_user_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "bob_i1_tx",
+            "password": "P@ssw0rd!bob1",
+            "name": "Bob I1 TX",
+            "primary_email": "bob_i1_tx@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "bob_user_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "alice_i1_tx",
+            "password": "P@ssw0rd!alice1",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "bob_i1_tx",
+            "password": "P@ssw0rd!bob1",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_entity_id": "sub",
+            "user_alice_pwd_display_name": "username",
+            "user_alice_pwd_email": "email",
+            "user_alice_pwd_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_bob_pwd_entity_id": "sub",
+            "user_bob_pwd_display_name": "username",
+            "user_bob_pwd_email": "email",
+            "user_bob_pwd_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "subject_token": "{{session_user_alice_pwd}}",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "client_id": "{{test_app_client_id}}",
+            "client_secret": "{{test_app_client_secret}}",
+            "resource": "{{test_api_resource}}",
+            "scope": "openid profile"
+          },
+          "auth_as": "user_alice_exchanged",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "subject_token": "{{session_user_bob_pwd}}",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "client_id": "{{test_app_client_id}}",
+            "client_secret": "{{test_app_client_secret}}",
+            "resource": "{{test_api_resource}}",
+            "scope": "openid profile"
+          },
+          "auth_as": "user_bob_exchanged",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{session_user_alice_exchanged}}",
+            "client_id": "{{test_app_client_id}}",
+            "client_secret": "{{test_app_client_secret}}",
+            "token": "{{session_user_alice_exchanged}}"
+          },
+          "auth_as": "session_user_alice_exchanged",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_exchanged_active": "active",
+            "user_alice_exchanged_entity_id": "identity_id",
+            "user_alice_exchanged_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{session_user_bob_exchanged}}",
+            "client_id": "{{test_app_client_id}}",
+            "client_secret": "{{test_app_client_secret}}",
+            "token": "{{session_user_bob_exchanged}}"
+          },
+          "auth_as": "session_user_bob_exchanged",
+          "expected_outcome": "any",
+          "captures": {
+            "user_bob_exchanged_active": "active",
+            "user_bob_exchanged_entity_id": "identity_id",
+            "user_bob_exchanged_http_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_token_exchange_must_preserve_subject_binding_alice",
+          "invariant": "I1",
+          "assertion": "user_alice_exchanged_http_status == 200 AND user_alice_exchanged_active == true AND user_alice_exchanged_entity_id == user_alice_pwd_entity_id",
+          "violation_description": "Token exchange produced a token whose consumed subject does not match the verified subject_token identity (proof integrity failure / subject substitution).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_token_exchange_must_preserve_subject_binding_bob",
+          "invariant": "I1",
+          "assertion": "user_bob_exchanged_http_status == 200 AND user_bob_exchanged_active == true AND user_bob_exchanged_entity_id == user_bob_pwd_entity_id",
+          "violation_description": "Token exchange produced a token whose consumed subject does not match the verified subject_token identity (proof integrity failure / subject substitution).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_token_exchange_distinct_subjects_remain_distinct",
+          "invariant": "I1",
+          "assertion": "user_alice_exchanged_entity_id != user_bob_exchanged_entity_id",
+          "violation_description": "Token exchange collapsed two distinct authenticated subjects into the same downstream identity, suggesting proof verification/consumption mismatch.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "isz1c4ukzr26",
+        "username": "bob_i1_tx",
+        "alice_user_id": "kgerkncxnx3y",
+        "bob_user_id": "isz1c4ukzr26",
+        "user_alice_pwd_session_token": "y25LTOWXEuOh-DqNLfCu0arF4BD1bMhWDXmBNopDQG4",
+        "user_alice_pwd_login_success": "True",
+        "user_alice_pwd_login_status": "200",
+        "user_alice_pwd_login_http_status": "200",
+        "user_bob_pwd_session_token": "nTbwx7uxVMeYublTk5PVm3WYkPNgVgvGixIxeCC55n4",
+        "user_bob_pwd_login_success": "True",
+        "user_bob_pwd_login_status": "200",
+        "user_bob_pwd_login_http_status": "200",
+        "display_name": "bob_i1_tx",
+        "email": "bob_i1_tx@example.com",
+        "user_alice_pwd_entity_id": "kgerkncxnx3y",
+        "user_alice_pwd_display_name": "alice_i1_tx",
+        "user_alice_pwd_email": "alice_i1_tx@example.com",
+        "user_alice_pwd_groups": "None",
+        "user_alice_pwd_identity_id": "kgerkncxnx3y",
+        "user_bob_pwd_entity_id": "isz1c4ukzr26",
+        "user_bob_pwd_display_name": "bob_i1_tx",
+        "user_bob_pwd_email": "bob_i1_tx@example.com",
+        "user_bob_pwd_groups": "None",
+        "user_bob_pwd_identity_id": "isz1c4ukzr26",
+        "user_alice_exchanged_login_success": "False",
+        "user_alice_exchanged_login_status": "400",
+        "user_alice_exchanged_login_http_status": "400",
+        "user_bob_exchanged_login_success": "False",
+        "user_bob_exchanged_login_status": "400",
+        "user_bob_exchanged_login_http_status": "400",
+        "active": "False",
+        "metadata": "{'active': False}",
+        "user_alice_exchanged_active": "False",
+        "user_alice_exchanged_entity_id": "isz1c4ukzr26",
+        "user_alice_exchanged_http_status": "200",
+        "user_bob_exchanged_active": "False",
+        "user_bob_exchanged_entity_id": "isz1c4ukzr26",
+        "user_bob_exchanged_http_status": "200"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "297ff421aadfc768",
+      "sequence_id": "seq_i2_oidc_sso_nonce_bypass_reauth",
+      "sequence_description": "OIDC SSO: attempt login where IdP omits nonce (mock IdP default). Re-attempt after changing upstream claims to ensure rejection is consistent and not bypassed via re-auth/caching.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I2",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] OIDC SSO login succeeded even when the upstream IdP omitted the nonce, suggesting missing/optional nonce enforcement and potential replay/session-injection risk depending on connector policy.",
+      "cve_analog": "none",
+      "evidence": {
+        "set_claims_1_http_status": 200,
+        "user_nonce_bypass_1_login_success": true,
+        "user_nonce_bypass_1_login_http_status": 200,
+        "user_nonce_bypass_1_session_token": "OeTXlestSWZPAHmso456z7-nqkijLq431_z7tBfUlQ2",
+        "set_claims_2_http_status": 200,
+        "user_nonce_bypass_2_login_success": true,
+        "user_nonce_bypass_2_login_http_status": 200,
+        "user_nonce_bypass_2_session_token": "oBHSlKk5eraD4wf8IFRdxIAiOk3bUJL31lbEY5vP29a",
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "llm_judge_description": "OIDC SSO login succeeded even when the upstream IdP omitted the nonce, suggesting missing/optional nonce enforcement and potential replay/session-injection risk depending on connector policy."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_oidc_sso_nonce_bypass_reauth",
+      "description": "OIDC SSO: attempt login where IdP omits nonce (mock IdP default). Re-attempt after changing upstream claims to ensure rejection is consistent and not bypassed via re-auth/caching.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: OIDC SSO callback artifacts (id_token) must be bound to a fresh nonce; nonce-less id_tokens must be rejected even across repeated attempts and claim changes.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 6,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "attacker-sub-nonce-1",
+            "email": "attacker+n1@example.com",
+            "name": "Attacker Nonce1",
+            "groups": "g1",
+            "email_verified": "false"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "set_claims_1_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "saml_response": "mutation_type=i2_oidc_sso_nonce_bypass",
+            "relay_state": "state-nonce-bypass-1"
+          },
+          "auth_as": "user_nonce_bypass_1",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_nonce_bypass_1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_nonce_bypass_1_entity_id": "sub",
+            "user_nonce_bypass_1_display_name": "username",
+            "user_nonce_bypass_1_email": "email",
+            "user_nonce_bypass_1_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "attacker-sub-nonce-2",
+            "email": "attacker+n2@example.com",
+            "name": "Attacker Nonce2",
+            "groups": "g2",
+            "email_verified": "false"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "set_claims_2_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "saml_response": "mutation_type=i2_oidc_sso_nonce_bypass",
+            "relay_state": "state-nonce-bypass-2"
+          },
+          "auth_as": "user_nonce_bypass_2",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_nonce_bypass_2",
+          "expected_outcome": "any",
+          "captures": {
+            "user_nonce_bypass_2_entity_id": "sub",
+            "user_nonce_bypass_2_display_name": "username",
+            "user_nonce_bypass_2_email": "email",
+            "user_nonce_bypass_2_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_nonce_absent_rejected_first_attempt",
+          "invariant": "I2",
+          "assertion": "user_nonce_bypass_1_http_status >= 400",
+          "violation_description": "OIDC SSO accepted id_token without nonce on first attempt (nonce binding bypass) \u2014 should be rejected per OIDC Core 3.1.3.7 \u00a711",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_nonce_absent_rejected_second_attempt",
+          "invariant": "I2",
+          "assertion": "user_nonce_bypass_2_http_status >= 400",
+          "violation_description": "OIDC SSO accepted id_token without nonce after upstream claim change/re-auth (possible caching or replay acceptance) \u2014 should be rejected per OIDC Core 3.1.3.7 \u00a711",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "set_claims_1_http_status": "200",
+        "user_nonce_bypass_1_session_token": "OeTXlestSWZPAHmso456z7-nqkijLq431_z7tBfUlQ2",
+        "user_nonce_bypass_1_login_success": "True",
+        "user_nonce_bypass_1_login_status": "200",
+        "user_nonce_bypass_1_login_http_status": "200",
+        "identity_id": "ivan1gost9qw",
+        "user_nonce_bypass_1_entity_id": "t061y7rgssxf",
+        "user_nonce_bypass_1_display_name": "None",
+        "user_nonce_bypass_1_email": "None",
+        "user_nonce_bypass_1_groups": "None",
+        "user_nonce_bypass_1_identity_id": "t061y7rgssxf",
+        "set_claims_2_http_status": "200",
+        "user_nonce_bypass_2_session_token": "oBHSlKk5eraD4wf8IFRdxIAiOk3bUJL31lbEY5vP29a",
+        "user_nonce_bypass_2_login_success": "True",
+        "user_nonce_bypass_2_login_status": "200",
+        "user_nonce_bypass_2_login_http_status": "200",
+        "user_nonce_bypass_2_entity_id": "ivan1gost9qw",
+        "user_nonce_bypass_2_display_name": "None",
+        "user_nonce_bypass_2_email": "None",
+        "user_nonce_bypass_2_groups": "None",
+        "user_nonce_bypass_2_identity_id": "ivan1gost9qw"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "50a1592083aaec33",
+      "sequence_id": "seq_i2_oidc_sso_nonce_bypass_reject",
+      "sequence_description": "OIDC SSO anti-replay: attempt to authenticate via OIDC SSO where the IdP omits nonce in id_token (mock IdP default). RP must reject when nonce was expected.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I2",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] OIDC SSO login succeeded even though the test scenario expects the upstream IdP to omit the nonce in the id_token, which should be rejected when nonce is required (possible nonce/anti-replay enforcement gap).",
+      "cve_analog": "none",
+      "evidence": {
+        "set_claims_status": 200,
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "user_nonce_bypass_1_login_http_status": 200,
+        "user_nonce_bypass_1_login_success": true,
+        "user_nonce_bypass_1_session_token": "MChVIT_oICyaqIuI2q8Gp_Cm_uIPP_wU4kfLFqj9-EA",
+        "user_nonce_bypass_1_entity_id": "n1twa37teviw",
+        "llm_judge_description": "OIDC SSO login succeeded even though the test scenario expects the upstream IdP to omit the nonce in the id_token, which should be rejected when nonce is required (possible nonce/anti-replay enforcement gap)."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_oidc_sso_nonce_bypass_reject",
+      "description": "OIDC SSO anti-replay: attempt to authenticate via OIDC SSO where the IdP omits nonce in id_token (mock IdP default). RP must reject when nonce was expected.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: OIDC SSO callback artifacts must be fresh and bound to the original auth request via nonce; nonce-less id_token must be rejected to prevent replay/callback injection.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 3,
+      "events_succeeded": 3,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "attacker-nonce-bypass-1",
+            "email": "attacker-nonce-bypass-1@evil.test",
+            "name": "Attacker Nonce Bypass 1",
+            "groups": "g1",
+            "email_verified": "false"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "set_claims_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "saml_response": "mutation_type=i2_oidc_sso_nonce_bypass&sub=attacker-nonce-bypass-1",
+            "relay_state": "nonce-bypass-attempt-1"
+          },
+          "auth_as": "user_nonce_bypass_1",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_nonce_bypass_1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_nonce_bypass_1_entity_id": "sub",
+            "user_nonce_bypass_1_display_name": "username",
+            "user_nonce_bypass_1_email": "email",
+            "user_nonce_bypass_1_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_oidc_sso_nonce_absent_rejected",
+          "invariant": "I2",
+          "assertion": "user_nonce_bypass_1_login_status >= 400",
+          "violation_description": "OIDC SSO accepted id_token without nonce when nonce binding should be enforced (replay/callback injection risk).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "set_claims_status": "200",
+        "user_nonce_bypass_1_session_token": "MChVIT_oICyaqIuI2q8Gp_Cm_uIPP_wU4kfLFqj9-EA",
+        "user_nonce_bypass_1_login_success": "True",
+        "user_nonce_bypass_1_login_status": "200",
+        "user_nonce_bypass_1_login_http_status": "200",
+        "identity_id": "n1twa37teviw",
+        "user_nonce_bypass_1_entity_id": "n1twa37teviw",
+        "user_nonce_bypass_1_display_name": "None",
+        "user_nonce_bypass_1_email": "None",
+        "user_nonce_bypass_1_groups": "None",
+        "user_nonce_bypass_1_identity_id": "n1twa37teviw"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "7b442614ca00758b",
+      "sequence_id": "seq_i2_saml_onetimeuse_replay_preconfigured_connector",
+      "sequence_description": "Replay the same SAML assertion (same Assertion/@ID) with <OneTimeUse/> twice against the preconfigured SAML SSO connector; second attempt must be rejected to enforce anti-replay.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I2",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Replay attempt failed due to 'invalid_connector_id' (connector not found) rather than an explicit OneTimeUse/Assertion ID replay rejection, preventing validation of anti-replay enforcement.",
+      "cve_analog": "none",
+      "evidence": {
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "user_onetimeuse_replay_login_http_status": 422,
+        "user_onetimeuse_replay_login_success": false,
+        "llm_judge_description": "Replay attempt failed due to 'invalid_connector_id' (connector not found) rather than an explicit OneTimeUse/Assertion ID replay rejection, preventing validation of anti-replay enforcement."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_saml_onetimeuse_replay_preconfigured_connector",
+      "description": "Replay the same SAML assertion (same Assertion/@ID) with <OneTimeUse/> twice against the preconfigured SAML SSO connector; second attempt must be rejected to enforce anti-replay.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A SAML assertion marked with OneTimeUse (and/or a reused Assertion ID) must not be accepted more than once; the second submission must be rejected.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 3,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "i2-onetimeuse-replay-sub",
+            "email": "i2-onetimeuse-replay@example.com",
+            "name": "I2 OneTimeUse Replay",
+            "groups": "testers",
+            "email_verified": "true"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "set_claims_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{saml_sso_connector_id}}",
+            "saml_response": "AUTO",
+            "relay_state": "rs_i2_onetimeuse_1",
+            "include_onetimeuse": true,
+            "fixed_assertion_id": "_replay_onetimeuse"
+          },
+          "auth_as": "user_onetimeuse_first",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_onetimeuse_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_onetimeuse_first_entity_id": "sub",
+            "user_onetimeuse_first_display_name": "username",
+            "user_onetimeuse_first_email": "email",
+            "user_onetimeuse_first_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{saml_sso_connector_id}}",
+            "saml_response": "AUTO",
+            "relay_state": "rs_i2_onetimeuse_2",
+            "include_onetimeuse": true,
+            "fixed_assertion_id": "_replay_onetimeuse"
+          },
+          "auth_as": "user_onetimeuse_replay",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_onetimeuse_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_onetimeuse_replay_entity_id": "sub",
+            "user_onetimeuse_replay_display_name": "username",
+            "user_onetimeuse_replay_email": "email",
+            "user_onetimeuse_replay_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_saml_onetimeuse_second_rejected",
+          "invariant": "I2",
+          "assertion": "user_onetimeuse_replay_login_status >= 400",
+          "violation_description": "SAML OneTimeUse assertion was accepted more than once (replay not rejected).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_saml_onetimeuse_control_succeeds",
+          "invariant": "I2",
+          "assertion": "user_onetimeuse_first_login_status == 200 AND user_onetimeuse_first_http_status == 200",
+          "violation_description": "Control SAML login failed; replay result is inconclusive due to invalid baseline.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "set_claims_status": "200",
+        "user_onetimeuse_first_session_token": "gaq_UavqN_KKTnAICIGdqb3L_f02amoPLV7fzajn3yw",
+        "user_onetimeuse_first_login_success": "True",
+        "user_onetimeuse_first_login_status": "200",
+        "user_onetimeuse_first_login_http_status": "200",
+        "identity_id": "6chbxw2s1w5s",
+        "email": "i2-onetimeuse-replay@example.com",
+        "user_onetimeuse_first_entity_id": "6chbxw2s1w5s",
+        "user_onetimeuse_first_display_name": "None",
+        "user_onetimeuse_first_email": "i2-onetimeuse-replay@example.com",
+        "user_onetimeuse_first_groups": "None",
+        "user_onetimeuse_first_identity_id": "6chbxw2s1w5s",
+        "user_onetimeuse_replay_login_success": "False",
+        "user_onetimeuse_replay_login_status": "422",
+        "user_onetimeuse_replay_login_http_status": "422",
+        "user_onetimeuse_replay_entity_id": "None",
+        "user_onetimeuse_replay_display_name": "None",
+        "user_onetimeuse_replay_email": "i2-onetimeuse-replay@example.com",
+        "user_onetimeuse_replay_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "669d25b4822d6902",
+      "sequence_id": "seq_i2_token_exchange_replay_after_subject_revocation",
+      "sequence_description": "Obtain a subject token via password login, perform token exchange once, revoke the original subject token, then attempt token exchange again using the revoked subject token; second exchange must be rejected if freshness/revocation is enforced.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I2",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Session/token revocation step failed with invalid_client, so the replay-after-revocation invariant was not actually exercised; indicates a potential misbinding/misuse of the revocation endpoint or client authentication requirements.",
+      "cve_analog": "none",
+      "evidence": {
+        "revoke_subject_http_status": 401,
+        "user_subject_postrevoke_active": true,
+        "user_subject_session_token": "OMPT1BeA-DtzJVXEqQr0F63hEY8k-iyxL5aimR2PWL2",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "llm_judge_description": "Session/token revocation step failed with invalid_client, so the replay-after-revocation invariant was not actually exercised; indicates a potential misbinding/misuse of the revocation endpoint or client authentication requirements."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_token_exchange_replay_after_subject_revocation",
+      "description": "Obtain a subject token via password login, perform token exchange once, revoke the original subject token, then attempt token exchange again using the revoked subject token; second exchange must be rejected if freshness/revocation is enforced.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A revoked credential artifact (subject token) must not remain usable for token exchange; replay after revocation must be rejected.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 10,
+      "events_succeeded": 7,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i2_tx_replay_user",
+            "password": "P@ssw0rd!txreplay",
+            "name": "I2 TokenExchange Replay User",
+            "primary_email": "i2-tx-replay-user@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "tx_user_id": "identity_id",
+            "tx_user_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "update_application",
+          "params": {
+            "app_id": "{{test_app_client_id}}",
+            "allow_token_exchange": true
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "allow_tx_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "i2_tx_replay_user",
+            "password": "P@ssw0rd!txreplay",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_subject",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{user_subject_session_token}}",
+            "client_id": "{{test_app_client_id}}",
+            "client_secret": "{{test_app_client_secret}}",
+            "token": "{{user_subject_session_token}}"
+          },
+          "auth_as": "session_user_subject",
+          "expected_outcome": "any",
+          "captures": {
+            "user_subject_active": "active",
+            "user_subject_entity_id": "identity_id",
+            "user_subject_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "subject_token": "{{user_subject_session_token}}",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "client_id": "{{test_app_client_id}}",
+            "client_secret": "{{test_app_client_secret}}",
+            "resource": "{{test_api_resource}}",
+            "scope": "openid"
+          },
+          "auth_as": "user_exchanged_1",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{user_exchanged_1_session_token}}",
+            "client_id": "{{test_app_client_id}}",
+            "client_secret": "{{test_app_client_secret}}",
+            "token": "{{user_exchanged_1_session_token}}"
+          },
+          "auth_as": "session_user_exchanged_1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exchanged_1_active": "active",
+            "user_exchanged_1_entity_id": "identity_id",
+            "user_exchanged_1_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "client_id": "{{test_app_client_id}}",
+            "session_token": "{{user_subject_session_token}}",
+            "token": "{{user_subject_session_token}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "revoke_subject_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{user_subject_session_token}}",
+            "client_id": "{{test_app_client_id}}",
+            "client_secret": "{{test_app_client_secret}}",
+            "token": "{{user_subject_session_token}}"
+          },
+          "auth_as": "session_user_subject_postrevoke",
+          "expected_outcome": "any",
+          "captures": {
+            "user_subject_postrevoke_active": "active",
+            "user_subject_postrevoke_entity_id": "identity_id",
+            "user_subject_postrevoke_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "subject_token": "{{user_subject_session_token}}",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "client_id": "{{test_app_client_id}}",
+            "client_secret": "{{test_app_client_secret}}",
+            "resource": "{{test_api_resource}}",
+            "scope": "openid"
+          },
+          "auth_as": "user_exchanged_replay",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{user_exchanged_replay_session_token}}",
+            "client_id": "{{test_app_client_id}}",
+            "client_secret": "{{test_app_client_secret}}",
+            "token": "{{user_exchanged_replay_session_token}}"
+          },
+          "auth_as": "session_user_exchanged_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exchanged_replay_active": "active",
+            "user_exchanged_replay_entity_id": "identity_id",
+            "user_exchanged_replay_http_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_subject_revocation_effective",
+          "invariant": "I2",
+          "assertion": "user_subject_postrevoke_active == false",
+          "violation_description": "Revoked subject token still introspects as active; revocation did not take effect (freshness failure).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_token_exchange_replay_rejected_after_revocation",
+          "invariant": "I2",
+          "assertion": "user_exchanged_replay_login_status >= 400",
+          "violation_description": "Token exchange accepted a revoked subject token (replay beyond intended lifetime/revocation boundary).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_token_exchange_control_succeeds",
+          "invariant": "I2",
+          "assertion": "user_exchanged_1_login_status == 200 AND user_exchanged_1_active == true",
+          "violation_description": "Control token exchange failed; replay result is inconclusive due to invalid baseline.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "gvyyipdg8uwn",
+        "username": "i2_tx_replay_user",
+        "tx_user_id": "gvyyipdg8uwn",
+        "tx_user_create_status": "200",
+        "allow_tx_http_status": "200",
+        "user_subject_session_token": "OMPT1BeA-DtzJVXEqQr0F63hEY8k-iyxL5aimR2PWL2",
+        "user_subject_login_success": "True",
+        "user_subject_login_status": "200",
+        "user_subject_login_http_status": "200",
+        "active": "False",
+        "metadata": "{'active': False}",
+        "user_subject_active": "True",
+        "user_subject_entity_id": "gvyyipdg8uwn",
+        "user_subject_http_status": "200",
+        "user_exchanged_1_login_success": "False",
+        "user_exchanged_1_login_status": "400",
+        "user_exchanged_1_login_http_status": "400",
+        "user_exchanged_1_active": "False",
+        "user_exchanged_1_entity_id": "gvyyipdg8uwn",
+        "user_exchanged_1_http_status": "200",
+        "revoke_subject_http_status": "401",
+        "user_subject_postrevoke_active": "True",
+        "user_subject_postrevoke_entity_id": "gvyyipdg8uwn",
+        "user_subject_postrevoke_http_status": "200",
+        "user_exchanged_replay_login_success": "False",
+        "user_exchanged_replay_login_status": "400",
+        "user_exchanged_replay_login_http_status": "400",
+        "user_exchanged_replay_active": "False",
+        "user_exchanged_replay_entity_id": "gvyyipdg8uwn",
+        "user_exchanged_replay_http_status": "200"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "e065435ed4e977a3",
+      "sequence_id": "seq_i2_oidc_sso_code_replay_after_revocation",
+      "sequence_description": "Attempt to replay an OIDC authorization code after exchanging it once and revoking the resulting access token; the same code must not be usable twice (anti-replay). Uses two identities to ensure the second exchange is not accidentally tied to the first session.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I2",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Authorization-code exchange failed with invalid_client, so the anti-replay invariant was not actually exercised; additionally, the captured 'alice' exchange identity maps to Bob's user_id, suggesting a test harness/session mix-up that could mask real replay behavior.",
+      "cve_analog": "none",
+      "evidence": {
+        "alice_first_exchange_http_status": 401,
+        "bob_replay_exchange_http_status": 401,
+        "alice_first_exchange_identity_id": "1wr0xmmn5b95",
+        "alice_user_id": "ep75hwur9wqk",
+        "bob_user_id": "1wr0xmmn5b95",
+        "alice_first_exchange_session_token": null,
+        "bob_replay_exchange_session_token": null,
+        "user_alice_code_1_display_name": "i2_code_replay_bob",
+        "user_bob_code_replay_display_name": "i2_code_replay_bob",
+        "llm_judge_description": "Authorization-code exchange failed with invalid_client, so the anti-replay invariant was not actually exercised; additionally, the captured 'alice' exchange identity maps to Bob's user_id, suggesting a test harness/session mix-up that could mask real replay behavior."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_oidc_sso_code_replay_after_revocation",
+      "description": "Attempt to replay an OIDC authorization code after exchanging it once and revoking the resulting access token; the same code must not be usable twice (anti-replay). Uses two identities to ensure the second exchange is not accidentally tied to the first session.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: OIDC authorization codes are one-time artifacts; after a successful exchange (and even after revocation of the resulting token), reusing the same code must be rejected.",
+      "cve_analog": "none",
+      "status": "LOGIN_FAILED",
+      "events_total": 12,
+      "events_succeeded": 5,
+      "events_failed": 7,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_application",
+          "params": {
+            "name": "i2-oidc-code-replay-app",
+            "type": "Traditional",
+            "description": "Test app for OIDC code replay after revocation",
+            "redirect_uris": [
+              "http://localhost:9090/callback"
+            ],
+            "post_logout_redirect_uris": [
+              "http://localhost:9090/callback"
+            ]
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "app_id": "app_id",
+            "client_id": "client_id",
+            "app_create_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "update_application",
+          "params": {
+            "app_id": "{{app_id}}",
+            "allow_token_exchange": true,
+            "redirect_uris": [
+              "http://localhost:9090/callback"
+            ]
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "app_update_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i2_code_replay_alice",
+            "password": "Passw0rd!alice",
+            "name": "I2 Code Replay Alice",
+            "primary_email": "i2_code_replay_alice@valence.local"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "alice_user_id": "identity_id",
+            "alice_create_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i2_code_replay_bob",
+            "password": "Passw0rd!bob",
+            "name": "I2 Code Replay Bob",
+            "primary_email": "i2_code_replay_bob@valence.local"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "bob_user_id": "identity_id",
+            "bob_create_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "i2_code_replay_alice",
+            "password": "Passw0rd!alice",
+            "client_id": "{{client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "alice_pwd_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "{{client_id}}",
+            "redirect_uri": "http://localhost:9090/callback",
+            "scope": "openid profile email",
+            "response_type": "code",
+            "state": "state_i2_code_replay_1",
+            "code_challenge": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+            "code_challenge_method": "S256",
+            "resource": "https://valence.local/api",
+            "prompt": "login"
+          },
+          "auth_as": "user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "auth_start_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "exchange_code_for_token",
+          "params": {
+            "grant_type": "authorization_code",
+            "code": "{{oidc_code}}",
+            "code_verifier": "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz",
+            "client_id": "{{client_id}}",
+            "client_secret": "{{test_app_client_secret}}",
+            "redirect_uri": "http://localhost:9090/callback",
+            "resource": "https://valence.local/api"
+          },
+          "auth_as": "user_alice_code_1",
+          "expected_outcome": "any",
+          "captures": {
+            "alice_first_exchange_http_status": "http_status",
+            "alice_first_exchange_identity_id": "identity_id",
+            "alice_first_exchange_session_token": "session_token"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice_code_1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_code_1_entity_id": "sub",
+            "user_alice_code_1_display_name": "username",
+            "user_alice_code_1_email": "email",
+            "user_alice_code_1_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "client_id": "{{client_id}}",
+            "session_token": "{{alice_first_exchange_session_token}}",
+            "token": "{{alice_first_exchange_session_token}}"
+          },
+          "auth_as": "session_user_alice_code_1",
+          "expected_outcome": "any",
+          "captures": {
+            "alice_revocation_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "i2_code_replay_bob",
+            "password": "Passw0rd!bob",
+            "client_id": "{{client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "bob_pwd_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "exchange_code_for_token",
+          "params": {
+            "grant_type": "authorization_code",
+            "code": "{{oidc_code}}",
+            "code_verifier": "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz",
+            "client_id": "{{client_id}}",
+            "client_secret": "{{test_app_client_secret}}",
+            "redirect_uri": "http://localhost:9090/callback",
+            "resource": "https://valence.local/api"
+          },
+          "auth_as": "user_bob_code_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "bob_replay_exchange_http_status": "http_status",
+            "bob_replay_exchange_session_token": "session_token"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_bob_code_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_bob_code_replay_entity_id": "sub",
+            "user_bob_code_replay_display_name": "username",
+            "user_bob_code_replay_email": "email",
+            "user_bob_code_replay_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_auth_code_replay_rejected",
+          "invariant": "I2",
+          "assertion": "bob_replay_exchange_http_status >= 400",
+          "violation_description": "Authorization code was accepted more than once (replay) \u2014 second exchange should be rejected as a one-time artifact.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_control_first_exchange_succeeds",
+          "invariant": "I2",
+          "assertion": "alice_first_exchange_http_status == 200 AND user_alice_code_1_http_status == 200",
+          "violation_description": "Control failed: initial code exchange/login did not succeed, so replay result is not meaningful.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "app_id": "rd29xcwqxzxbv7zufuomo",
+        "client_id": "rd29xcwqxzxbv7zufuomo",
+        "app_create_http_status": "200",
+        "app_update_http_status": "200",
+        "identity_id": "1wr0xmmn5b95",
+        "username": "i2_code_replay_bob",
+        "alice_user_id": "ep75hwur9wqk",
+        "alice_create_http_status": "200",
+        "bob_user_id": "1wr0xmmn5b95",
+        "bob_create_http_status": "200",
+        "alice_pwd_login_http_status": "401",
+        "user_alice_pwd_login_success": "False",
+        "user_alice_pwd_login_status": "401",
+        "user_alice_pwd_login_http_status": "401",
+        "auth_start_http_status": "200",
+        "alice_first_exchange_http_status": "401",
+        "alice_first_exchange_identity_id": "1wr0xmmn5b95",
+        "alice_first_exchange_session_token": "None",
+        "user_alice_code_1_entity_id": "None",
+        "user_alice_code_1_display_name": "i2_code_replay_bob",
+        "user_alice_code_1_email": "None",
+        "user_alice_code_1_groups": "None",
+        "alice_revocation_http_status": "401",
+        "bob_pwd_login_http_status": "401",
+        "user_bob_pwd_login_success": "False",
+        "user_bob_pwd_login_status": "401",
+        "user_bob_pwd_login_http_status": "401",
+        "bob_replay_exchange_http_status": "401",
+        "bob_replay_exchange_session_token": "None",
+        "user_bob_code_replay_entity_id": "None",
+        "user_bob_code_replay_display_name": "i2_code_replay_bob",
+        "user_bob_code_replay_email": "None",
+        "user_bob_code_replay_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "0845fcc4c3549558",
+      "sequence_id": "seq_i3_oidc_sso_nonce_bypass_replay_like",
+      "sequence_description": "OIDC SSO flow coherence: start OIDC auth with a nonce expectation (implicit in RP), then attempt SSO login via the preconfigured OIDC connector where the mock IdP omits nonce. RP must reject; acceptance indicates step-skipping in the OIDC callback validation.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I3",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Flow coherence test is invalid/inconclusive: the OIDC authorization start step failed (404), yet an SSO login succeeded via a different endpoint, so nonce-bypass/step-skipping cannot be established from this trace.",
+      "cve_analog": "CVE-2023-28114",
+      "evidence": {
+        "user_nonce_authz_http_status": 404,
+        "user_nonce_sso_callback_login_http_status": 200,
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "llm_judge_description": "Flow coherence test is invalid/inconclusive: the OIDC authorization start step failed (404), yet an SSO login succeeded via a different endpoint, so nonce-bypass/step-skipping cannot be established from this trace."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i3_oidc_sso_nonce_bypass_replay_like",
+      "description": "OIDC SSO flow coherence: start OIDC auth with a nonce expectation (implicit in RP), then attempt SSO login via the preconfigured OIDC connector where the mock IdP omits nonce. RP must reject; acceptance indicates step-skipping in the OIDC callback validation.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: OIDC SSO callback processing must be coherent with the initiated auth request; missing nonce should not be accepted when nonce is required, preventing session splicing/step skipping.",
+      "cve_analog": "CVE-2023-28114",
+      "status": "COMPLETED",
+      "events_total": 4,
+      "events_succeeded": 3,
+      "events_failed": 1,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "i3_nonce_attacker_sub",
+            "email": "i3_nonce_attacker@example.com",
+            "name": "I3 Nonce Attacker",
+            "groups": "[]",
+            "email_verified": "true"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "idp_claims_set_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "m8gp6ml6zrxyswkn952e2",
+            "redirect_uri": "http://localhost:9090/callback",
+            "scope": "openid profile email",
+            "response_type": "code",
+            "state": "state-nonce-1",
+            "code_challenge": "challenge_nonce_flow",
+            "code_challenge_method": "S256",
+            "resource": "https://valence.local/api",
+            "prompt": "login",
+            "ui_locales": "en",
+            "direct_sign_in": "sso:OIDC"
+          },
+          "auth_as": "user_nonce_authz",
+          "expected_outcome": "any",
+          "captures": {
+            "user_nonce_authz_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "a8m6j6tn746k",
+            "saml_response": "mutation_type=i2_oidc_sso_nonce_bypass",
+            "relay_state": "relay-nonce-1"
+          },
+          "auth_as": "user_nonce_sso_callback",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_nonce_sso_callback",
+          "expected_outcome": "any",
+          "captures": {
+            "user_nonce_sso_callback_entity_id": "sub",
+            "user_nonce_sso_callback_display_name": "username",
+            "user_nonce_sso_callback_email": "email",
+            "user_nonce_sso_callback_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i3_oidc_sso_missing_nonce_rejected",
+          "invariant": "I3",
+          "assertion": "user_nonce_sso_callback_login_status >= 400",
+          "violation_description": "OIDC SSO accepted an id_token without nonce, indicating flow step-skipping / request-response binding failure.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "idp_claims_set_http_status": "200",
+        "user_nonce_authz_http_status": "404",
+        "user_nonce_sso_callback_session_token": "D7qonUck_prpHjr5lahZSAqdAnYx2ozeanUYSLnwJmu",
+        "user_nonce_sso_callback_login_success": "True",
+        "user_nonce_sso_callback_login_status": "200",
+        "user_nonce_sso_callback_login_http_status": "200",
+        "identity_id": "2gi1nztyqebl",
+        "email": "i3_nonce_attacker@example.com",
+        "user_nonce_sso_callback_entity_id": "2gi1nztyqebl",
+        "user_nonce_sso_callback_display_name": "None",
+        "user_nonce_sso_callback_email": "i3_nonce_attacker@example.com",
+        "user_nonce_sso_callback_groups": "None",
+        "user_nonce_sso_callback_identity_id": "2gi1nztyqebl"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "e67fddcbbd5282af",
+      "sequence_id": "seq_i4_unverified_email_linking_oidc_sso",
+      "sequence_description": "Unverified email account linking via OIDC enterprise SSO: attacker claims victim's email with email_verified=false; platform must not map attacker to victim identity.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I4",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Enterprise SSO login produced a new downstream subject while asserting an email that matches an existing local user, suggesting email-based linking may have been bypassed or the test used the wrong connector/flow for OIDC unverified-email linking.",
+      "cve_analog": "none",
+      "evidence": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "user_B_entity_id": "csex857npmuy",
+        "user_B_email": "baseline_userB_i4@example.com",
+        "user_attacker_sso_unverified_entity_id": "53tfs0k8nx8p",
+        "user_attacker_sso_unverified_email": "baseline_userB_i4@example.com",
+        "user_attacker_sso_unverified_login_http_status": 200,
+        "llm_judge_description": "Enterprise SSO login produced a new downstream subject while asserting an email that matches an existing local user, suggesting email-based linking may have been bypassed or the test used the wrong connector/flow for OIDC unverified-email linking."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i4_unverified_email_linking_oidc_sso",
+      "description": "Unverified email account linking via OIDC enterprise SSO: attacker claims victim's email with email_verified=false; platform must not map attacker to victim identity.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "I4: An upstream principal with unverified email must not be linked to an existing local account solely by matching email; attacker and victim must remain distinct downstream subjects.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 11,
+      "events_succeeded": 11,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "victim_i4_unverified_email",
+            "password": "P@ssw0rd!victim1",
+            "name": "Victim I4",
+            "primary_email": "victim_i4_unverified_email@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_user_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "baseline_userA_i4",
+            "password": "P@ssw0rd!userA1",
+            "name": "Baseline User A",
+            "primary_email": "baseline_userA_i4@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "baseline_userA_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "baseline_userB_i4",
+            "password": "P@ssw0rd!userB1",
+            "name": "Baseline User B",
+            "primary_email": "baseline_userB_i4@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "baseline_userB_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "baseline_userA_i4",
+            "password": "P@ssw0rd!userA1",
+            "client_id": "m8gp6ml6zrxyswkn952e2",
+            "grant_type": "password"
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "baseline_userB_i4",
+            "password": "P@ssw0rd!userB1",
+            "client_id": "m8gp6ml6zrxyswkn952e2",
+            "grant_type": "password"
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_entity_id": "sub",
+            "user_A_display_name": "username",
+            "user_A_email": "email",
+            "user_A_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_entity_id": "sub",
+            "user_B_display_name": "username",
+            "user_B_email": "email",
+            "user_B_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_entity_details",
+          "params": {
+            "userId": "{{victim_user_id}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "verify"
+        },
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "attacker_sub_unverified_email",
+            "email": "victim_i4_unverified_email@example.com",
+            "name": "Attacker Claiming Victim Email",
+            "groups": "[]",
+            "email_verified": "false"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "set_claims_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "a8m6j6tn746k",
+            "saml_response": "mutation_type=i4_unverified_email_account_linking",
+            "relay_state": "state-unverified-email-linking"
+          },
+          "auth_as": "user_attacker_sso_unverified",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_sso_unverified",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_sso_unverified_entity_id": "sub",
+            "user_attacker_sso_unverified_display_name": "username",
+            "user_attacker_sso_unverified_email": "email",
+            "user_attacker_sso_unverified_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i4_diversity_baseline",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Baseline failed: mechanism cannot distinguish principals",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_unverified_email_no_link",
+          "invariant": "I4",
+          "assertion": "user_attacker_sso_unverified_entity_id != victim_identity_id",
+          "violation_description": "Unverified upstream email matched an existing local account and was auto-linked (account takeover via unverified email)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I4"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "53tfs0k8nx8p",
+        "username": "baseline_userB_i4",
+        "victim_user_id": "3x99hd1eikld",
+        "baseline_userA_id": "3a09apkoyexx",
+        "baseline_userB_id": "csex857npmuy",
+        "user_A_session_token": "ozOXD1g9NslL_z4fPebridX1sMpjKi9vis0N5I5gloD",
+        "user_A_login_success": "True",
+        "user_A_login_status": "200",
+        "user_A_login_http_status": "200",
+        "user_B_session_token": "i0pj6Jn03CbC8UABUAh1ghNED9vrpX5pvGgvV7kBPQw",
+        "user_B_login_success": "True",
+        "user_B_login_status": "200",
+        "user_B_login_http_status": "200",
+        "display_name": "baseline_userB_i4",
+        "email": "baseline_userB_i4@example.com",
+        "user_A_entity_id": "3a09apkoyexx",
+        "user_A_display_name": "baseline_userA_i4",
+        "user_A_email": "baseline_userA_i4@example.com",
+        "user_A_groups": "None",
+        "user_A_identity_id": "3a09apkoyexx",
+        "user_B_entity_id": "csex857npmuy",
+        "user_B_display_name": "baseline_userB_i4",
+        "user_B_email": "baseline_userB_i4@example.com",
+        "user_B_groups": "None",
+        "user_B_identity_id": "csex857npmuy",
+        "metadata": "{'id': '3x99hd1eikld', 'username': 'victim_i4_unverified_email', 'primaryEmail': 'victim_i4_unverified_email@example.com', 'primaryPhone': None, 'name': 'Victim I4', 'avatar': None, 'customData': {}, ",
+        "admin_identity_id": "3x99hd1eikld",
+        "admin_metadata": "{'id': '3x99hd1eikld', 'username': 'victim_i4_unverified_email', 'primaryEmail': 'victim_i4_unverified_email@example.com', 'primaryPhone': None, 'name': 'Victim I4', 'avatar': None, 'customData': {}, ",
+        "set_claims_status": "200",
+        "user_attacker_sso_unverified_session_token": "h0D6c7hz_bowEGNMzkUN1F7FZhMOL-m7t9DmhEa7wX5",
+        "user_attacker_sso_unverified_login_success": "True",
+        "user_attacker_sso_unverified_login_status": "200",
+        "user_attacker_sso_unverified_login_http_status": "200",
+        "user_attacker_sso_unverified_entity_id": "53tfs0k8nx8p",
+        "user_attacker_sso_unverified_display_name": "baseline_userB_i4",
+        "user_attacker_sso_unverified_email": "baseline_userB_i4@example.com",
+        "user_attacker_sso_unverified_groups": "None",
+        "user_attacker_sso_unverified_identity_id": "53tfs0k8nx8p"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "900a7739518d9b6f",
+      "sequence_id": "seq_i4_unverified_email_linking_saml_connector",
+      "sequence_description": "Unverified email account-linking attempt via SAML enterprise SSO connector: attacker asserts victim's email with email_verified=false; platform must not map attacker to victim identity.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I4",
+      "identified_invariant": "",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "[LLM-Judge] Unverified-email enterprise SSO login was linked to an existing victim account, enabling account takeover via email claim spoofing (breaks Principal Binding / Authorization Binding expectations).",
+      "cve_analog": "none",
+      "evidence": {
+        "victim_user_id": "4v4ujv7rg5gi",
+        "user_attacker_sso_unverified_entity_id": "4v4ujv7rg5gi",
+        "user_attacker_sso_unverified_email": "victim_i4_saml_unverified@example.com",
+        "admin_identity_id": "4v4ujv7rg5gi",
+        "admin_metadata": {
+          "id": "4v4ujv7rg5gi",
+          "username": "victim_i4_saml_unverified",
+          "primaryEmail": "victim_i4_saml_unverified@example.com",
+          "primaryPhone": null,
+          "name": "Victim I4 SAML Unverified",
+          "avatar": null,
+          "customData": {},
+          "identities": {},
+          "lastSignInAt": 1776273978917,
+          "createdAt": 1776273977564,
+          "updatedAt": 1776273978970,
+          "profile": {},
+          "applicationId": "m8gp6ml6zrxyswkn952e2",
+          "isSuspended": false,
+          "hasPassword": true
+        },
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "mock_idp_host_url": "http://localhost:9090",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "llm_judge_description": "Unverified-email enterprise SSO login was linked to an existing victim account, enabling account takeover via email claim spoofing (breaks Principal Binding / Authorization Binding expectations)."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i4_unverified_email_linking_saml_connector",
+      "description": "Unverified email account-linking attempt via SAML enterprise SSO connector: attacker asserts victim's email with email_verified=false; platform must not map attacker to victim identity.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "I4: An upstream principal with unverified email must not be linked/mapped to an existing local account solely by matching email.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 11,
+      "events_succeeded": 11,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "victim_i4_saml_unverified",
+            "password": "P@ssw0rd!victim1",
+            "name": "Victim I4 SAML Unverified",
+            "primary_email": "victim_i4_saml_unverified@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_user_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "baseline_i4_local_A",
+            "password": "P@ssw0rd!baseA1",
+            "name": "Baseline Local A",
+            "primary_email": "baseline_i4_local_A@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "baseline_user_a_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "baseline_i4_local_B",
+            "password": "P@ssw0rd!baseB1",
+            "name": "Baseline Local B",
+            "primary_email": "baseline_i4_local_B@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "baseline_user_b_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "baseline_i4_local_A",
+            "password": "P@ssw0rd!baseA1",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "baseline_i4_local_B",
+            "password": "P@ssw0rd!baseB1",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_entity_id": "sub",
+            "user_A_display_name": "username",
+            "user_A_email": "email",
+            "user_A_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_entity_id": "sub",
+            "user_B_display_name": "username",
+            "user_B_email": "email",
+            "user_B_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "attacker_sub_unverified_email_link",
+            "email": "victim_i4_saml_unverified@example.com",
+            "name": "Attacker Claiming Victim Email (Unverified)",
+            "groups": "[]",
+            "email_verified": "false"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{saml_sso_connector_id}}",
+            "saml_response": "AUTO",
+            "relay_state": "i4_unverified_email_linking_saml"
+          },
+          "auth_as": "user_attacker_sso_unverified",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_sso_unverified",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_sso_unverified_entity_id": "sub",
+            "user_attacker_sso_unverified_display_name": "username",
+            "user_attacker_sso_unverified_email": "email",
+            "user_attacker_sso_unverified_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_entity_details",
+          "params": {
+            "userId": "{{victim_user_id}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i4_diversity_baseline",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Baseline failed: mechanism cannot distinguish principals",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_unverified_email_must_not_link_to_victim",
+          "invariant": "I4",
+          "assertion": "user_attacker_sso_unverified_entity_id != admin_victim_identity_id",
+          "violation_description": "Unverified upstream email was linked to existing victim account (principal collapse/account takeover)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I4"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "4v4ujv7rg5gi",
+        "username": "baseline_i4_local_B",
+        "victim_user_id": "4v4ujv7rg5gi",
+        "baseline_user_a_id": "2c1a27ssnqaj",
+        "baseline_user_b_id": "rv4nmq4anh2k",
+        "user_A_session_token": "6dTRYNt-EmObYfbl3LQ25YRjKu4mdeqyyLjNUJ3GamM",
+        "user_A_login_success": "True",
+        "user_A_login_status": "200",
+        "user_A_login_http_status": "200",
+        "user_B_session_token": "660KYXxkHgWuCxYjkZlWciZmCAFhUmQRbW27rhS-dRU",
+        "user_B_login_success": "True",
+        "user_B_login_status": "200",
+        "user_B_login_http_status": "200",
+        "display_name": "victim_i4_saml_unverified",
+        "email": "victim_i4_saml_unverified@example.com",
+        "user_A_entity_id": "2c1a27ssnqaj",
+        "user_A_display_name": "baseline_i4_local_A",
+        "user_A_email": "baseline_i4_local_A@example.com",
+        "user_A_groups": "None",
+        "user_A_identity_id": "2c1a27ssnqaj",
+        "user_B_entity_id": "rv4nmq4anh2k",
+        "user_B_display_name": "baseline_i4_local_B",
+        "user_B_email": "baseline_i4_local_B@example.com",
+        "user_B_groups": "None",
+        "user_B_identity_id": "rv4nmq4anh2k",
+        "user_attacker_sso_unverified_session_token": "y0tIzVw4k2JD3Bf3nUII2CL0zV87v02I4tnLNUA7lqw",
+        "user_attacker_sso_unverified_login_success": "True",
+        "user_attacker_sso_unverified_login_status": "200",
+        "user_attacker_sso_unverified_login_http_status": "200",
+        "user_attacker_sso_unverified_entity_id": "4v4ujv7rg5gi",
+        "user_attacker_sso_unverified_display_name": "victim_i4_saml_unverified",
+        "user_attacker_sso_unverified_email": "victim_i4_saml_unverified@example.com",
+        "user_attacker_sso_unverified_groups": "None",
+        "user_attacker_sso_unverified_identity_id": "4v4ujv7rg5gi",
+        "metadata": "{'id': '4v4ujv7rg5gi', 'username': 'victim_i4_saml_unverified', 'primaryEmail': 'victim_i4_saml_unverified@example.com', 'primaryPhone': None, 'name': 'Victim I4 SAML Unverified', 'avatar': None, 'cus",
+        "admin_identity_id": "4v4ujv7rg5gi",
+        "admin_metadata": "{'id': '4v4ujv7rg5gi', 'username': 'victim_i4_saml_unverified', 'primaryEmail': 'victim_i4_saml_unverified@example.com', 'primaryPhone': None, 'name': 'Victim I4 SAML Unverified', 'avatar': None, 'cus"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "c13e0e1fc8958f9e",
+      "sequence_id": "seq_i4_empty_sub_oidc_sso_collision",
+      "sequence_description": "Empty-subject collision attempt via OIDC enterprise SSO: attacker uses sub='' with varying emails; platform must not map multiple distinct upstream principals to a shared/constant downstream identity.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I4",
+      "identified_invariant": "",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "[LLM-Judge] Enterprise SSO accepted an upstream identity with empty OIDC `sub` and mapped multiple distinct logins to the same downstream user, enabling principal confusion/account takeover via subject-claim collision.",
+      "cve_analog": "none",
+      "evidence": {
+        "user_empty_sub_1_entity_id": "wmximr7d1oy4",
+        "user_empty_sub_2_entity_id": "wmximr7d1oy4",
+        "user_empty_sub_1_session_token": "2AZcda1bCdn7vbo-rRuCi8ahR0kvFXM2OBScmgohJVK",
+        "user_empty_sub_2_session_token": "c-AiFV7VATH-qogWike_UlMAE5onxkZ_Wnpu2YAVAQw",
+        "user_empty_sub_1_email": "empty-sub-principal-1@example.com",
+        "user_empty_sub_2_email": "empty-sub-principal-1@example.com",
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "llm_judge_description": "Enterprise SSO accepted an upstream identity with empty OIDC `sub` and mapped multiple distinct logins to the same downstream user, enabling principal confusion/account takeover via subject-claim collision."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i4_empty_sub_oidc_sso_collision",
+      "description": "Empty-subject collision attempt via OIDC enterprise SSO: attacker uses sub='' with varying emails; platform must not map multiple distinct upstream principals to a shared/constant downstream identity.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "I4: Distinct upstream principals (different emails) must not collapse when the upstream 'sub' is empty or missing; mapping must remain injective or reject invalid principals.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 12,
+      "events_succeeded": 12,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "baseline_i4_empty_sub_A",
+            "password": "P@ssw0rd!eSubA1",
+            "name": "Baseline EmptySub A",
+            "primary_email": "baseline_i4_empty_sub_A@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "baseline_i4_empty_sub_B",
+            "password": "P@ssw0rd!eSubB1",
+            "name": "Baseline EmptySub B",
+            "primary_email": "baseline_i4_empty_sub_B@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "baseline_i4_empty_sub_A",
+            "password": "P@ssw0rd!eSubA1",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "baseline_i4_empty_sub_B",
+            "password": "P@ssw0rd!eSubB1",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_entity_id": "sub",
+            "user_A_display_name": "username",
+            "user_A_email": "email",
+            "user_A_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_entity_id": "sub",
+            "user_B_display_name": "username",
+            "user_B_email": "email",
+            "user_B_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "",
+            "email": "empty-sub-principal-1@example.com",
+            "name": "EmptySub Principal 1",
+            "groups": "[]",
+            "email_verified": "true"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "saml_response": "AUTO",
+            "relay_state": "i4_empty_sub_principal_1"
+          },
+          "auth_as": "user_empty_sub_1",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_empty_sub_1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_empty_sub_1_entity_id": "sub",
+            "user_empty_sub_1_display_name": "username",
+            "user_empty_sub_1_email": "email",
+            "user_empty_sub_1_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "",
+            "email": "empty-sub-principal-2@example.com",
+            "name": "EmptySub Principal 2",
+            "groups": "[]",
+            "email_verified": "true"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "saml_response": "AUTO",
+            "relay_state": "i4_empty_sub_principal_2"
+          },
+          "auth_as": "user_empty_sub_2",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_empty_sub_2",
+          "expected_outcome": "any",
+          "captures": {
+            "user_empty_sub_2_entity_id": "sub",
+            "user_empty_sub_2_display_name": "username",
+            "user_empty_sub_2_email": "email",
+            "user_empty_sub_2_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i4_diversity_baseline",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Baseline failed: mechanism cannot distinguish principals",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_empty_sub_distinct_emails_must_not_collapse",
+          "invariant": "I4",
+          "assertion": "user_empty_sub_1_entity_id != user_empty_sub_2_entity_id",
+          "violation_description": "Two distinct upstream principals (different emails) collapsed to the same downstream identity when sub was empty",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I4"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "wmximr7d1oy4",
+        "username": "baseline_i4_empty_sub_B",
+        "user_A_session_token": "6Qz4VUTr2SCI6qVpcFnVr2edw_JdRZS7lp6xLtwJeUa",
+        "user_A_login_success": "True",
+        "user_A_login_status": "200",
+        "user_A_login_http_status": "200",
+        "user_B_session_token": "lbW9ejGL_71vYRx9UMi4mJVGBGCvT4Va0uCCqHXhu71",
+        "user_B_login_success": "True",
+        "user_B_login_status": "200",
+        "user_B_login_http_status": "200",
+        "display_name": "baseline_i4_empty_sub_B",
+        "email": "empty-sub-principal-1@example.com",
+        "user_A_entity_id": "qfbo95ez54xj",
+        "user_A_display_name": "baseline_i4_empty_sub_A",
+        "user_A_email": "baseline_i4_empty_sub_A@example.com",
+        "user_A_groups": "None",
+        "user_A_identity_id": "qfbo95ez54xj",
+        "user_B_entity_id": "yurmrt7hwe3d",
+        "user_B_display_name": "baseline_i4_empty_sub_B",
+        "user_B_email": "baseline_i4_empty_sub_B@example.com",
+        "user_B_groups": "None",
+        "user_B_identity_id": "yurmrt7hwe3d",
+        "user_empty_sub_1_session_token": "2AZcda1bCdn7vbo-rRuCi8ahR0kvFXM2OBScmgohJVK",
+        "user_empty_sub_1_login_success": "True",
+        "user_empty_sub_1_login_status": "200",
+        "user_empty_sub_1_login_http_status": "200",
+        "user_empty_sub_1_entity_id": "wmximr7d1oy4",
+        "user_empty_sub_1_display_name": "baseline_i4_empty_sub_B",
+        "user_empty_sub_1_email": "empty-sub-principal-1@example.com",
+        "user_empty_sub_1_groups": "None",
+        "user_empty_sub_1_identity_id": "wmximr7d1oy4",
+        "user_empty_sub_2_session_token": "c-AiFV7VATH-qogWike_UlMAE5onxkZ_Wnpu2YAVAQw",
+        "user_empty_sub_2_login_success": "True",
+        "user_empty_sub_2_login_status": "200",
+        "user_empty_sub_2_login_http_status": "200",
+        "user_empty_sub_2_entity_id": "wmximr7d1oy4",
+        "user_empty_sub_2_display_name": "baseline_i4_empty_sub_B",
+        "user_empty_sub_2_email": "empty-sub-principal-1@example.com",
+        "user_empty_sub_2_groups": "None",
+        "user_empty_sub_2_identity_id": "wmximr7d1oy4"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "d8d210a2cd718327",
+      "sequence_id": "seq_i4_empty_sub_oidc_sso_collision",
+      "sequence_description": "Empty-subject collision attempt via OIDC enterprise SSO: attacker uses sub='' with varying emails; platform must not map multiple distinct upstream principals to a shared/constant downstream identity.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I4",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Second SSO login did not reflect the intended changed upstream principal (email/name stayed identical), suggesting the IdP-claims mutation may not have applied or the broker cached/ignored updated claims, which can mask or enable identity-splicing issues.",
+      "cve_analog": "none",
+      "evidence": {
+        "display_name": "baseline_i4_empty_sub_B",
+        "email": "empty-sub-principal-1@example.com",
+        "user_empty_sub_1_display_name": "baseline_i4_empty_sub_B",
+        "user_empty_sub_2_display_name": "baseline_i4_empty_sub_B",
+        "user_empty_sub_1_email": "empty-sub-principal-1@example.com",
+        "user_empty_sub_2_email": "empty-sub-principal-1@example.com",
+        "identity_id": "wmximr7d1oy4",
+        "llm_judge_description": "Second SSO login did not reflect the intended changed upstream principal (email/name stayed identical), suggesting the IdP-claims mutation may not have applied or the broker cached/ignored updated claims, which can mask or enable identity-splicing issues."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i4_empty_sub_oidc_sso_collision",
+      "description": "Empty-subject collision attempt via OIDC enterprise SSO: attacker uses sub='' with varying emails; platform must not map multiple distinct upstream principals to a shared/constant downstream identity.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "I4: Distinct upstream principals (different emails) must not collapse when the upstream 'sub' is empty or missing; mapping must remain injective or reject invalid principals.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 12,
+      "events_succeeded": 12,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "baseline_i4_empty_sub_A",
+            "password": "P@ssw0rd!eSubA1",
+            "name": "Baseline EmptySub A",
+            "primary_email": "baseline_i4_empty_sub_A@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "baseline_i4_empty_sub_B",
+            "password": "P@ssw0rd!eSubB1",
+            "name": "Baseline EmptySub B",
+            "primary_email": "baseline_i4_empty_sub_B@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "baseline_i4_empty_sub_A",
+            "password": "P@ssw0rd!eSubA1",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "baseline_i4_empty_sub_B",
+            "password": "P@ssw0rd!eSubB1",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_entity_id": "sub",
+            "user_A_display_name": "username",
+            "user_A_email": "email",
+            "user_A_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_entity_id": "sub",
+            "user_B_display_name": "username",
+            "user_B_email": "email",
+            "user_B_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "",
+            "email": "empty-sub-principal-1@example.com",
+            "name": "EmptySub Principal 1",
+            "groups": "[]",
+            "email_verified": "true"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "saml_response": "AUTO",
+            "relay_state": "i4_empty_sub_principal_1"
+          },
+          "auth_as": "user_empty_sub_1",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_empty_sub_1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_empty_sub_1_entity_id": "sub",
+            "user_empty_sub_1_display_name": "username",
+            "user_empty_sub_1_email": "email",
+            "user_empty_sub_1_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "",
+            "email": "empty-sub-principal-2@example.com",
+            "name": "EmptySub Principal 2",
+            "groups": "[]",
+            "email_verified": "true"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "saml_response": "AUTO",
+            "relay_state": "i4_empty_sub_principal_2"
+          },
+          "auth_as": "user_empty_sub_2",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_empty_sub_2",
+          "expected_outcome": "any",
+          "captures": {
+            "user_empty_sub_2_entity_id": "sub",
+            "user_empty_sub_2_display_name": "username",
+            "user_empty_sub_2_email": "email",
+            "user_empty_sub_2_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i4_diversity_baseline",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Baseline failed: mechanism cannot distinguish principals",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_empty_sub_distinct_emails_must_not_collapse",
+          "invariant": "I4",
+          "assertion": "user_empty_sub_1_entity_id != user_empty_sub_2_entity_id",
+          "violation_description": "Two distinct upstream principals (different emails) collapsed to the same downstream identity when sub was empty",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I4"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "wmximr7d1oy4",
+        "username": "baseline_i4_empty_sub_B",
+        "user_A_session_token": "6Qz4VUTr2SCI6qVpcFnVr2edw_JdRZS7lp6xLtwJeUa",
+        "user_A_login_success": "True",
+        "user_A_login_status": "200",
+        "user_A_login_http_status": "200",
+        "user_B_session_token": "lbW9ejGL_71vYRx9UMi4mJVGBGCvT4Va0uCCqHXhu71",
+        "user_B_login_success": "True",
+        "user_B_login_status": "200",
+        "user_B_login_http_status": "200",
+        "display_name": "baseline_i4_empty_sub_B",
+        "email": "empty-sub-principal-1@example.com",
+        "user_A_entity_id": "qfbo95ez54xj",
+        "user_A_display_name": "baseline_i4_empty_sub_A",
+        "user_A_email": "baseline_i4_empty_sub_A@example.com",
+        "user_A_groups": "None",
+        "user_A_identity_id": "qfbo95ez54xj",
+        "user_B_entity_id": "yurmrt7hwe3d",
+        "user_B_display_name": "baseline_i4_empty_sub_B",
+        "user_B_email": "baseline_i4_empty_sub_B@example.com",
+        "user_B_groups": "None",
+        "user_B_identity_id": "yurmrt7hwe3d",
+        "user_empty_sub_1_session_token": "2AZcda1bCdn7vbo-rRuCi8ahR0kvFXM2OBScmgohJVK",
+        "user_empty_sub_1_login_success": "True",
+        "user_empty_sub_1_login_status": "200",
+        "user_empty_sub_1_login_http_status": "200",
+        "user_empty_sub_1_entity_id": "wmximr7d1oy4",
+        "user_empty_sub_1_display_name": "baseline_i4_empty_sub_B",
+        "user_empty_sub_1_email": "empty-sub-principal-1@example.com",
+        "user_empty_sub_1_groups": "None",
+        "user_empty_sub_1_identity_id": "wmximr7d1oy4",
+        "user_empty_sub_2_session_token": "c-AiFV7VATH-qogWike_UlMAE5onxkZ_Wnpu2YAVAQw",
+        "user_empty_sub_2_login_success": "True",
+        "user_empty_sub_2_login_status": "200",
+        "user_empty_sub_2_login_http_status": "200",
+        "user_empty_sub_2_entity_id": "wmximr7d1oy4",
+        "user_empty_sub_2_display_name": "baseline_i4_empty_sub_B",
+        "user_empty_sub_2_email": "empty-sub-principal-1@example.com",
+        "user_empty_sub_2_groups": "None",
+        "user_empty_sub_2_identity_id": "wmximr7d1oy4"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "7b7b3cfc2fc32758",
+      "sequence_id": "seq_i4_cross_protocol_merge_verified_email_oidc",
+      "sequence_description": "Cross-protocol identity merge: local password user (victim) vs OIDC enterprise SSO principal (attacker_sub) claiming the same VERIFIED email. Expectation: should NOT collapse distinct upstream principals into the same downstream subject unless explicitly intended; detect unintended account takeover via email-based linking.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I4",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "LOW",
+      "description": "[LLM-Judge] Enterprise OIDC SSO login was linked to an existing local-password account solely by matching a verified email, causing two security-distinct upstream principals to map to the same downstream subject (potential account takeover if the IdP is attacker-controlled or email verification is not strongly trusted).",
+      "cve_analog": "none",
+      "evidence": {
+        "user_victim_pwd_entity_id": "culqxnl59v8z",
+        "user_victim_pwd_email": "victim.merge1@example.com",
+        "user_attacker_oidc_entity_id": "culqxnl59v8z",
+        "user_attacker_oidc_email": "victim.merge1@example.com",
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "idp_claims_set_status": 200,
+        "llm_judge_description": "Enterprise OIDC SSO login was linked to an existing local-password account solely by matching a verified email, causing two security-distinct upstream principals to map to the same downstream subject (potential account takeover if the IdP is attacker-controlled or email verification is not strongly trusted)."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i4_cross_protocol_merge_verified_email_oidc",
+      "description": "Cross-protocol identity merge: local password user (victim) vs OIDC enterprise SSO principal (attacker_sub) claiming the same VERIFIED email. Expectation: should NOT collapse distinct upstream principals into the same downstream subject unless explicitly intended; detect unintended account takeover via email-based linking.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "I4: A distinct upstream OIDC SSO principal (sub=attacker_sub) must not map to the same downstream identity as an existing local password principal solely due to matching email, even if email_verified=true, unless the broker explicitly and safely binds identities across protocols.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 12,
+      "events_succeeded": 12,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "victim_local_merge1",
+            "password": "P@ssw0rd!merge1",
+            "name": "Victim Local Merge1",
+            "primary_email": "victim.merge1@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_user_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "baseline_local_A_merge1",
+            "password": "P@ssw0rd!baseA1",
+            "name": "Baseline Local A Merge1",
+            "primary_email": "baseline.a.merge1@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "baseline_user_a_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "baseline_local_B_merge1",
+            "password": "P@ssw0rd!baseB1",
+            "name": "Baseline Local B Merge1",
+            "primary_email": "baseline.b.merge1@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "baseline_user_b_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "baseline_local_A_merge1",
+            "password": "P@ssw0rd!baseA1",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_entity_id": "sub",
+            "user_A_display_name": "username",
+            "user_A_email": "email",
+            "user_A_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "baseline_local_B_merge1",
+            "password": "P@ssw0rd!baseB1",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_entity_id": "sub",
+            "user_B_display_name": "username",
+            "user_B_email": "email",
+            "user_B_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "victim_local_merge1",
+            "password": "P@ssw0rd!merge1",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_victim_pwd",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_victim_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_pwd_entity_id": "sub",
+            "user_victim_pwd_display_name": "username",
+            "user_victim_pwd_email": "email",
+            "user_victim_pwd_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "attacker_sub_merge1",
+            "email": "victim.merge1@example.com",
+            "name": "Attacker OIDC Merge1",
+            "groups": "[]",
+            "email_verified": "true"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "idp_claims_set_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "saml_response": "mutation_type=i4_cross_protocol_merge_verified_email;target_identity=attacker_sub_merge1;email=victim.merge1@example.com;provider=OIDC;realm=default",
+            "relay_state": "rs-i4-merge1"
+          },
+          "auth_as": "user_attacker_oidc",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_oidc",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_oidc_entity_id": "sub",
+            "user_attacker_oidc_display_name": "username",
+            "user_attacker_oidc_email": "email",
+            "user_attacker_oidc_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i4_diversity_baseline",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Baseline failed: mechanism cannot distinguish principals",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_cross_protocol_verified_email_no_collapse",
+          "invariant": "I4",
+          "assertion": "user_attacker_oidc_entity_id != user_victim_pwd_entity_id",
+          "violation_description": "OIDC SSO principal (attacker_sub) collapsed into existing local victim identity via verified-email linking (potential cross-protocol account takeover)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I4"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "culqxnl59v8z",
+        "username": "baseline_local_B_merge1",
+        "victim_user_id": "culqxnl59v8z",
+        "baseline_user_a_id": "htxxo7vfg82v",
+        "baseline_user_b_id": "oj6ow24kp0l8",
+        "user_A_session_token": "REPulwohVclrFX4FqGNLu8IH6DaMunKt7B6ZBMhfx9k",
+        "user_A_login_success": "True",
+        "user_A_login_status": "200",
+        "user_A_login_http_status": "200",
+        "display_name": "victim_local_merge1",
+        "email": "victim.merge1@example.com",
+        "user_A_entity_id": "htxxo7vfg82v",
+        "user_A_display_name": "baseline_local_A_merge1",
+        "user_A_email": "baseline.a.merge1@example.com",
+        "user_A_groups": "None",
+        "user_A_identity_id": "htxxo7vfg82v",
+        "user_B_session_token": "aqyQYxSRjjE8fLdrFjX1avgwm7_XtJOK_T7fkxrUtmD",
+        "user_B_login_success": "True",
+        "user_B_login_status": "200",
+        "user_B_login_http_status": "200",
+        "user_B_entity_id": "oj6ow24kp0l8",
+        "user_B_display_name": "baseline_local_B_merge1",
+        "user_B_email": "baseline.b.merge1@example.com",
+        "user_B_groups": "None",
+        "user_B_identity_id": "oj6ow24kp0l8",
+        "user_victim_pwd_session_token": "4GmYoinqyjF9tw6ZPNIR8v4B-OiKfzdbBXgemwT4dZK",
+        "user_victim_pwd_login_success": "True",
+        "user_victim_pwd_login_status": "200",
+        "user_victim_pwd_login_http_status": "200",
+        "user_victim_pwd_entity_id": "culqxnl59v8z",
+        "user_victim_pwd_display_name": "victim_local_merge1",
+        "user_victim_pwd_email": "victim.merge1@example.com",
+        "user_victim_pwd_groups": "None",
+        "user_victim_pwd_identity_id": "culqxnl59v8z",
+        "idp_claims_set_status": "200",
+        "user_attacker_oidc_session_token": "D50Alkz8e6NlRHm-lFTkYmT5wdUv4fwIYHc78-0VVuG",
+        "user_attacker_oidc_login_success": "True",
+        "user_attacker_oidc_login_status": "200",
+        "user_attacker_oidc_login_http_status": "200",
+        "user_attacker_oidc_entity_id": "culqxnl59v8z",
+        "user_attacker_oidc_display_name": "victim_local_merge1",
+        "user_attacker_oidc_email": "victim.merge1@example.com",
+        "user_attacker_oidc_groups": "None",
+        "user_attacker_oidc_identity_id": "culqxnl59v8z"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "0a0bc4ac211801a2",
+      "sequence_id": "seq_i4_sub_issuer_pairwise_binding_oidc",
+      "sequence_description": "Issuer/sub pairwise binding: same sub value presented under two different upstream issuers should not collapse if broker keys identity only by sub (missing issuer binding).",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I4",
+      "identified_invariant": "",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "[LLM-Judge] Cross-issuer identity confusion: two different upstream issuer contexts resulted in the same downstream subject, indicating missing issuer binding (identity keyed only by sub/claims).",
+      "cve_analog": "none",
+      "evidence": {
+        "idp_claims_set_status_issA": 200,
+        "idp_claims_set_status_issB": 200,
+        "user_issuerA_entity_id": "e0ojosg6x2r8",
+        "user_issuerB_entity_id": "e0ojosg6x2r8",
+        "user_issuerA_email": "shared.sub.iss3+issuerA@example.com",
+        "user_issuerB_email": "shared.sub.iss3+issuerA@example.com",
+        "user_issuerA_display_name": "baseline_local_B_iss3",
+        "user_issuerB_display_name": "baseline_local_B_iss3",
+        "identity_id": "e0ojosg6x2r8",
+        "email": "shared.sub.iss3+issuerA@example.com",
+        "display_name": "baseline_local_B_iss3",
+        "llm_judge_description": "Cross-issuer identity confusion: two different upstream issuer contexts resulted in the same downstream subject, indicating missing issuer binding (identity keyed only by sub/claims)."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i4_sub_issuer_pairwise_binding_oidc",
+      "description": "Issuer/sub pairwise binding: same sub value presented under two different upstream issuers should not collapse if broker keys identity only by sub (missing issuer binding).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "I4: Two security-distinct upstream principals with the same sub but different issuer (iss) must not map to the same downstream identity; broker must bind identity to (iss, sub) not sub alone.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 12,
+      "events_succeeded": 12,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "baseline_local_A_iss3",
+            "password": "P@ssw0rd!baseA3",
+            "name": "Baseline Local A ISS3",
+            "primary_email": "baseline.a.iss3@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "baseline_user_a_iss3_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "baseline_local_B_iss3",
+            "password": "P@ssw0rd!baseB3",
+            "name": "Baseline Local B ISS3",
+            "primary_email": "baseline.b.iss3@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "baseline_user_b_iss3_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "baseline_local_A_iss3",
+            "password": "P@ssw0rd!baseA3",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_entity_id": "sub",
+            "user_A_display_name": "username",
+            "user_A_email": "email",
+            "user_A_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "baseline_local_B_iss3",
+            "password": "P@ssw0rd!baseB3",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_entity_id": "sub",
+            "user_B_display_name": "username",
+            "user_B_email": "email",
+            "user_B_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "shared_sub_iss3",
+            "email": "shared.sub.iss3+issuerA@example.com",
+            "name": "SharedSub IssuerA",
+            "groups": "[]",
+            "email_verified": "true"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "idp_claims_set_status_issA": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "saml_response": "mutation_type=i4_same_sub_diff_issuer;idp_entity_id={{mock_idp_issuer}}/issuerA;target_identity=shared_sub_iss3;email=shared.sub.iss3+issuerA@example.com;provider=OIDC;realm=default",
+            "relay_state": "rs-i4-issA"
+          },
+          "auth_as": "user_issuerA",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_issuerA",
+          "expected_outcome": "any",
+          "captures": {
+            "user_issuerA_entity_id": "sub",
+            "user_issuerA_display_name": "username",
+            "user_issuerA_email": "email",
+            "user_issuerA_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "shared_sub_iss3",
+            "email": "shared.sub.iss3+issuerB@example.com",
+            "name": "SharedSub IssuerB",
+            "groups": "[]",
+            "email_verified": "true"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "idp_claims_set_status_issB": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "saml_response": "mutation_type=i4_same_sub_diff_issuer;idp_entity_id={{mock_idp_issuer}}/issuerB;target_identity=shared_sub_iss3;email=shared.sub.iss3+issuerB@example.com;provider=OIDC;realm=default",
+            "relay_state": "rs-i4-issB"
+          },
+          "auth_as": "user_issuerB",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_issuerB",
+          "expected_outcome": "any",
+          "captures": {
+            "user_issuerB_entity_id": "sub",
+            "user_issuerB_display_name": "username",
+            "user_issuerB_email": "email",
+            "user_issuerB_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i4_diversity_baseline",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Baseline failed: mechanism cannot distinguish principals",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_issuer_sub_pairwise_binding",
+          "invariant": "I4",
+          "assertion": "user_issuerA_entity_id != user_issuerB_entity_id",
+          "violation_description": "Two security-distinct upstream principals (same sub, different issuer) collapsed into the same downstream identity (missing issuer binding)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I4"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "a8m6j6tn746k",
+        "saml_sso_connector_id": "7gxnmd8mexgf",
+        "test_app_client_id": "m8gp6ml6zrxyswkn952e2",
+        "test_app_client_secret": "#internal:sNfbN5Nc0wZhPqtUAATRT3UGiqj3AMny",
+        "m2m_app_client_id": "mwgzby77xwc02t9bzam1t",
+        "m2m_app_client_secret": "#internal:zpr2ewbjFVOsB8tkpyNxxGfgO4L5M4qv",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "e0ojosg6x2r8",
+        "username": "baseline_local_B_iss3",
+        "baseline_user_a_iss3_id": "96ohe4enxw0o",
+        "baseline_user_b_iss3_id": "sjyifwpvxrdw",
+        "user_A_session_token": "UUV2CpS_W9SwGZK5Ab7T9CBvYfKU73FYIi0JV5IDqIH",
+        "user_A_login_success": "True",
+        "user_A_login_status": "200",
+        "user_A_login_http_status": "200",
+        "display_name": "baseline_local_B_iss3",
+        "email": "shared.sub.iss3+issuerA@example.com",
+        "user_A_entity_id": "96ohe4enxw0o",
+        "user_A_display_name": "baseline_local_A_iss3",
+        "user_A_email": "baseline.a.iss3@example.com",
+        "user_A_groups": "None",
+        "user_A_identity_id": "96ohe4enxw0o",
+        "user_B_session_token": "rcKXwRCbCGfc_jJgnIbXb1sumh_PM4Xi3eo16UANBnZ",
+        "user_B_login_success": "True",
+        "user_B_login_status": "200",
+        "user_B_login_http_status": "200",
+        "user_B_entity_id": "sjyifwpvxrdw",
+        "user_B_display_name": "baseline_local_B_iss3",
+        "user_B_email": "baseline.b.iss3@example.com",
+        "user_B_groups": "None",
+        "user_B_identity_id": "sjyifwpvxrdw",
+        "idp_claims_set_status_issA": "200",
+        "user_issuerA_session_token": "ZRkgcklhbWdPAo-i2NH1G-FailpExzftombfDtv5_78",
+        "user_issuerA_login_success": "True",
+        "user_issuerA_login_status": "200",
+        "user_issuerA_login_http_status": "200",
+        "user_issuerA_entity_id": "e0ojosg6x2r8",
+        "user_issuerA_display_name": "baseline_local_B_iss3",
+        "user_issuerA_email": "shared.sub.iss3+issuerA@example.com",
+        "user_issuerA_groups": "None",
+        "user_issuerA_identity_id": "e0ojosg6x2r8",
+        "idp_claims_set_status_issB": "200",
+        "user_issuerB_session_token": "zx6PEoGMDm55XJ55VZDagxnmzXiniOjZuf0yHXnNnH0",
+        "user_issuerB_login_success": "True",
+        "user_issuerB_login_status": "200",
+        "user_issuerB_login_http_status": "200",
+        "user_issuerB_entity_id": "e0ojosg6x2r8",
+        "user_issuerB_display_name": "baseline_local_B_iss3",
+        "user_issuerB_email": "shared.sub.iss3+issuerA@example.com",
+        "user_issuerB_groups": "None",
+        "user_issuerB_identity_id": "e0ojosg6x2r8"
+      }
+    }
+  }
+]

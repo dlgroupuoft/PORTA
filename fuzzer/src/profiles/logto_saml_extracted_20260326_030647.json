@@ -1,0 +1,439 @@
+{
+  "name": "logto",
+  "base_url": "http://localhost:3001",
+  "admin_auth": {
+    "header": "Authorization",
+    "value": "Bearer {admin_token}"
+  },
+  "supported_protocols": [
+    "saml"
+  ],
+  "api_mapping": {
+    "saml": {
+      "create_tenant": {
+        "method": "POST",
+        "path": "/api/tenants",
+        "body_map": {},
+        "response_map": {},
+        "auth": "admin",
+        "metadata": {
+          "documented_as_console_only": true,
+          "absent_api_details": true,
+          "documented_absence": true
+        }
+      },
+      "enable_auth_method": {
+        "method": "POST",
+        "path": "/api/applications",
+        "body_map": {
+          "application_type": "type",
+          "name": "name",
+          "description": "description",
+          "protocol": "protocol",
+          "integration_protocol": "protocol"
+        },
+        "response_map": {},
+        "auth": "admin",
+        "metadata": {
+          "documented_via_management_api_event_table": true,
+          "saml_specific": true,
+          "notes": "Used here as creating a SAML application in Logto, which enables Logto-as-IdP SAML auth for an SP.",
+          "source_kind": "console-backed management api inference from documented management endpoints table",
+          "protocol_specific": "saml_app",
+          "source_type": "console-backed management api inferred from documented application creation flow",
+          "protocol_specific_value": "SAML"
+        }
+      },
+      "saml_login": {
+        "method": "POST",
+        "path": "/saml/{application_id}",
+        "body_map": {
+          "saml_response": "SAMLResponse",
+          "relay_state": "RelayState"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form",
+        "metadata": {
+          "documented_as_saml_application_callback": true,
+          "absent_exact_callback_path_in_docs": true,
+          "documented_absence_of_exact_path": true,
+          "basis": "docs describe SP-initiated SAML flow and SAML application callback audit event but do not publish the ACS path in provided material",
+          "documented_flow_only": true,
+          "acs_path_not_explicitly_documented": true
+        }
+      },
+      "verify_granted_identity": {
+        "method": "GET",
+        "path": "/oidc/me",
+        "body_map": {},
+        "response_map": {
+          "identity_id": "sub",
+          "display_name": "name",
+          "metadata": ".",
+          "ttl": "exp",
+          "creation_ttl": "iat",
+          "expire_time": "exp",
+          "granted_policies": "scope",
+          "identity_policies": "roles",
+          "num_uses": "",
+          "http_status": "_http_status"
+        },
+        "auth": "session",
+        "content_type": "query",
+        "metadata": {
+          "token_type_supported": "opaque_or_bearer_access_token",
+          "documented_as_userinfo_endpoint": true,
+          "documented_for_oidc_tokens_only": true,
+          "not_applicable_to_pure_saml_sp_flow": true
+        }
+      },
+      "token_exchange": {
+        "method": "POST",
+        "path": "/oidc/token",
+        "body_map": {
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "grant_type": "grant_type",
+          "resource": "resource",
+          "scope": "scope",
+          "subject_token": "subject_token",
+          "subject_token_type": "subject_token_type",
+          "actor_token": "actor_token",
+          "actor_token_type": "actor_token_type",
+          "audience": "audience"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "granted_policies": "scope",
+          "metadata": ".",
+          "token_accessor": "issued_token_type",
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form",
+        "metadata": {
+          "supports_pat_exchange": true,
+          "supports_impersonation_exchange": true,
+          "same_endpoint_as_token_endpoint": true
+        }
+      },
+      "revoke_session": {
+        "method": "POST",
+        "path": "/oidc/token/revocation",
+        "body_map": {
+          "client_id": "client_id",
+          "session_token": "token"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form",
+        "metadata": {
+          "documented_in_sdk_conventions": true,
+          "explicit_token_body": true,
+          "documented_standard_oidc_endpoint": true,
+          "not_saml_session_specific": true
+        }
+      },
+      "cleanup_auth_method": {
+        "method": "DELETE",
+        "path": "/api/applications/{application_id}",
+        "body_map": {},
+        "response_map": {},
+        "auth": "admin",
+        "metadata": {
+          "protocol_specific": "saml_app",
+          "source_kind": "management api pattern from documented endpoint families",
+          "documented_absence": true
+        }
+      }
+    }
+  },
+  "known_behaviors": {
+    "saml": [
+      {
+        "id": "logto_i4_28276148",
+        "description": "When a SAML app uses Transient Name ID format, Logto generates a one-time user identifier that changes with each authentication request.",
+        "invariants": [
+          "I4"
+        ],
+        "conditions": {
+          "saml_app.name_id_format": "Transient"
+        },
+        "source": "integrate-logto/saml-app/setup.mdx",
+        "note": "Different NameID values across repeated logins are expected and should not be treated as identity instability bugs."
+      },
+      {
+        "id": "logto_i4_6ef04e81",
+        "description": "The Unspecified Name ID format currently uses the Logto user ID as the NameID.",
+        "invariants": [
+          "I4"
+        ],
+        "conditions": {
+          "saml_app.name_id_format": "Unspecified"
+        },
+        "source": "integrate-logto/saml-app/setup.mdx",
+        "note": "A stable Logto user ID in NameID under Unspecified format is by design."
+      },
+      {
+        "id": "logto_i4_a444d10b",
+        "description": "Enterprise SSO identities are linked to existing accounts if the email matches.",
+        "invariants": [
+          "I4"
+        ],
+        "conditions": {
+          "enterprise_sso.email_matches_existing_account": true
+        },
+        "source": "connectors/enterprise-connectors.mdx",
+        "note": "Email-based account linking can look like cross-identity merge; treat it as documented behavior unless authorization or ownership checks are bypassed."
+      },
+      {
+        "id": "logto_i5_1ce2931d",
+        "description": "API resource scopes and organization scopes not enabled for a third-party application are ignored in authorization requests.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "authorization.requested_scope_not_enabled": true
+        },
+        "source": "integrate-logto/third-party-applications/permission-management.mdx",
+        "note": "Missing requested permissions in the granted token can be expected configuration behavior rather than over-restriction or parser bugs."
+      },
+      {
+        "id": "logto_i5_30243cc7",
+        "description": "Requesting a non-enabled user profile scope for a third-party application results in an error.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "authorization.requested_user_scope_not_enabled": true
+        },
+        "source": "integrate-logto/third-party-applications/permission-management.mdx",
+        "note": "Authorization failure here is expected and should not be misread as a token validation bug."
+      },
+      {
+        "id": "logto_i2_309e5568",
+        "description": "Refresh tokens issued without offline_access are bound to the user session and expire when the 14-day session expires, regardless of refresh token TTL settings.",
+        "invariants": [
+          "I2"
+        ],
+        "conditions": {
+          "authorization.scope": "missing offline_access"
+        },
+        "source": "integrate-logto/application-data-structure.mdx",
+        "note": "Unexpected refresh failure after session expiry is by design."
+      },
+      {
+        "id": "logto_i3_07aa8af6",
+        "description": "Logto SAML applications currently support SP-initiated authentication flow only; IdP-initiated flow is not yet supported.",
+        "invariants": [
+          "I3"
+        ],
+        "conditions": {
+          "saml.flow": "idp_initiated"
+        },
+        "source": "integrate-logto/integrate-logto-into-your-application/understand-authentication-flow.mdx",
+        "note": "Do not flag missing IdP-initiated behavior as a flow-coherence bug."
+      }
+    ]
+  },
+  "verification_fields": {
+    "identity_field": "sub",
+    "identity_name_field": "username",
+    "policies_field": "roles",
+    "groups_field": "organizations"
+  },
+  "api_constraints": {
+    "saml": [
+      {
+        "severity": "CRITICAL",
+        "type": "setup",
+        "constraint": "Logto SAML support in the provided docs is Logto acting as the Identity Provider (IdP) for a SAML Service Provider. Do NOT run upstream-SAML broker attack patterns that assume Logto consumes third-party SAML assertions unless you have separate enterprise-SSO connector documentation for SAML. The documented SAML app flow emits assertions; it does not document validation of external IdP assertions."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For SAML tests, treat the available surface as SP-initiated flow only. The docs explicitly state Logto currently supports SP-initiated SAML authentication flow and IdP-initiated flow is not yet supported. Do NOT interpret failure of IdP-initiated sequences as a security finding."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 principal-binding tests against SAML apps, NameID mapping is configurable. The default Name ID format is Persistent and uses the Logto user ID as NameID; Email address uses the user's email; Transient generates a one-time identifier per authentication; Unspecified currently also uses the Logto user ID. The fuzzer MUST account for the configured Name ID format before comparing identities, or it will misclassify expected identifier transformations as collisions."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 multi-login identity-stability tests, do NOT expect stable downstream identity when the SAML app is configured with Name ID format = Transient. That mode is by design one-time and changes with each authentication request."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 authorization/attribute tests on SAML apps, attribute release is controlled by explicit attribute mapping configuration. Only mapped Logto user properties are included in the SAML assertion. Missing attributes in the SP are not evidence of stripping or authz failure unless the attribute was configured in SAML assertion attribute mapping."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For SAML signature-related tests, the provided docs state Logto supports signing and encryption to protect the authentication process and exposes a SAML signing certificate in IdP metadata. Because the docs do not expose assertion-level signature toggles or callback validation parameters, the fuzzer MUST NOT infer undocumented defaults such as unsigned assertions being accepted or rejected from this documentation alone."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I3 config-change tests involving certificate rotation, only one SAML signing certificate can be active at a time, the active certificate is the one published in IdP metadata, and activating an inactive certificate automatically deactivates the current one. Tests must refresh SP trust/metadata expectations after rotation; otherwise failures may reflect stale SP configuration rather than Logto inconsistency."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I3 certificate-availability tests, the IdP metadata URL is unavailable when there is no active certificate. A failed metadata fetch in that state is by design and must not be treated as an auth-flow coherence bug."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 cross-protocol or account-linking tests involving enterprise SSO, the docs state SSO identities will be linked to existing accounts if the email matches. Therefore, same-email merges across SSO and existing accounts are by design and must not be flagged as identity collapse unless the test demonstrates unauthorized merge beyond documented email-based linking behavior."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For SAML security testing against Logto, DO NOT attempt IdP-to-Logto forged assertion attacks such as saml_cert_substitution, saml_unsigned_assertion, saml_issuer_mismatch, saml_no_conditions, or saml_wrong_audience. In the provided documentation, Logto acts as the SAML Identity Provider and your application is the Service Provider. Those attack patterns target a broker/SP that consumes SAML assertions, but Logto is the issuer in this integration model.",
+        "invariants": [
+          "I1",
+          "I2",
+          "I5"
+        ],
+        "source": "SAML app docs explicitly describe 'Logto as IdP' and SP-initiated flow where the application validates the SAML response."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For the SAML protocol profile, treat the only directly testable Logto-side security surface in the provided docs as downstream OIDC/OAuth token handling that may follow related app flows (userinfo, token exchange, revocation). Do NOT report missing SAML assertion-consumer APIs on Logto as vulnerabilities; the provided SAML integration is outbound IdP functionality, not inbound SAML broker login.",
+        "invariants": [
+          "I1",
+          "I3",
+          "I5"
+        ],
+        "source": "SAML app setup and authentication flow docs."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "When testing token_exchange, the target application MUST have token exchange explicitly enabled first. Token exchange is disabled by default; otherwise failures are expected and are not evidence of authorization binding or audience enforcement.",
+        "invariants": [
+          "I3",
+          "I5"
+        ],
+        "source": "Token exchange prerequisites fragment: 'Allow token exchange' toggle is disabled by default."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 token-exchange scope escalation tests, compare the exchanged token only against scopes and resources actually enabled for the third-party or client application. Logto ignores or errors on non-enabled scopes depending on scope type, so requesting arbitrary extra scopes can fail by configuration rather than proving correct authorization binding.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "Third-party application permission management docs: non-enabled user profile scopes error; non-enabled API and organization scopes are ignored."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 organization permission tests, if requesting organization scopes, the authorization request MUST also include urn:logto:scope:organizations. Without that user organization scope, organization permissions are ignored by design and any missing org claims or permissions are not a security finding.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "Permission management docs: organization permissions require urn:logto:scope:organizations."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I2 freshness tests on refresh-token-backed sessions, include offline_access in the original authorization request if you need refresh token TTL to operate independently of the browser session. Without offline_access, refresh tokens are session-bound and become invalid when the 14-day session expires regardless of configured refresh-token TTL.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "Application data structure: refresh token and session binding caution."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "api_setup",
+        "constraint": "Numeric sentinel analysis: refresh token TTL has a documented default of 14 days, but the provided docs do not define any special sentinel values such as 0 or -1 for 'use default', 'disable', or 'strict'. Never assume 0 or -1 has special meaning without endpoint-specific API documentation.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "Application data structure: Refresh token time-to-live (TTL) in days."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 identity-binding tests involving enterprise SSO or SAML-related identities, account linking by email is BY DESIGN in Logto enterprise connectors: SSO identities are linked to existing accounts if the email matches. Do not flag same-account outcomes as collisions when the tested identities share the same verified email.",
+        "invariants": [
+          "I4"
+        ],
+        "source": "Enterprise connectors docs: 'The SSO identities will be linked to existing accounts if the email matches.'"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 case-confusion tests using usernames, respect tenant-level CASE_SENSITIVE_USERNAME configuration. Username matching is case-sensitive by default; changing this setting does not rewrite existing data. A valid test must control this setting or avoid interpreting case-folding outcomes as bugs.",
+        "invariants": [
+          "I4"
+        ],
+        "source": "Core service configuration docs: CASE_SENSITIVE_USERNAME."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I2 replay tests, do not treat generic bearer access token reuse as a vulnerability based on the provided docs. The documentation only explicitly marks one-time-use semantics for impersonation subject tokens; ordinary access tokens and PAT-exchanged access tokens are not documented as one-time-use.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "User impersonation docs note subject token is short-lived and one-time-use; no equivalent one-time-use claim for ordinary access tokens."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup",
+        "constraint": "Logto's SAML app documentation describes Logto acting as the Identity Provider (IdP) for your application as Service Provider. Do NOT run upstream-SAML broker attack patterns that require configuring Logto as a SAML Service Provider consuming attacker-controlled assertions; the documented SAML surface here is outbound assertion issuance, not inbound assertion validation."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For SAML tests on Logto, treat the security boundary as your SP validating assertions issued by Logto. Attack patterns such as saml_cert_substitution, saml_unsigned_assertion, saml_issuer_mismatch, saml_no_conditions, and saml_wrong_audience target the SP that consumes Logto's assertions, not Logto itself. Do NOT interpret SP acceptance of malformed assertions as a Logto broker vulnerability."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "SAML authentication in Logto currently supports SP-initiated flow only. Do NOT build tests that assume IdP-initiated login is available; failures there are by design and not I3 flow-coherence bugs."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "NameID format is configurable and materially affects principal binding. For I4 tests, record which Name ID format is configured: Persistent and Unspecified use the Logto user ID, Email address uses the user's email, and Transient generates a one-time identifier per authentication request. Do NOT compare identities across runs when Transient is enabled, because changing NameID each login is by design."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 collision tests involving email-based identity, if the SAML app is configured with Name ID format 'Email address', different upstream representations that share the same email will intentionally collapse to the same NameID value. This is configuration-driven behavior, not necessarily a broker bug."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "SAML assertion encryption is optional in Logto. Do NOT treat plaintext assertions as a security failure unless encryption was explicitly enabled and the SP certificate configured; unencrypted assertions are allowed by configuration."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup",
+        "constraint": "Only one SAML signing certificate can be active at a time, and the IdP metadata URL is unavailable when there is no active certificate. Any test setup that depends on metadata retrieval or signature verification MUST ensure an active certificate exists first."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "Certificate rotation behavior is documented: activating an inactive certificate automatically deactivates the current active certificate, and previously issued assertions may still be validated by SPs that trust old certs until they refresh metadata. For I3 trust-anchor rotation tests, verify the SP has refreshed Logto metadata before concluding stale trust acceptance is a Logto issue."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup",
+        "constraint": "Logto OSS is limited to 3 SAML apps. Test harnesses that create many SAML applications per run MUST account for this platform limit or cleanup between runs to avoid setup failures unrelated to security invariants."
+      }
+    ]
+  }
+}

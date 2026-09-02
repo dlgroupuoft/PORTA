@@ -1,0 +1,322 @@
+[
+  {
+    "finding": {
+      "finding_id": "3139cedfd89190ee",
+      "sequence_id": "seq_kc_i4_empty_or_missing_subject_claim_mapping",
+      "sequence_description": "I4 attack: Probe for principal collapse when upstream subject is empty/degenerate by using request-object tampering surface to attempt an auth request with missing/empty subject semantics (simulated via unsigned request object acceptance check + control logins). If the endpoint accepts unsigned request objects, it may allow subject/claims manipulation leading to identity collisions.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I4",
+      "identified_invariant": "I4",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: admin_reqobj_accepted != true\nEvaluation: admin_reqobj_accepted=True != True \u2192 False\nImplication: Authorization endpoint accepted unsigned request object (alg=none), enabling attacker-controlled request parameters that can lead to principal confusion/collision",
+      "cve_analog": "CVE-2022-24720",
+      "evidence": {
+        "assertion": "admin_reqobj_accepted != true",
+        "evaluation": "admin_reqobj_accepted=True != True \u2192 False",
+        "captured_values": {
+          "admin_reqobj_accepted": true
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_kc_i4_empty_or_missing_subject_claim_mapping",
+      "description": "I4 attack: Probe for principal collapse when upstream subject is empty/degenerate by using request-object tampering surface to attempt an auth request with missing/empty subject semantics (simulated via unsigned request object acceptance check + control logins). If the endpoint accepts unsigned request objects, it may allow subject/claims manipulation leading to identity collisions.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "I4: Even under malformed/degenerate identity inputs, the broker must not map distinct principals to the same downstream subject; accepting unsigned request objects can enable claim/subject manipulation that risks collisions.",
+      "cve_analog": "CVE-2022-24720",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 3,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_tenant",
+          "params": {
+            "realm": "valence-i4-empty-sub-1",
+            "enabled": true,
+            "realm_name": "valence-i4-empty-sub-1"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_application",
+          "params": {
+            "realm": "valence-i4-empty-sub-1",
+            "client_id": "valence-test-client",
+            "name": "valence-test-client",
+            "protocol": "openid-connect",
+            "enabled": true,
+            "redirect_uris": [
+              "http://localhost:8080/callback"
+            ],
+            "public_client": true,
+            "standard_flow_enabled": true,
+            "direct_access_grants_enabled": true,
+            "service_accounts_enabled": false
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "test_request_object",
+          "params": {
+            "realm": "valence-i4-empty-sub-1",
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid",
+            "response_type": "code",
+            "request_object_alg": "none"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "admin_reqobj_accepted": "accepted",
+            "admin_reqobj_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "realm": "valence-i4-empty-sub-1",
+            "grant_type": "password",
+            "username": "userA",
+            "password": "userA-pass",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret",
+            "scope": "openid"
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "realm": "valence-i4-empty-sub-1"
+          },
+          "auth_as": "session_user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_entity_id": "sub",
+            "user_A_display_name": "preferred_username",
+            "user_A_policies": "realm_access.roles",
+            "user_A_identity_policies": "resource_access"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "realm": "valence-i4-empty-sub-1",
+            "grant_type": "password",
+            "username": "userB",
+            "password": "userB-pass",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret",
+            "scope": "openid"
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "realm": "valence-i4-empty-sub-1"
+          },
+          "auth_as": "session_user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_entity_id": "sub",
+            "user_B_display_name": "preferred_username",
+            "user_B_policies": "realm_access.roles",
+            "user_B_identity_policies": "resource_access"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i4_diversity_baseline",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Baseline failed: mechanism cannot distinguish principals",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_reqobj_alg_none_not_accepted_to_prevent_principal_tampering",
+          "invariant": "I4",
+          "assertion": "admin_reqobj_accepted != true",
+          "violation_description": "Authorization endpoint accepted unsigned request object (alg=none), enabling attacker-controlled request parameters that can lead to principal confusion/collision",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I4"
+      },
+      "captured_state": {
+        "realm_prefix": "valence-",
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "idp_sso_url": "http://fake-idp.valence.local/saml/sso",
+        "isolation_strategy": "Each test sequence MUST create its own realm using create_tenant with a unique name (e.g., valence-i1-test). Do NOT create IdPs in the master realm \u2014 use enable_auth_method in the new realm. This prev",
+        "idp_fields_warning": "Do NOT include syncMode in enable_auth_method params \u2014 older Keycloak versions reject it as an unrecognized field. Also do NOT include caseSensitiveOriginalUsername at the top level \u2014 it belongs insid",
+        "admin_reqobj_accepted": "True",
+        "admin_reqobj_status": "200",
+        "user_A_login_success": "False",
+        "user_A_login_status": "401",
+        "user_A_login_http_status": "401",
+        "user_A_entity_id": "None",
+        "user_A_display_name": "None",
+        "user_A_policies": "None",
+        "user_A_identity_policies": "None",
+        "user_B_login_success": "False",
+        "user_B_login_status": "401",
+        "user_B_login_http_status": "401",
+        "user_B_entity_id": "None",
+        "user_B_display_name": "None",
+        "user_B_policies": "None",
+        "user_B_identity_policies": "None",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "50a5ccb9d55bc65b",
+      "sequence_id": "seq_kc_i5_request_object_alg_none_audience_override",
+      "sequence_description": "I5 attack: Use an unsigned OIDC request object (alg=none) to attempt to override authorization request parameters (audience/scope). Secure behavior: auth endpoint should reject alg=none request objects; otherwise attacker may inject broader authorization intent than broker policy.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: reqobj_attacker_accepted != true\nEvaluation: reqobj_attacker_accepted=True != True \u2192 False\nImplication: Authorization endpoint accepted an unsigned request object (alg=none), allowing attacker-controlled scope/audience parameters to influence effective permissions without integrity protection.",
+      "cve_analog": "CVE-2022-24720",
+      "evidence": {
+        "assertion": "reqobj_attacker_accepted != true",
+        "evaluation": "reqobj_attacker_accepted=True != True \u2192 False",
+        "captured_values": {
+          "reqobj_attacker_accepted": true
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_kc_i5_request_object_alg_none_audience_override",
+      "description": "I5 attack: Use an unsigned OIDC request object (alg=none) to attempt to override authorization request parameters (audience/scope). Secure behavior: auth endpoint should reject alg=none request objects; otherwise attacker may inject broader authorization intent than broker policy.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Authorization request parameters that affect effective permissions (scope/audience) must be integrity-protected; unsigned request objects must be rejected to prevent permission escalation.",
+      "cve_analog": "CVE-2022-24720",
+      "status": "COMPLETED",
+      "events_total": 3,
+      "events_succeeded": 3,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_tenant",
+          "params": {
+            "realm": "valence-i5-reqobj-aud-1",
+            "enabled": true,
+            "realm_name": "valence-i5-reqobj-aud-1"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_application",
+          "params": {
+            "realm": "valence-i5-reqobj-aud-1",
+            "client_id": "valence-test-client",
+            "name": "valence-test-client",
+            "protocol": "openid-connect",
+            "enabled": true,
+            "redirect_uris": [
+              "http://localhost:8080/callback"
+            ],
+            "public_client": true,
+            "standard_flow_enabled": true,
+            "direct_access_grants_enabled": false
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "test_request_object",
+          "params": {
+            "realm": "valence-i5-reqobj-aud-1",
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid profile email",
+            "response_type": "code",
+            "request_object_alg": "none"
+          },
+          "auth_as": "reqobj_attacker",
+          "expected_outcome": "any",
+          "captures": {
+            "reqobj_attacker_accepted": "accepted",
+            "reqobj_attacker_rejected": "rejected",
+            "reqobj_attacker_http_status": "http_status"
+          },
+          "phase": "login"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_unsigned_request_object_must_be_rejected",
+          "invariant": "I5",
+          "assertion": "reqobj_attacker_accepted != true",
+          "violation_description": "Authorization endpoint accepted an unsigned request object (alg=none), allowing attacker-controlled scope/audience parameters to influence effective permissions without integrity protection.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "realm_prefix": "valence-",
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "idp_sso_url": "http://fake-idp.valence.local/saml/sso",
+        "isolation_strategy": "Each test sequence MUST create its own realm using create_tenant with a unique name (e.g., valence-i1-test). Do NOT create IdPs in the master realm \u2014 use enable_auth_method in the new realm. This prev",
+        "idp_fields_warning": "Do NOT include syncMode in enable_auth_method params \u2014 older Keycloak versions reject it as an unrecognized field. Also do NOT include caseSensitiveOriginalUsername at the top level \u2014 it belongs insid",
+        "reqobj_attacker_accepted": "True",
+        "reqobj_attacker_rejected": "False",
+        "reqobj_attacker_http_status": "200",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  }
+]

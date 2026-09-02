@@ -1,0 +1,191 @@
+[
+  {
+    "finding": {
+      "finding_id": "00863b56eae76fa5",
+      "sequence_id": "seq_I5_jwtidp_policy_toggle_external_idp_disallowed_then_login",
+      "sequence_description": "I5 attack: toggle broker policy to disallow external IdPs, then attempt JWT IdP intent login anyway. Hypothesis: policy is not enforced consistently and an external IdP session (and its permissions) is still issued.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: policy_toggle_complete_http_status >= 400\nEvaluation: policy_toggle_complete_http_status=200 >= 400 \u2192 False\nImplication: JWT IdP login succeeded even though broker policy disallows external IdPs, indicating authorization binding failure",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "policy_toggle_complete_http_status >= 400",
+        "evaluation": "policy_toggle_complete_http_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "policy_toggle_complete_http_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I5_jwtidp_policy_toggle_external_idp_disallowed_then_login",
+      "description": "I5 attack: toggle broker policy to disallow external IdPs, then attempt JWT IdP intent login anyway. Hypothesis: policy is not enforced consistently and an external IdP session (and its permissions) is still issued.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Effective permissions must be bounded by BrokerPolicy; when allow_external_idp=false, external IdP logins must not yield an authenticated session.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 3,
+      "events_failed": 2,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "update_application",
+          "params": {
+            "allow_external_idp": false,
+            "allow_register": true,
+            "allow_username_password": true
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "policy_update_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "mint_custom_jwt",
+          "params": {
+            "sub": "jwtidp-policy-toggle-user",
+            "iss": "http://mock-idp:9090",
+            "email": "jwtidp-policy-toggle-user@example.com",
+            "name": "JWTIdP Policy Toggle User"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "policy_toggle_minted_token": "minted_token",
+            "policy_toggle_mint_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_idp_intent",
+          "params": {
+            "idp_id": "367852376498896900",
+            "success_url": "http://localhost:8085/callback",
+            "failure_url": "http://localhost:8085/callback"
+          },
+          "auth_as": "session_user_policy_toggle",
+          "expected_outcome": "any",
+          "captures": {
+            "policy_toggle_auth_url": "auth_url",
+            "policy_toggle_idp_intent_id": "idp_intent_id",
+            "policy_toggle_start_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "complete_jwt_idp_login",
+          "params": {
+            "auth_request_id": "{{auth_url_authRequestID}}",
+            "user_agent_id": "{{auth_url_userAgentID}}"
+          },
+          "auth_as": "session_user_policy_toggle",
+          "expected_outcome": "any",
+          "captures": {
+            "policy_toggle_complete_http_status": "http_status",
+            "policy_toggle_idp_intent_id_returned": "idp_intent_id",
+            "policy_toggle_idp_intent_token": "idp_intent_token"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "retrieve_idp_intent",
+          "params": {
+            "idp_intent_id": "{{policy_toggle_idp_intent_id}}",
+            "idp_intent_token": "{{policy_toggle_idp_intent_token}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "policy_toggle_retrieve_http_status": "http_status",
+            "policy_toggle_user_id": "user_id",
+            "policy_toggle_idp_user_id": "idp_user_id"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I5_jwtidp_policy_toggle_external_idp_disallowed_then_login_0",
+          "invariant": "I5",
+          "assertion": "policy_update_http_status == 200",
+          "violation_description": "Test setup failed: could not update login policy to disallow external IdPs",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I5_jwtidp_policy_toggle_external_idp_disallowed_then_login_1",
+          "invariant": "I5",
+          "assertion": "policy_toggle_mint_http_status == 200",
+          "violation_description": "Test setup failed: could not mint JWT for JWT IdP login",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I5_jwtidp_policy_toggle_external_idp_disallowed_then_login_2",
+          "invariant": "I5",
+          "assertion": "policy_toggle_complete_http_status >= 400",
+          "violation_description": "JWT IdP login succeeded even though broker policy disallows external IdPs, indicating authorization binding failure",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I5_jwtidp_policy_toggle_external_idp_disallowed_then_login_3",
+          "invariant": "I5",
+          "assertion": "policy_toggle_retrieve_http_status >= 400 OR policy_toggle_user_id is None",
+          "violation_description": "An IdP intent produced a bound user despite external IdP being disallowed, suggesting policy bypass",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "project_id": "367852376079466500",
+        "client_id": "367852376196907012",
+        "redirect_uri": "http://localhost:8085/callback",
+        "app_id": "367852376180129796",
+        "jwt_idp_id": "367852376498896900",
+        "mock_idp_url": "http://localhost:9090",
+        "jwt_idp_header": "x-jwt-assertion",
+        "saml_metadata_url": "http://mock-idp:9090/saml/metadata",
+        "mock_idp_entity_id": "http://mock-idp:9090",
+        "isolation_strategy": "Zitadel management API uses REST gateway paths under /management/v1/ (org-scoped). Do NOT use gRPC Connect paths. For IdP setup: create_provider creates the IdP, enable_auth_method adds it to the logi",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "jwt_idp_flow_doc": "To test JWT IdP validation: 1) mint_custom_jwt \u2192 captures minted_token. 2) start_idp_intent with idp_id={{jwt_idp_id}} \u2192 captures auth_url, plus auto-parsed auth_url_authRequestID and auth_url_userAge",
+        "policy_update_http_status": "400",
+        "minted_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImowYVhFSVBEZS1GYjJRMzEiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJqd3RpZHAtcG9saWN5LXRvZ2dsZS11c2VyIiwiaXNzIjoiaHR0cDovL21vY2staWRwOjkwOTAiLCJlbWFpbCI6Imp3dGlkcC1wb2xpY3ktdG9nZ2xlLXVzZ",
+        "kid": "j0aXEIPDe-Fb2Q31",
+        "policy_toggle_minted_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImowYVhFSVBEZS1GYjJRMzEiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJqd3RpZHAtcG9saWN5LXRvZ2dsZS11c2VyIiwiaXNzIjoiaHR0cDovL21vY2staWRwOjkwOTAiLCJlbWFpbCI6Imp3dGlkcC1wb2xpY3ktdG9nZ2xlLXVzZ",
+        "policy_toggle_mint_http_status": "200",
+        "auth_url": "http://mock-idp:9090/authorize?authRequestID=367853684366770180&userAgentID=3L57-KzQ-HyAANwgqTJak89YttK0P0kpfCrgjRqqgCGhfw",
+        "auth_url_authRequestID": "367853684366770180",
+        "auth_url_userAgentID": "3L57-KzQ-HyAANwgqTJak89YttK0P0kpfCrgjRqqgCGhfw",
+        "idp_intent_id": "367853684366770180",
+        "policy_toggle_auth_url": "http://mock-idp:9090/authorize?authRequestID=367853684366770180&userAgentID=3L57-KzQ-HyAANwgqTJak89YttK0P0kpfCrgjRqqgCGhfw",
+        "policy_toggle_idp_intent_id": "367852354252308484",
+        "policy_toggle_start_http_status": "200",
+        "policy_toggle_auth_url_authRequestID": "367853684366770180",
+        "policy_toggle_auth_url_userAgentID": "3L57-KzQ-HyAANwgqTJak89YttK0P0kpfCrgjRqqgCGhfw",
+        "idp_intent_token": "rpAeMuPWoGaEu5wUTMhyduSLrChvPkm4Uanmi0BWpZ3MyQ",
+        "session_user_policy_toggle_idp_intent_id": "367853684366770180",
+        "session_user_policy_toggle_idp_intent_token": "rpAeMuPWoGaEu5wUTMhyduSLrChvPkm4Uanmi0BWpZ3MyQ",
+        "policy_toggle_complete_http_status": "200",
+        "policy_toggle_idp_intent_id_returned": "367853684366770180",
+        "policy_toggle_idp_intent_token": "rpAeMuPWoGaEu5wUTMhyduSLrChvPkm4Uanmi0BWpZ3MyQ",
+        "policy_toggle_retrieve_http_status": "403",
+        "policy_toggle_user_id": "None",
+        "policy_toggle_idp_user_id": "None"
+      }
+    }
+  }
+]

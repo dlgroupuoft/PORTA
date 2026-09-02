@@ -1,0 +1,994 @@
+[
+  {
+    "finding": {
+      "finding_id": "1a20ac759c70c23c",
+      "sequence_id": "seq_i2_saml_assertion_id_replay_after_session_revocation",
+      "sequence_description": "I2: Replay the same SAML Assertion/@ID after revoking the first user's sessions. Replay should still be rejected; acceptance suggests replay cache is incorrectly tied to active session state rather than assertion ID uniqueness.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_replay_login_status >= 400\nEvaluation: user_attacker_replay_login_status=200 >= 400 \u2192 False\nImplication: SP accepted replayed assertion ID after session revocation; replay cache may be incorrectly scoped to active sessions",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_replay_login_status >= 400",
+        "evaluation": "user_attacker_replay_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_replay_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_saml_assertion_id_replay_after_session_revocation",
+      "description": "I2: Replay the same SAML Assertion/@ID after revoking the first user's sessions. Replay should still be rejected; acceptance suggests replay cache is incorrectly tied to active session state rather than assertion ID uniqueness.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: Assertion ID replay protection can be bypassed by logging out/revoking sessions, allowing the same assertion ID to be accepted again.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 9,
+      "events_succeeded": 6,
+      "events_failed": 3,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_tenant",
+          "params": {
+            "realm_name": "valence-i2-replay-after-logout",
+            "enabled": true,
+            "display_name": "valence-i2-replay-after-logout",
+            "display_name_html": "valence-i2-replay-after-logout",
+            "verify_email": false,
+            "login_with_email_allowed": true,
+            "duplicate_emails_allowed": false,
+            "reset_password_allowed": true,
+            "registration_allowed": false,
+            "registration_email_as_username": false,
+            "remember_me": false,
+            "brute_force_protected": true,
+            "access_token_lifespan": 300,
+            "sso_session_idle_timeout": 1800,
+            "sso_session_max_lifespan": 36000,
+            "client_session_idle_timeout": 1800,
+            "client_session_max_lifespan": 36000,
+            "default_signature_algorithm": "RS256",
+            "access_code_lifespan": 60,
+            "access_code_lifespan_user_action": 300,
+            "access_code_lifespan_login": 60,
+            "action_token_admin_lifespan": 300,
+            "action_token_user_lifespan": 300,
+            "edit_username_allowed": true,
+            "default_groups": [],
+            "otp_policy_code_reusable": false
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "realm_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_application",
+          "params": {
+            "realm": "valence-i2-replay-after-logout",
+            "client_id": "valence-test-client",
+            "name": "valence-test-client",
+            "description": "client for SAML replay-after-logout test",
+            "enabled": true,
+            "protocol": "openid-connect",
+            "redirect_uris": [
+              "http://localhost:8080/callback"
+            ],
+            "web_origins": [
+              "http://localhost:8080"
+            ],
+            "base_url": "http://localhost:8080",
+            "admin_url": "http://localhost:8080",
+            "root_url": "http://localhost:8080",
+            "public_client": false,
+            "bearer_only": false,
+            "consent_required": false,
+            "standard_flow_enabled": true,
+            "implicit_flow_enabled": false,
+            "direct_access_grants_enabled": true,
+            "service_accounts_enabled": false,
+            "authorization_services_enabled": false,
+            "frontchannel_logout": false,
+            "full_scope_allowed": true,
+            "client_authenticator_type": "client-secret",
+            "secret": "valence-test-secret",
+            "default_client_scopes": [],
+            "optional_client_scopes": [],
+            "attributes": {},
+            "authentication_flow_binding_overrides": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "client_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "realm": "valence-i2-replay-after-logout",
+            "alias": "saml-replay-logout",
+            "display_name": "saml-replay-logout",
+            "provider_id": "saml",
+            "enabled": true,
+            "trust_email": false,
+            "store_token": false,
+            "add_read_token_role_on_create": false,
+            "authenticate_by_default": false,
+            "link_only": false,
+            "hide_on_login": false,
+            "first_broker_login_flow_alias": "",
+            "post_broker_login_flow_alias": "",
+            "organization_id": "",
+            "provider_config": {
+              "singleSignOnServiceUrl": "https://fake-idp.invalid/sso"
+            },
+            "provider_alias": "saml-replay-logout",
+            "provider_type": "saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "idp_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "realm": "valence-i2-replay-after-logout",
+            "provider": "saml-replay-logout",
+            "target_identity": "attacker-replay-logout",
+            "email": "attacker-replay-logout@valence.test",
+            "fixed_assertion_id": "_replay_id_after_logout"
+          },
+          "auth_as": "user_attacker_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_first_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "realm": "valence-i2-replay-after-logout"
+          },
+          "auth_as": "session_user_attacker_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_first_entity_id": "sub",
+            "user_attacker_first_display_name": "preferred_username",
+            "user_attacker_first_policies": "groups",
+            "user_attacker_first_identity_policies": "realm_access.roles",
+            "user_attacker_first_num_uses": "session_state"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_entity_details_by_name",
+          "params": {
+            "realm": "valence-i2-replay-after-logout",
+            "email": "attacker-replay-logout@valence.test",
+            "exact": true,
+            "brief_representation": true,
+            "first": 0,
+            "max": 20
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "admin_user_lookup_users": "users",
+            "admin_user_lookup_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "realm": "valence-i2-replay-after-logout",
+            "user-id": "{{admin_user_lookup_users[0].id}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "revoke_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "realm": "valence-i2-replay-after-logout",
+            "provider": "saml-replay-logout",
+            "target_identity": "attacker-replay-logout",
+            "email": "attacker-replay-logout@valence.test",
+            "fixed_assertion_id": "_replay_id_after_logout"
+          },
+          "auth_as": "user_attacker_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_replay_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "realm": "valence-i2-replay-after-logout"
+          },
+          "auth_as": "session_user_attacker_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_replay_entity_id": "sub",
+            "user_attacker_replay_display_name": "preferred_username",
+            "user_attacker_replay_policies": "groups",
+            "user_attacker_replay_identity_policies": "realm_access.roles",
+            "user_attacker_replay_num_uses": "session_state"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_attacker_first_login_status < 400",
+          "violation_description": "Control SAML login failed; cannot evaluate replay-after-logout behavior",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_replay_after_logout_rejected",
+          "invariant": "I2",
+          "assertion": "user_attacker_replay_login_status >= 400",
+          "violation_description": "SP accepted replayed assertion ID after session revocation; replay cache may be incorrectly scoped to active sessions",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "realm_prefix": "valence-",
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "idp_sso_url": "http://fake-idp.valence.local/saml/sso",
+        "isolation_strategy": "Each test sequence MUST create its own realm using create_tenant with a unique name (e.g., valence-i1-test). Do NOT create IdPs in the master realm \u2014 use enable_auth_method in the new realm. This prev",
+        "idp_fields_warning": "Do NOT include syncMode in enable_auth_method params \u2014 older Keycloak versions reject it as an unrecognized field. Also do NOT include caseSensitiveOriginalUsername at the top level \u2014 it belongs insid",
+        "realm_create_status": "201",
+        "client_create_status": "201",
+        "idp_create_status": "201",
+        "_kc_saml_cookies": "{'KC_RESTART': 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..UXTZJF3859_Y9VIzXUxI3A.MFs2eTlJAw6fJMpALxgMg1FyREBXegCeIVYtId4myxOaCRDiHw6Nt28WFJeN-xJoXR4KPC16FkHq55LP9kacvglgCnR8qGhFP0EcDAULxmFThIQl",
+        "user_attacker_first_login_status": "200",
+        "user_attacker_first_login_success": "True",
+        "user_attacker_first_login_http_status": "200",
+        "user_attacker_first_entity_id": "None",
+        "user_attacker_first_display_name": "None",
+        "user_attacker_first_policies": "None",
+        "user_attacker_first_identity_policies": "None",
+        "user_attacker_first_num_uses": "None",
+        "users": "[{'id': 'e8e265f8-b386-4321-bf8f-4074c8000ab8', 'username': 'attacker-replay-logout', 'firstName': 'attacker-replay-logout', 'lastName': 'User', 'email': 'attacker-replay-logout@valence.test', 'emailV",
+        "admin_user_lookup_users": "[{'id': 'e8e265f8-b386-4321-bf8f-4074c8000ab8', 'username': 'attacker-replay-logout', 'firstName': 'attacker-replay-logout', 'lastName': 'User', 'email': 'attacker-replay-logout@valence.test', 'emailV",
+        "admin_user_lookup_status": "200",
+        "admin_users": "[{'id': 'e8e265f8-b386-4321-bf8f-4074c8000ab8', 'username': 'attacker-replay-logout', 'firstName': 'attacker-replay-logout', 'lastName': 'User', 'email': 'attacker-replay-logout@valence.test', 'emailV",
+        "revoke_status": "404",
+        "user_attacker_replay_login_status": "200",
+        "user_attacker_replay_login_success": "True",
+        "user_attacker_replay_login_http_status": "200",
+        "user_attacker_replay_entity_id": "None",
+        "user_attacker_replay_display_name": "None",
+        "user_attacker_replay_policies": "None",
+        "user_attacker_replay_identity_policies": "None",
+        "user_attacker_replay_num_uses": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "e51008f7a45d9c9d",
+      "sequence_id": "seq_i2_saml_expired_assertion_after_idp_config_change",
+      "sequence_description": "I2: Control SAML login succeeds, then change IdP config (same alias) and attempt an expired assertion. Expired assertion must still be rejected; acceptance indicates NotOnOrAfter not enforced or config-change resets freshness checks.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_expired_login_status >= 400\nEvaluation: user_attacker_expired_login_status=200 >= 400 \u2192 False\nImplication: SP accepted expired SAML assertion (NotOnOrAfter in past), possibly after config change; freshness/time-bound checks not enforced",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_expired_login_status >= 400",
+        "evaluation": "user_attacker_expired_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_expired_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_saml_expired_assertion_after_idp_config_change",
+      "description": "I2: Control SAML login succeeds, then change IdP config (same alias) and attempt an expired assertion. Expired assertion must still be rejected; acceptance indicates NotOnOrAfter not enforced or config-change resets freshness checks.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: After an IdP configuration change, Keycloak may accept an expired SAML assertion (NotOnOrAfter in the past), indicating missing or bypassable time-bound enforcement.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 5,
+      "events_failed": 3,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_tenant",
+          "params": {
+            "realm_name": "valence-i2-expired-after-config",
+            "enabled": true,
+            "display_name": "valence-i2-expired-after-config",
+            "display_name_html": "valence-i2-expired-after-config",
+            "verify_email": false,
+            "login_with_email_allowed": true,
+            "duplicate_emails_allowed": false,
+            "reset_password_allowed": true,
+            "registration_allowed": false,
+            "registration_email_as_username": false,
+            "remember_me": false,
+            "brute_force_protected": true,
+            "access_token_lifespan": 300,
+            "sso_session_idle_timeout": 1800,
+            "sso_session_max_lifespan": 36000,
+            "client_session_idle_timeout": 1800,
+            "client_session_max_lifespan": 36000,
+            "default_signature_algorithm": "RS256",
+            "access_code_lifespan": 60,
+            "access_code_lifespan_user_action": 300,
+            "access_code_lifespan_login": 60,
+            "action_token_admin_lifespan": 300,
+            "action_token_user_lifespan": 300,
+            "edit_username_allowed": true,
+            "default_groups": [],
+            "otp_policy_code_reusable": false
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "realm_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_application",
+          "params": {
+            "realm": "valence-i2-expired-after-config",
+            "client_id": "valence-test-client",
+            "name": "valence-test-client",
+            "description": "client for expired assertion after config change test",
+            "enabled": true,
+            "protocol": "openid-connect",
+            "redirect_uris": [
+              "http://localhost:8080/callback"
+            ],
+            "web_origins": [
+              "http://localhost:8080"
+            ],
+            "base_url": "http://localhost:8080",
+            "admin_url": "http://localhost:8080",
+            "root_url": "http://localhost:8080",
+            "public_client": false,
+            "bearer_only": false,
+            "consent_required": false,
+            "standard_flow_enabled": true,
+            "implicit_flow_enabled": false,
+            "direct_access_grants_enabled": true,
+            "service_accounts_enabled": false,
+            "authorization_services_enabled": false,
+            "frontchannel_logout": false,
+            "full_scope_allowed": true,
+            "client_authenticator_type": "client-secret",
+            "secret": "valence-test-secret",
+            "default_client_scopes": [],
+            "optional_client_scopes": [],
+            "attributes": {},
+            "authentication_flow_binding_overrides": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "client_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "realm": "valence-i2-expired-after-config",
+            "alias": "saml-expired-config",
+            "display_name": "saml-expired-config",
+            "provider_id": "saml",
+            "enabled": true,
+            "trust_email": false,
+            "store_token": false,
+            "add_read_token_role_on_create": false,
+            "authenticate_by_default": false,
+            "link_only": false,
+            "hide_on_login": false,
+            "first_broker_login_flow_alias": "",
+            "post_broker_login_flow_alias": "",
+            "organization_id": "",
+            "provider_config": {
+              "singleSignOnServiceUrl": "https://fake-idp.invalid/sso"
+            },
+            "provider_alias": "saml-expired-config",
+            "provider_type": "saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "idp_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "realm": "valence-i2-expired-after-config",
+            "provider": "saml-expired-config",
+            "target_identity": "control-user",
+            "email": "control-user@valence.test"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "realm": "valence-i2-expired-after-config"
+          },
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_entity_id": "sub",
+            "user_control_display_name": "preferred_username",
+            "user_control_policies": "groups",
+            "user_control_identity_policies": "realm_access.roles",
+            "user_control_num_uses": "session_state"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "realm": "valence-i2-expired-after-config",
+            "alias": "saml-expired-config",
+            "display_name": "saml-expired-config",
+            "provider_id": "saml",
+            "enabled": true,
+            "trust_email": false,
+            "store_token": false,
+            "add_read_token_role_on_create": false,
+            "authenticate_by_default": false,
+            "link_only": false,
+            "hide_on_login": false,
+            "first_broker_login_flow_alias": "",
+            "post_broker_login_flow_alias": "",
+            "organization_id": "",
+            "provider_config": {
+              "singleSignOnServiceUrl": "https://fake-idp.invalid/sso",
+              "forceAuthn": "true"
+            },
+            "provider_alias": "saml-expired-config",
+            "provider_type": "saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "idp_modify_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "realm": "valence-i2-expired-after-config",
+            "provider": "saml-expired-config",
+            "target_identity": "attacker-expired",
+            "email": "attacker-expired@valence.test",
+            "expired_assertion": true
+          },
+          "auth_as": "user_attacker_expired",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_expired_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "realm": "valence-i2-expired-after-config"
+          },
+          "auth_as": "session_user_attacker_expired",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_expired_entity_id": "sub",
+            "user_attacker_expired_display_name": "preferred_username",
+            "user_attacker_expired_policies": "groups",
+            "user_attacker_expired_identity_policies": "realm_access.roles",
+            "user_attacker_expired_num_uses": "session_state"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_login_before_change_succeeds",
+          "invariant": "I2",
+          "assertion": "user_control_login_status < 400",
+          "violation_description": "Control SAML login failed; cannot attribute expired assertion behavior to freshness enforcement",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_assertion_rejected_even_after_config_change",
+          "invariant": "I2",
+          "assertion": "user_attacker_expired_login_status >= 400",
+          "violation_description": "SP accepted expired SAML assertion (NotOnOrAfter in past), possibly after config change; freshness/time-bound checks not enforced",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "realm_prefix": "valence-",
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "idp_sso_url": "http://fake-idp.valence.local/saml/sso",
+        "isolation_strategy": "Each test sequence MUST create its own realm using create_tenant with a unique name (e.g., valence-i1-test). Do NOT create IdPs in the master realm \u2014 use enable_auth_method in the new realm. This prev",
+        "idp_fields_warning": "Do NOT include syncMode in enable_auth_method params \u2014 older Keycloak versions reject it as an unrecognized field. Also do NOT include caseSensitiveOriginalUsername at the top level \u2014 it belongs insid",
+        "realm_create_status": "201",
+        "client_create_status": "201",
+        "idp_create_status": "201",
+        "_kc_saml_cookies": "{'KC_RESTART': 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..3QT4rKXTHWUhE8vY_kjMcw.quE3RyeO2SCVR4soXL8WDLCB0ZwtyQ6CWjZ2g-upFhrF2Gd8XAIClQ4gjsaAtB_Vz6Z3uOJe-KmVvYxaWHKoR_evmZ8brD7jSUcvcg8mWF2lNUMJ",
+        "user_control_login_status": "200",
+        "user_control_login_success": "True",
+        "user_control_login_http_status": "200",
+        "user_control_entity_id": "None",
+        "user_control_display_name": "None",
+        "user_control_policies": "None",
+        "user_control_identity_policies": "None",
+        "user_control_num_uses": "None",
+        "idp_modify_status": "409",
+        "user_attacker_expired_login_status": "200",
+        "user_attacker_expired_login_success": "True",
+        "user_attacker_expired_login_http_status": "200",
+        "user_attacker_expired_entity_id": "None",
+        "user_attacker_expired_display_name": "None",
+        "user_attacker_expired_policies": "None",
+        "user_attacker_expired_identity_policies": "None",
+        "user_attacker_expired_num_uses": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "b3f264c982418cb8",
+      "sequence_id": "seq_i3_saml_cross_realm_endpoint_splice",
+      "sequence_description": "I3 attack: attempt cross-realm splicing by initiating auth in realm-A but posting the forged SAMLResponse to realm-B broker endpoint using the same provider alias. Expected: realm-B must not accept a response tied to realm-A flow state (RelayState/InResponseTo).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_saml_to_realmB_login_status >= 400\nEvaluation: user_attacker_saml_to_realmB_login_status=200 >= 400 \u2192 False\nImplication: Cross-realm splicing: realm-B accepted a SAML response that should be bound to realm-A initiated flow state.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_saml_to_realmB_login_status >= 400",
+        "evaluation": "user_attacker_saml_to_realmB_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "realmB": null,
+          "user_attacker_saml_to_realmB_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i3_saml_cross_realm_endpoint_splice",
+      "description": "I3 attack: attempt cross-realm splicing by initiating auth in realm-A but posting the forged SAMLResponse to realm-B broker endpoint using the same provider alias. Expected: realm-B must not accept a response tied to realm-A flow state (RelayState/InResponseTo).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: Broker flow state is not correctly scoped to realm; cross-realm endpoint splicing could complete authentication in the wrong realm.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 10,
+      "events_succeeded": 8,
+      "events_failed": 2,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_tenant",
+          "params": {
+            "realm_name": "valence-i3-cross-realm-A-1",
+            "enabled": true,
+            "display_name": "valence-i3-cross-realm-A-1",
+            "display_name_html": "valence-i3-cross-realm-A-1",
+            "verify_email": false,
+            "login_with_email_allowed": true,
+            "duplicate_emails_allowed": false,
+            "reset_password_allowed": true,
+            "registration_allowed": false,
+            "registration_email_as_username": false,
+            "remember_me": false,
+            "brute_force_protected": true,
+            "access_token_lifespan": 300,
+            "sso_session_idle_timeout": 1800,
+            "sso_session_max_lifespan": 3600,
+            "client_session_idle_timeout": 1800,
+            "client_session_max_lifespan": 3600,
+            "default_signature_algorithm": "RS256",
+            "access_code_lifespan": 60,
+            "access_code_lifespan_user_action": 300,
+            "access_code_lifespan_login": 60,
+            "action_token_admin_lifespan": 300,
+            "action_token_user_lifespan": 300,
+            "edit_username_allowed": true,
+            "default_groups": [],
+            "otp_policy_code_reusable": false
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "realmA": "realm_name"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_tenant",
+          "params": {
+            "realm_name": "valence-i3-cross-realm-B-1",
+            "enabled": true,
+            "display_name": "valence-i3-cross-realm-B-1",
+            "display_name_html": "valence-i3-cross-realm-B-1",
+            "verify_email": false,
+            "login_with_email_allowed": true,
+            "duplicate_emails_allowed": false,
+            "reset_password_allowed": true,
+            "registration_allowed": false,
+            "registration_email_as_username": false,
+            "remember_me": false,
+            "brute_force_protected": true,
+            "access_token_lifespan": 300,
+            "sso_session_idle_timeout": 1800,
+            "sso_session_max_lifespan": 3600,
+            "client_session_idle_timeout": 1800,
+            "client_session_max_lifespan": 3600,
+            "default_signature_algorithm": "RS256",
+            "access_code_lifespan": 60,
+            "access_code_lifespan_user_action": 300,
+            "access_code_lifespan_login": 60,
+            "action_token_admin_lifespan": 300,
+            "action_token_user_lifespan": 300,
+            "edit_username_allowed": true,
+            "default_groups": [],
+            "otp_policy_code_reusable": false
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "realmB": "realm_name"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_application",
+          "params": {
+            "realm": "valence-i3-cross-realm-A-1",
+            "client_id": "valence-test-client",
+            "name": "client-realmA",
+            "description": "client in realm A",
+            "enabled": true,
+            "protocol": "openid-connect",
+            "redirect_uris": [
+              "http://localhost:8080/callback"
+            ],
+            "web_origins": [
+              "http://localhost:8080"
+            ],
+            "base_url": "http://localhost:8080",
+            "admin_url": "http://localhost:8080",
+            "root_url": "http://localhost:8080",
+            "public_client": false,
+            "bearer_only": false,
+            "consent_required": false,
+            "standard_flow_enabled": true,
+            "implicit_flow_enabled": false,
+            "direct_access_grants_enabled": true,
+            "service_accounts_enabled": false,
+            "authorization_services_enabled": false,
+            "frontchannel_logout": false,
+            "full_scope_allowed": true,
+            "client_authenticator_type": "client-secret",
+            "secret": "valence-test-secret",
+            "default_client_scopes": [],
+            "optional_client_scopes": [],
+            "attributes": {},
+            "authentication_flow_binding_overrides": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "clientA_uuid": "client-uuid"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_application",
+          "params": {
+            "realm": "valence-i3-cross-realm-B-1",
+            "client_id": "valence-test-client",
+            "name": "client-realmB",
+            "description": "client in realm B",
+            "enabled": true,
+            "protocol": "openid-connect",
+            "redirect_uris": [
+              "http://localhost:8080/callback"
+            ],
+            "web_origins": [
+              "http://localhost:8080"
+            ],
+            "base_url": "http://localhost:8080",
+            "admin_url": "http://localhost:8080",
+            "root_url": "http://localhost:8080",
+            "public_client": false,
+            "bearer_only": false,
+            "consent_required": false,
+            "standard_flow_enabled": true,
+            "implicit_flow_enabled": false,
+            "direct_access_grants_enabled": true,
+            "service_accounts_enabled": false,
+            "authorization_services_enabled": false,
+            "frontchannel_logout": false,
+            "full_scope_allowed": true,
+            "client_authenticator_type": "client-secret",
+            "secret": "valence-test-secret",
+            "default_client_scopes": [],
+            "optional_client_scopes": [],
+            "attributes": {},
+            "authentication_flow_binding_overrides": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "clientB_uuid": "client-uuid"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "realm": "valence-i3-cross-realm-A-1",
+            "alias": "saml-idp-i3-xrealm",
+            "display_name": "saml-idp-i3-xrealm",
+            "provider_id": "saml",
+            "enabled": true,
+            "trust_email": false,
+            "store_token": false,
+            "add_read_token_role_on_create": false,
+            "authenticate_by_default": false,
+            "link_only": false,
+            "hide_on_login": false,
+            "first_broker_login_flow_alias": "",
+            "post_broker_login_flow_alias": "",
+            "organization_id": "",
+            "provider_config": {
+              "singleSignOnServiceUrl": "https://fake-idp.invalid/sso"
+            },
+            "provider_alias": "saml-idp-i3-xrealm",
+            "provider_type": "saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "idp_aliasA": "alias"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "realm": "valence-i3-cross-realm-B-1",
+            "alias": "saml-idp-i3-xrealm",
+            "display_name": "saml-idp-i3-xrealm",
+            "provider_id": "saml",
+            "enabled": true,
+            "trust_email": false,
+            "store_token": false,
+            "add_read_token_role_on_create": false,
+            "authenticate_by_default": false,
+            "link_only": false,
+            "hide_on_login": false,
+            "first_broker_login_flow_alias": "",
+            "post_broker_login_flow_alias": "",
+            "organization_id": "",
+            "provider_config": {
+              "singleSignOnServiceUrl": "https://fake-idp.invalid/sso"
+            },
+            "provider_alias": "saml-idp-i3-xrealm",
+            "provider_type": "saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "idp_aliasB": "alias"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "realm": "valence-i3-cross-realm-A-1",
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid",
+            "response_type": "code",
+            "response_mode": "query",
+            "state": "state-xrealm",
+            "nonce": "nonce-xrealm",
+            "code_challenge": "",
+            "code_challenge_method": "",
+            "request": "",
+            "claims": "",
+            "acr_values": "",
+            "prompt": "",
+            "audience": ""
+          },
+          "auth_as": "user_flow_realmA",
+          "expected_outcome": "any",
+          "captures": {
+            "realmA_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "realm": "valence-i3-cross-realm-B-1",
+            "provider": "saml-idp-i3-xrealm",
+            "saml_response": "",
+            "relay_state": "",
+            "target_identity": "attackerXRealm",
+            "email": "attackerXRealm@valence.test"
+          },
+          "auth_as": "user_attacker_saml_to_realmB",
+          "expected_outcome": "any",
+          "captures": {
+            "saml_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "realm": "valence-i3-cross-realm-B-1"
+          },
+          "auth_as": "session_user_attacker_saml_to_realmB",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_saml_to_realmB_entity_id": "sub",
+            "user_attacker_saml_to_realmB_display_name": "preferred_username",
+            "user_attacker_saml_to_realmB_policies": "groups",
+            "user_attacker_saml_to_realmB_identity_policies": "realm_access.roles",
+            "user_attacker_saml_to_realmB_num_uses": "session_state"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_entity_details_by_name",
+          "params": {
+            "realm": "valence-i3-cross-realm-B-1",
+            "email": "attackerXRealm@valence.test",
+            "exact": true,
+            "username": "",
+            "search": "",
+            "idp_alias": "",
+            "idp_user_id": "",
+            "enabled": "",
+            "email_verified": "",
+            "first_name": "",
+            "last_name": "",
+            "q": "",
+            "first": 0,
+            "max": 20,
+            "brief_representation": true
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "admin_user_search_http_status": "http_status",
+            "admin_user_search_users": "users"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_i3_saml_cross_realm_endpoint_splice_0",
+          "invariant": "I3",
+          "assertion": "user_attacker_saml_to_realmB_login_status >= 400",
+          "violation_description": "Cross-realm splicing: realm-B accepted a SAML response that should be bound to realm-A initiated flow state.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_i3_saml_cross_realm_endpoint_splice_1",
+          "invariant": "I3",
+          "assertion": "user_attacker_saml_to_realmB_http_status >= 400",
+          "violation_description": "Cross-realm splicing: userinfo succeeded in realm-B for a login that should have been rejected due to missing/incorrect realm-bound flow state.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "realm_prefix": "valence-",
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "idp_sso_url": "http://fake-idp.valence.local/saml/sso",
+        "isolation_strategy": "Each test sequence MUST create its own realm using create_tenant with a unique name (e.g., valence-i1-test). Do NOT create IdPs in the master realm \u2014 use enable_auth_method in the new realm. This prev",
+        "idp_fields_warning": "Do NOT include syncMode in enable_auth_method params \u2014 older Keycloak versions reject it as an unrecognized field. Also do NOT include caseSensitiveOriginalUsername at the top level \u2014 it belongs insid",
+        "realmA": "None",
+        "realmB": "None",
+        "clientA_uuid": "None",
+        "clientB_uuid": "None",
+        "idp_aliasA": "None",
+        "idp_aliasB": "None",
+        "realmA_auth_http_status": "400",
+        "_kc_saml_cookies": "{'KC_RESTART': 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..A_LJXGKY1gRZcHaZmZ-vVg.rporBE3x5dVb6plWj211DVmS7mwxEckVIyvOny4YB98hxe5ZjMWUNHwoXbxDxiDIcyM75LyBo8BMygQGa5zVBYwQ9iFzLjWrwp4Q7f8d4u_FhHIb",
+        "saml_login_http_status": "200",
+        "user_attacker_saml_to_realmB_login_success": "True",
+        "user_attacker_saml_to_realmB_login_status": "200",
+        "user_attacker_saml_to_realmB_login_http_status": "200",
+        "user_attacker_saml_to_realmB_entity_id": "None",
+        "user_attacker_saml_to_realmB_display_name": "None",
+        "user_attacker_saml_to_realmB_policies": "None",
+        "user_attacker_saml_to_realmB_identity_policies": "None",
+        "user_attacker_saml_to_realmB_num_uses": "None",
+        "users": "[{'id': '2a13b5a1-bf2d-45d7-9952-7aec413dede4', 'username': 'attackerxrealm', 'firstName': 'attackerXRealm', 'lastName': 'User', 'email': 'attackerxrealm@valence.test', 'emailVerified': False, 'enable",
+        "admin_user_search_http_status": "200",
+        "admin_user_search_users": "[{'id': '2a13b5a1-bf2d-45d7-9952-7aec413dede4', 'username': 'attackerxrealm', 'firstName': 'attackerXRealm', 'lastName': 'User', 'email': 'attackerxrealm@valence.test', 'emailVerified': False, 'enable",
+        "admin_users": "[{'id': '2a13b5a1-bf2d-45d7-9952-7aec413dede4', 'username': 'attackerxrealm', 'firstName': 'attackerXRealm', 'lastName': 'User', 'email': 'attackerxrealm@valence.test', 'emailVerified': False, 'enable"
+      }
+    }
+  }
+]

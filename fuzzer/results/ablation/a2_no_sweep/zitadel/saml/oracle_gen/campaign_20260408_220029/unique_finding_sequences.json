@@ -1,0 +1,210 @@
+[
+  {
+    "finding": {
+      "finding_id": "583f273263856bd0",
+      "sequence_id": "seq_i1_jwt_idp_wrong_audience_accepted",
+      "sequence_description": "JWT IdP audience validation: control JWT with correct issuer/time claims should be accepted; attack JWT differs only by wrong aud. If accepted, ZITADEL is verifying signature but not the semantic audience binding (proof integrity failure).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: jwt_aud_attack_status >= 400\nEvaluation: jwt_aud_attack_status=200 >= 400 \u2192 False\nImplication: JWT with wrong aud was accepted, indicating audience is not validated and proof semantics consumed differ from those verified.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "jwt_aud_attack_status >= 400",
+        "evaluation": "jwt_aud_attack_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "jwt_aud_attack_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_jwt_idp_wrong_audience_accepted",
+      "description": "JWT IdP audience validation: control JWT with correct issuer/time claims should be accepted; attack JWT differs only by wrong aud. If accepted, ZITADEL is verifying signature but not the semantic audience binding (proof integrity failure).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: ZITADEL must reject a JWT presented to the JWT IdP flow when its aud does not match the intended relying party/broker policy; accepting it means Verify(proof) is not applied to the same semantic proof that is consumed.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 7,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "mint_custom_jwt",
+          "params": {
+            "sub": "jwt-aud-ctrl",
+            "iss": "{{mock_idp_issuer}}",
+            "exp": "{{now_epoch_plus_3600}}",
+            "iat": "{{now_epoch}}",
+            "email": "jwt-aud-ctrl@test.local",
+            "name": "jwt-aud-ctrl"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "jwt_aud_control": "minted_token"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "mint_custom_jwt",
+          "params": {
+            "sub": "jwt-aud-atk",
+            "iss": "{{mock_idp_issuer}}",
+            "exp": "{{now_epoch_plus_3600}}",
+            "iat": "{{now_epoch}}",
+            "email": "jwt-aud-atk@test.local",
+            "name": "jwt-aud-atk",
+            "aud": "https://wrong-audience.example"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "jwt_aud_attack_wrong_aud": "minted_token"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_idp_intent",
+          "params": {
+            "idp_id": "{{jwt_idp_id}}",
+            "success_url": "http://localhost:8085/idp/success",
+            "failure_url": "http://localhost:8085/idp/failure"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "jwt_aud_control_auth_url": "auth_url"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "complete_jwt_idp_login",
+          "params": {
+            "auth_request_id": "{{jwt_aud_control_auth_url_authRequestID}}",
+            "user_agent_id": "{{jwt_aud_control_auth_url_userAgentID}}",
+            "jwt_token": "{{jwt_aud_control}}"
+          },
+          "auth_as": "user_jwt_aud_control",
+          "expected_outcome": "any",
+          "captures": {
+            "jwt_aud_control_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "start_idp_intent",
+          "params": {
+            "idp_id": "{{jwt_idp_id}}",
+            "success_url": "http://localhost:8085/idp/success",
+            "failure_url": "http://localhost:8085/idp/failure"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "jwt_aud_attack_auth_url": "auth_url"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "complete_jwt_idp_login",
+          "params": {
+            "auth_request_id": "{{jwt_aud_attack_auth_url_authRequestID}}",
+            "user_agent_id": "{{jwt_aud_attack_auth_url_userAgentID}}",
+            "jwt_token": "{{jwt_aud_attack_wrong_aud}}"
+          },
+          "auth_as": "user_jwt_aud_attack",
+          "expected_outcome": "any",
+          "captures": {
+            "jwt_aud_attack_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "retrieve_idp_intent",
+          "params": {
+            "idp_intent_id": "{{idp_intent_id}}",
+            "idp_intent_token": "{{idp_intent_token}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "jwt_aud_intent_user_id": "user_id",
+            "jwt_aud_intent_idp_user_id": "idp_user_id",
+            "jwt_aud_intent_http_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_jwt_aud_control_accepted",
+          "invariant": "I1",
+          "assertion": "jwt_aud_control_status == 200",
+          "violation_description": "Control JWT should be accepted by JWT IdP flow; otherwise the test setup is invalid for audience integrity testing.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_jwt_wrong_aud_rejected",
+          "invariant": "I1",
+          "assertion": "jwt_aud_attack_status >= 400",
+          "violation_description": "JWT with wrong aud was accepted, indicating audience is not validated and proof semantics consumed differ from those verified.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "project_id": "367739177921413124",
+        "client_id": "367739178038919172",
+        "redirect_uri": "http://localhost:8085/callback",
+        "app_id": "367739178038853636",
+        "jwt_idp_id": "367739178324066308",
+        "mock_idp_url": "http://localhost:9090",
+        "jwt_idp_header": "x-jwt-assertion",
+        "saml_metadata_url": "http://mock-idp:9090/saml/metadata",
+        "mock_idp_entity_id": "http://mock-idp:9090",
+        "isolation_strategy": "Zitadel management API uses REST gateway paths under /management/v1/ (org-scoped). Do NOT use gRPC Connect paths. For IdP setup: create_provider creates the IdP, enable_auth_method adds it to the logi",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "jwt_idp_flow_doc": "To test JWT IdP validation: 1) mint_custom_jwt \u2192 captures minted_token. 2) start_idp_intent with idp_id={{jwt_idp_id}} \u2192 captures auth_url, plus auto-parsed auth_url_authRequestID and auth_url_userAge",
+        "saml_sp_acs_url": "http://localhost:8085/idps/367740679197032452/saml/acs",
+        "minted_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjVkUkxReHlBSjFSN2ZBUEIiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJqd3QtYXVkLWF0ayIsImlzcyI6Imh0dHA6Ly9tb2NrLWlkcDo5MDkwIiwiZW1haWwiOiJqd3QtYXVkLWF0a0B0ZXN0LmxvY2FsIiwibmFtZSI6Imp3dC1hd",
+        "kid": "5dRLQxyAJ1R7fAPB",
+        "jwt_aud_control": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjVkUkxReHlBSjFSN2ZBUEIiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJqd3QtYXVkLWN0cmwiLCJpc3MiOiJodHRwOi8vbW9jay1pZHA6OTA5MCIsImVtYWlsIjoiand0LWF1ZC1jdHJsQHRlc3QubG9jYWwiLCJuYW1lIjoiand0L",
+        "jwt_aud_attack_wrong_aud": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjVkUkxReHlBSjFSN2ZBUEIiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJqd3QtYXVkLWF0ayIsImlzcyI6Imh0dHA6Ly9tb2NrLWlkcDo5MDkwIiwiZW1haWwiOiJqd3QtYXVkLWF0a0B0ZXN0LmxvY2FsIiwibmFtZSI6Imp3dC1hd",
+        "auth_url": "http://mock-idp:9090/authorize?authRequestID=367740691058524164&userAgentID=pQMY2MejrztkgH0vGvpptR8_vMLVRqvecabVU2wI07KJ6w",
+        "auth_url_authRequestID": "367740691058524164",
+        "auth_url_userAgentID": "pQMY2MejrztkgH0vGvpptR8_vMLVRqvecabVU2wI07KJ6w",
+        "idp_intent_id": "367740691058524164",
+        "jwt_aud_control_auth_url": "http://mock-idp:9090/authorize?authRequestID=367740690974638084&userAgentID=aHBUYXwKowV_cSmMG9EIU9T7VQp6cX9tVjgrbdLr7ArEAw",
+        "jwt_aud_control_auth_url_authRequestID": "367740690974638084",
+        "jwt_aud_control_auth_url_userAgentID": "aHBUYXwKowV_cSmMG9EIU9T7VQp6cX9tVjgrbdLr7ArEAw",
+        "idp_intent_token": "IkVvZySyB7X0TL3nRiNzXJUlKY8eHebUCWEn3kaGoTSKZQ",
+        "user_jwt_aud_control_idp_intent_id": "367740690974638084",
+        "user_jwt_aud_control_idp_intent_token": "JNZLR1F8gseLSU3fO-CQg946-3Mqm9LLdA9PEU_zUSiIeg",
+        "jwt_aud_control_status": "200",
+        "jwt_aud_attack_auth_url": "http://mock-idp:9090/authorize?authRequestID=367740691058524164&userAgentID=pQMY2MejrztkgH0vGvpptR8_vMLVRqvecabVU2wI07KJ6w",
+        "jwt_aud_attack_auth_url_authRequestID": "367740691058524164",
+        "jwt_aud_attack_auth_url_userAgentID": "pQMY2MejrztkgH0vGvpptR8_vMLVRqvecabVU2wI07KJ6w",
+        "user_jwt_aud_attack_idp_intent_id": "367740691058524164",
+        "user_jwt_aud_attack_idp_intent_token": "IkVvZySyB7X0TL3nRiNzXJUlKY8eHebUCWEn3kaGoTSKZQ",
+        "jwt_aud_attack_status": "200",
+        "idp_user_id": "{'aud': ['https://wrong-audience.example'], 'email': 'jwt-aud-atk@test.local', 'exp': 1775690132, 'iat': 1775686532, 'iss': 'http://mock-idp:9090', 'name': 'jwt-aud-atk', 'sub': 'jwt-aud-atk'}",
+        "jwt_aud_intent_user_id": "None",
+        "jwt_aud_intent_idp_user_id": "{'aud': ['https://wrong-audience.example'], 'email': 'jwt-aud-atk@test.local', 'exp': 1775690132, 'iat': 1775686532, 'iss': 'http://mock-idp:9090', 'name': 'jwt-aud-atk', 'sub': 'jwt-aud-atk'}",
+        "jwt_aud_intent_http_status": "200"
+      }
+    }
+  }
+]

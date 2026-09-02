@@ -1,0 +1,111 @@
+{
+  "name": "authentik",
+  "base_url": "http://localhost:9000",
+  "admin_auth": {
+    "header": "Authorization",
+    "value": "Bearer akadmin-token"
+  },
+  "supported_protocols": [
+    "oidc_jwt",
+    "saml"
+  ],
+  "identity_carrying_types": [
+    "jwt",
+    "saml"
+  ],
+  "api_constraints": [
+    "authentik admin API requires Authorization: Bearer <api-token> header",
+    "OAuth2 providers use /application/o/<slug>/token/ for token endpoint",
+    "SAML sources use /source/saml/<slug>/acs/ for assertion consumer service",
+    "Userinfo endpoint is /application/o/<slug>/userinfo/",
+    "Flows are referenced by slug in provider configuration"
+  ],
+  "api_mapping": {
+    "oidc_jwt": {
+      "setup_jwt_provider": {
+        "method": "POST",
+        "path": "/api/v3/providers/oauth2/",
+        "body_map": {
+          "name": "name",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "authorization_flow": "authorization_flow",
+          "client_type": "client_type",
+          "signing_key": "signing_key",
+          "redirect_uris": "redirect_uris"
+        },
+        "auth": "admin"
+      },
+      "login_jwt": {
+        "method": "POST",
+        "path": "/application/o/{slug}/token/",
+        "body_map": {
+          "grant_type": "grant_type",
+          "client_assertion_type": "client_assertion_type",
+          "client_assertion": "client_assertion",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "scope": "scope"
+        },
+        "content_type": "form",
+        "response_map": {
+          "session_token": "access_token"
+        }
+      },
+      "verify_identity": {
+        "method": "GET",
+        "path": "/application/o/{slug}/userinfo/",
+        "auth": "session",
+        "response_map": {
+          "identity_id": "sub",
+          "identity_name": "preferred_username",
+          "groups": "groups"
+        }
+      }
+    },
+    "saml": {
+      "setup_saml_source": {
+        "method": "POST",
+        "path": "/api/v3/sources/saml/",
+        "body_map": {
+          "name": "name",
+          "slug": "slug",
+          "issuer": "issuer",
+          "sso_url": "sso_url",
+          "binding_type": "binding_type",
+          "verification_kp": "verification_kp",
+          "enabled": "enabled"
+        },
+        "auth": "admin"
+      },
+      "login_saml": {
+        "method": "POST",
+        "path": "/source/saml/{slug}/acs/",
+        "body_map": {
+          "SAMLResponse": "SAMLResponse",
+          "RelayState": "RelayState"
+        },
+        "content_type": "form"
+      }
+    }
+  },
+  "verification_fields": {
+    "identity_field": "sub",
+    "identity_name_field": "preferred_username",
+    "policies_field": "groups"
+  },
+  "known_behaviors": [
+    {
+      "id": "authentik_saml_unsigned_default",
+      "description": "authentik SAML source accepts unsigned assertions when verification_kp is not configured. This is by-design (default-open) but a misconfiguration risk.",
+      "invariants": ["I1"],
+      "conditions": {
+        "mismatch_type": "unsigned_assertion",
+        "verification_kp_configured": false
+      },
+      "action": "downgrade_to_by_design",
+      "source": "authentik default SAML source configuration"
+    }
+  ],
+  "cleanup_rules": []
+}

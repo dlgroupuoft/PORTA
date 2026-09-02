@@ -1,0 +1,215 @@
+{
+  "_comment": "Keycloak type confusion campaign configuration for VALENCE fuzzer",
+  "_purpose": "Run the same type confusion suite that found bugs in Vault, against Keycloak's OIDC token validation",
+
+  "platform": "keycloak",
+  "base_url": "http://localhost:8080",
+  "admin_credentials": {
+    "username": "admin",
+    "password": "admin",
+    "token_endpoint": "/realms/master/protocol/openid-connect/token",
+    "client_id": "admin-cli"
+  },
+
+  "target_realm": {
+    "name": "valence-type-confusion",
+    "create_endpoint": "/admin/realms",
+    "config": {
+      "realm": "valence-type-confusion",
+      "enabled": true,
+      "sslRequired": "none",
+      "registrationAllowed": false
+    }
+  },
+
+  "identity_provider": {
+    "_comment": "OIDC IdP pointing to mock-idp for token exchange",
+    "alias": "mock-oidc-tc",
+    "provider_id": "oidc",
+    "create_endpoint": "/admin/realms/valence-type-confusion/identity-provider/instances",
+    "config": {
+      "alias": "mock-oidc-tc",
+      "providerId": "oidc",
+      "enabled": true,
+      "trustEmail": true,
+      "storeToken": true,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "authorizationUrl": "http://valence-mock-idp:9090/authorize",
+        "tokenUrl": "http://valence-mock-idp:9090/token",
+        "jwksUrl": "http://valence-mock-idp:9090/.well-known/jwks.json",
+        "userInfoUrl": "http://valence-mock-idp:9090/userinfo",
+        "clientId": "keycloak-tc-client",
+        "clientSecret": "keycloak-tc-secret",
+        "defaultScope": "openid email profile groups",
+        "validateSignature": "true",
+        "useJwksUrl": "true"
+      }
+    }
+  },
+
+  "oidc_client": {
+    "_comment": "Client in target realm for direct JWT validation testing",
+    "client_id": "tc-test-client",
+    "create_endpoint": "/admin/realms/valence-type-confusion/clients",
+    "config": {
+      "clientId": "tc-test-client",
+      "secret": "tc-test-secret",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "redirectUris": ["http://localhost:9090/callback", "*"],
+      "webOrigins": ["*"],
+      "attributes": {
+        "access.token.lifespan": "3600"
+      }
+    }
+  },
+
+  "protocol_mappers": {
+    "_comment": "Mappers to include groups and custom claims in tokens",
+    "groups_mapper": {
+      "name": "groups",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-group-membership-mapper",
+      "config": {
+        "claim.name": "groups",
+        "full.path": "false",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true"
+      }
+    },
+    "department_mapper": {
+      "name": "department",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "config": {
+        "user.attribute": "department",
+        "claim.name": "department",
+        "jsonType.label": "String",
+        "id.token.claim": "true",
+        "access.token.claim": "true"
+      }
+    }
+  },
+
+  "roles_and_groups": {
+    "_comment": "Keycloak realm roles and groups for group-based policy testing",
+    "roles_endpoint": "/admin/realms/valence-type-confusion/roles",
+    "groups_endpoint": "/admin/realms/valence-type-confusion/groups",
+    "roles": [
+      {"name": "user", "description": "Basic user role"},
+      {"name": "admin", "description": "Admin role for escalation testing"}
+    ],
+    "groups": [
+      {"name": "developers"},
+      {"name": "admins"}
+    ]
+  },
+
+  "test_user": {
+    "create_endpoint": "/admin/realms/valence-type-confusion/users",
+    "config": {
+      "username": "alice",
+      "email": "alice@valence.local",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alice-password",
+          "temporary": false
+        }
+      ],
+      "attributes": {
+        "department": ["engineering"]
+      },
+      "groups": ["/developers"]
+    }
+  },
+
+  "campaign_config": {
+    "_comment": "Engine configuration for JWTEngine when targeting Keycloak",
+    "engine": "jwt",
+    "legitimate_issuer": "http://localhost:8080/realms/valence-type-confusion",
+    "legitimate_audience": "tc-test-client",
+    "legitimate_subject": "alice",
+    "extra_claims": {
+      "email": "alice@valence.local",
+      "groups": ["developers"],
+      "department": "engineering"
+    },
+    "role_name": "N/A — Keycloak uses client scopes, not roles for JWT validation"
+  },
+
+  "authentication_methods": {
+    "_comment": "How to submit tokens to Keycloak for validation",
+
+    "method_1_token_introspection": {
+      "_comment": "Submit JWT to Keycloak's introspection endpoint — tests server-side validation",
+      "endpoint": "/realms/valence-type-confusion/protocol/openid-connect/token/introspect",
+      "method": "POST",
+      "body_format": "form",
+      "params": {
+        "token": "<jwt>",
+        "client_id": "tc-test-client",
+        "client_secret": "tc-test-secret"
+      },
+      "success_indicator": {"active": true}
+    },
+
+    "method_2_userinfo": {
+      "_comment": "Submit JWT as Bearer token to userinfo endpoint — tests token acceptance",
+      "endpoint": "/realms/valence-type-confusion/protocol/openid-connect/userinfo",
+      "method": "GET",
+      "headers": {
+        "Authorization": "Bearer <jwt>"
+      },
+      "success_indicator_http": 200
+    },
+
+    "method_3_broker_token_exchange": {
+      "_comment": "Exchange external IdP token through broker — tests claim mapping",
+      "endpoint": "/realms/valence-type-confusion/protocol/openid-connect/token",
+      "method": "POST",
+      "body_format": "form",
+      "params": {
+        "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+        "subject_token": "<jwt>",
+        "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+        "subject_issuer": "mock-oidc-tc",
+        "client_id": "tc-test-client",
+        "client_secret": "tc-test-secret"
+      },
+      "success_indicator": "access_token in response"
+    }
+  },
+
+  "manual_setup_steps": [
+    "1. Start Docker: cd docker && docker compose up -d && sleep 30",
+    "2. Wait for Keycloak to be ready: curl http://localhost:8080/realms/master (retry until 200)",
+    "3. Run docker/keycloak/setup.sh to create base realm (or use this config to create programmatically)",
+    "4. Create the 'valence-type-confusion' realm via Admin REST API",
+    "5. Create the OIDC IdP (mock-oidc-tc) — NOTE: uses Docker-internal hostname 'valence-mock-idp:9090'",
+    "6. Create the tc-test-client with protocol mappers for groups and department",
+    "7. Create roles, groups, and test user",
+    "8. IMPORTANT: Configure mock-idp to respond to Keycloak's OIDC discovery requests",
+    "9. Test baseline: obtain token via direct access grant, verify groups claim is present",
+    "10. Run campaign: use JWTEngine mutations, submit via token introspection endpoint"
+  ],
+
+  "key_differences_from_vault": {
+    "token_validation": "Keycloak validates its OWN tokens (self-issued). For external token testing, use token exchange or broker flow.",
+    "groups_handling": "Keycloak includes groups via protocol mapper. The groups claim format depends on the mapper config (full path vs short name).",
+    "claim_restrictions": "Keycloak uses client scopes and audience restrictions, not bound_claims. The equivalent test is: does Keycloak accept a token with wrong audience in the 'aud' claim?",
+    "type_confusion_surface": "Main attack surface is token exchange: submit an external JWT with type-confused claims and see if Keycloak maps them correctly to internal user attributes.",
+    "introspection_vs_login": "Vault has a single login endpoint. Keycloak has introspection (checks token validity), userinfo (returns claims), and token exchange (swaps external token). Each may handle types differently."
+  }
+}

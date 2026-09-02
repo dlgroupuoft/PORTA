@@ -1,0 +1,3215 @@
+[
+  {
+    "finding": {
+      "finding_id": "130ef9a03418e957",
+      "sequence_id": "seq_i1_alg_none_vs_control",
+      "sequence_description": "Direct JWT endpoint: control login with HS256-signed JWT succeeds; attack login with alg=none but same semantic claims should be rejected (proof integrity).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_alg_none_login_status >= 400\nEvaluation: user_attacker_alg_none_login_status=200 >= 400 \u2192 False\nImplication: Vault accepted an unsigned JWT (alg=none) for JWT auth login; authenticity was not enforced on the consumed proof",
+      "cve_analog": "CVE-2015-9235",
+      "evidence": {
+        "assertion": "user_attacker_alg_none_login_status >= 400",
+        "evaluation": "user_attacker_alg_none_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_alg_none_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_alg_none_vs_control",
+      "description": "Direct JWT endpoint: control login with HS256-signed JWT succeeds; attack login with alg=none but same semantic claims should be rejected (proof integrity).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: Vault must not accept an unsigned JWT (alg=none) even if the semantic claims (sub/aud/iss) match a valid token; verification must apply to the exact consumed proof.",
+      "cve_analog": "CVE-2015-9235",
+      "status": "COMPLETED",
+      "events_total": 10,
+      "events_succeeded": 9,
+      "events_failed": 1,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "mount": "jwt",
+            "auth_type": "jwt",
+            "description": "jwt mount for I1 alg=none test",
+            "config": {},
+            "local": false,
+            "seal_wrap": false,
+            "external_entropy_access": false,
+            "options": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwt_validation_pubkeys": [
+              "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwFuzzerTestKeyMaterialOnlyForExecutorStub\n-----END PUBLIC KEY-----"
+            ],
+            "bound_issuer": "https://issuer.example",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "i1-alg-none-role"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_policy",
+          "params": {
+            "name": "i1-read-test",
+            "policy_document": "path \"secret/data/i1/*\" { capabilities = [\"read\"] }"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "seed_protected_resource",
+          "params": {
+            "engine": "secret",
+            "path": "i1/alg-none",
+            "options": {},
+            "secret_data": {
+              "value": "proof-integrity"
+            },
+            "cas": 0
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "seed_version": "version"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_auth_role",
+          "params": {
+            "mount": "jwt",
+            "role_name": "i1-alg-none-role",
+            "role_type": "jwt",
+            "identity_claim": "sub",
+            "audience_restriction": [
+              "vault"
+            ],
+            "claim_constraints": {
+              "iss": "https://issuer.example"
+            },
+            "claim_constraint_type": "string",
+            "expiration_leeway": -1,
+            "not_before_leeway": -1,
+            "clock_skew_leeway": -1
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "i1-alg-none-role",
+            "token": "CONTROL_VALID",
+            "jwt_claims": {
+              "iss": "https://issuer.example",
+              "sub": "user-control",
+              "aud": "vault",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}"
+            }
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_entity_id": "data.entity_id",
+            "user_control_display_name": "data.display_name",
+            "user_control_policies": "data.policies",
+            "user_control_identity_policies": "data.identity_policies",
+            "user_control_meta": "data.meta",
+            "user_control_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {
+            "engine": "secret",
+            "path": "i1/alg-none"
+          },
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_read_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "i1-alg-none-role",
+            "token": "ATTACK_ALG_NONE",
+            "jwt_claims": {
+              "iss": "https://issuer.example",
+              "sub": "user-attacker",
+              "aud": "vault",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}",
+              "header": {
+                "alg": "none"
+              }
+            }
+          },
+          "auth_as": "user_attacker_alg_none",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_alg_none",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_alg_none_entity_id": "data.entity_id",
+            "user_attacker_alg_none_display_name": "data.display_name",
+            "user_attacker_alg_none_policies": "data.policies",
+            "user_attacker_alg_none_identity_policies": "data.identity_policies",
+            "user_attacker_alg_none_meta": "data.meta",
+            "user_attacker_alg_none_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_succeeds",
+          "invariant": "I1",
+          "assertion": "user_control_http_status == 200 AND user_control_read_status == 200",
+          "violation_description": "Control JWT login/read failed; cannot interpret alg=none rejection as proof-integrity enforcement",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_reject_alg_none",
+          "invariant": "I1",
+          "assertion": "user_attacker_alg_none_login_status >= 400",
+          "violation_description": "Vault accepted an unsigned JWT (alg=none) for JWT auth login; authenticity was not enforced on the consumed proof",
+          "cve_analog": "CVE-2015-9235"
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "mount": "jwt",
+        "engine": "secret",
+        "version": "1",
+        "created_time": "2026-04-04T04:09:55.880669699Z",
+        "seed_version": "1",
+        "session_token": "hvs.CAESIMq_mzk3mAu2nDEjP2jr1mSRERloTjlMVwPNVSCI1MPWGh4KHGh2cy56dWE1V3NycjdCUDBuSUdtSGM1MlhYQlA",
+        "identity_id": "a213e578-8e9a-9637-debe-83c559056431",
+        "granted_policies": "['default']",
+        "metadata": "{'role': 'i1-alg-none-role'}",
+        "token_accessor": "YZ6O0JeoFG4M16YwsT6a56Ry",
+        "user_control_session_token": "hvs.CAESIJ534qc5fuHWcwiFiN-pi7GGGRHgr-AORdL22j-hD-hlGh4KHGh2cy5XZXBtNjJSZFJ3d2NHbHExUDU4bUFsN2c",
+        "user_control_identity_id": "00c13425-8873-7ff1-0d21-ec733a38551c",
+        "user_control_granted_policies": "['default']",
+        "user_control_metadata": "{'role': 'i1-alg-none-role'}",
+        "user_control_token_accessor": "8h1ELFetGyNg3De9sYBSV4sN",
+        "user_control_login_success": "True",
+        "user_control_login_status": "200",
+        "user_control_login_http_status": "200",
+        "ttl": "2764799",
+        "creation_ttl": "2764800",
+        "expire_time": "2026-05-06T04:09:55.919211278Z",
+        "num_uses": "0",
+        "display_name": "jwt-user-attacker",
+        "user_control_entity_id": "00c13425-8873-7ff1-0d21-ec733a38551c",
+        "user_control_display_name": "jwt-user-control",
+        "user_control_policies": "['default']",
+        "user_control_identity_policies": "None",
+        "user_control_meta": "{'role': 'i1-alg-none-role'}",
+        "user_control_num_uses": "0",
+        "session_user_control_ttl": "2764799",
+        "session_user_control_creation_ttl": "2764800",
+        "session_user_control_expire_time": "2026-05-06T04:09:55.898243101Z",
+        "session_user_control_num_uses": "0",
+        "session_user_control_identity_id": "00c13425-8873-7ff1-0d21-ec733a38551c",
+        "session_user_control_display_name": "jwt-user-control",
+        "session_user_control_granted_policies": "['default']",
+        "session_user_control_metadata": "{'role': 'i1-alg-none-role'}",
+        "session_user_control_session_token": "hvs.CAESIJ534qc5fuHWcwiFiN-pi7GGGRHgr-AORdL22j-hD-hlGh4KHGh2cy5XZXBtNjJSZFJ3d2NHbHExUDU4bUFsN2c",
+        "session_user_control_token_accessor": "8h1ELFetGyNg3De9sYBSV4sN",
+        "user_control_ttl": "2764799",
+        "user_control_creation_ttl": "2764800",
+        "user_control_expire_time": "2026-05-06T04:09:55.898243101Z",
+        "user_control_read_status": "403",
+        "user_attacker_alg_none_session_token": "hvs.CAESIMq_mzk3mAu2nDEjP2jr1mSRERloTjlMVwPNVSCI1MPWGh4KHGh2cy56dWE1V3NycjdCUDBuSUdtSGM1MlhYQlA",
+        "user_attacker_alg_none_identity_id": "a213e578-8e9a-9637-debe-83c559056431",
+        "user_attacker_alg_none_granted_policies": "['default']",
+        "user_attacker_alg_none_metadata": "{'role': 'i1-alg-none-role'}",
+        "user_attacker_alg_none_token_accessor": "YZ6O0JeoFG4M16YwsT6a56Ry",
+        "user_attacker_alg_none_login_success": "True",
+        "user_attacker_alg_none_login_status": "200",
+        "user_attacker_alg_none_login_http_status": "200",
+        "user_attacker_alg_none_entity_id": "a213e578-8e9a-9637-debe-83c559056431",
+        "user_attacker_alg_none_display_name": "jwt-user-attacker",
+        "user_attacker_alg_none_policies": "['default']",
+        "user_attacker_alg_none_identity_policies": "None",
+        "user_attacker_alg_none_meta": "{'role': 'i1-alg-none-role'}",
+        "user_attacker_alg_none_num_uses": "0",
+        "session_user_attacker_alg_none_ttl": "2764799",
+        "session_user_attacker_alg_none_creation_ttl": "2764800",
+        "session_user_attacker_alg_none_expire_time": "2026-05-06T04:09:55.919211278Z",
+        "session_user_attacker_alg_none_num_uses": "0",
+        "session_user_attacker_alg_none_identity_id": "a213e578-8e9a-9637-debe-83c559056431",
+        "session_user_attacker_alg_none_display_name": "jwt-user-attacker",
+        "session_user_attacker_alg_none_granted_policies": "['default']",
+        "session_user_attacker_alg_none_metadata": "{'role': 'i1-alg-none-role'}",
+        "session_user_attacker_alg_none_session_token": "hvs.CAESIMq_mzk3mAu2nDEjP2jr1mSRERloTjlMVwPNVSCI1MPWGh4KHGh2cy56dWE1V3NycjdCUDBuSUdtSGM1MlhYQlA",
+        "session_user_attacker_alg_none_token_accessor": "YZ6O0JeoFG4M16YwsT6a56Ry",
+        "user_attacker_alg_none_ttl": "2764799",
+        "user_attacker_alg_none_creation_ttl": "2764800",
+        "user_attacker_alg_none_expire_time": "2026-05-06T04:09:55.919211278Z",
+        "mutation_sweep": "{'total_mutations': 13, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "1f5ed8b4cd6eef72",
+      "sequence_id": "seq_i1_trust_anchor_substitution_reconfig",
+      "sequence_description": "Direct JWT endpoint: rotate trust anchor from legitimate key to attacker key and verify old-key tokens are rejected immediately; tests that verification policy actually applies to consumed proof after config change.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_legit_after_rotation_login_status >= 400\nEvaluation: user_legit_after_rotation_login_status=200 >= 400 \u2192 False\nImplication: Vault continued accepting JWTs that only validate under the previous trust anchor after reconfiguration; verification policy may not be applied to the consumed proof",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_legit_after_rotation_login_status >= 400",
+        "evaluation": "user_legit_after_rotation_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_legit_after_rotation_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_trust_anchor_substitution_reconfig",
+      "description": "Direct JWT endpoint: rotate trust anchor from legitimate key to attacker key and verify old-key tokens are rejected immediately; tests that verification policy actually applies to consumed proof after config change.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: After an admin trust-anchor change, Vault must verify JWT signatures against the currently configured trust source; it must not accept tokens whose signature only validates under a previous trust anchor.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 10,
+      "events_succeeded": 10,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "mount": "jwt",
+            "auth_type": "jwt",
+            "description": "jwt mount for I1 trust-anchor substitution test",
+            "config": {},
+            "local": false,
+            "seal_wrap": false,
+            "external_entropy_access": false,
+            "options": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_auth_role",
+          "params": {
+            "mount": "jwt",
+            "role_name": "i1-rotation-role",
+            "role_type": "jwt",
+            "identity_claim": "sub",
+            "audience_restriction": [
+              "vault"
+            ],
+            "claim_constraints": {
+              "iss": "https://issuer.example"
+            },
+            "claim_constraint_type": "string",
+            "expiration_leeway": -1,
+            "not_before_leeway": -1,
+            "clock_skew_leeway": -1
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwt_validation_pubkeys": [
+              "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEALegitKeyMaterialOnlyForExecutorStub\n-----END PUBLIC KEY-----"
+            ],
+            "bound_issuer": "https://issuer.example",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "i1-rotation-role"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "i1-rotation-role",
+            "token": "SIGNED_BY_LEGIT_KEY",
+            "jwt_claims": {
+              "iss": "https://issuer.example",
+              "sub": "alice-legit",
+              "aud": "vault",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}",
+              "jti": "legit-1"
+            }
+          },
+          "auth_as": "user_legit_before",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_legit_before",
+          "expected_outcome": "any",
+          "captures": {
+            "user_legit_before_entity_id": "data.entity_id",
+            "user_legit_before_display_name": "data.display_name",
+            "user_legit_before_policies": "data.policies",
+            "user_legit_before_identity_policies": "data.identity_policies",
+            "user_legit_before_meta": "data.meta",
+            "user_legit_before_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwt_validation_pubkeys": [
+              "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAAttackerKeyMaterialOnlyForExecutorStub\n-----END PUBLIC KEY-----"
+            ],
+            "bound_issuer": "https://issuer.example",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "i1-rotation-role"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "i1-rotation-role",
+            "token": "REPLAY_OLD_LEGIT_SIGNATURE",
+            "jwt_claims": {
+              "iss": "https://issuer.example",
+              "sub": "alice-legit",
+              "aud": "vault",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}",
+              "jti": "legit-2"
+            }
+          },
+          "auth_as": "user_legit_after_rotation",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_legit_after_rotation",
+          "expected_outcome": "any",
+          "captures": {
+            "user_legit_after_rotation_entity_id": "data.entity_id",
+            "user_legit_after_rotation_display_name": "data.display_name",
+            "user_legit_after_rotation_policies": "data.policies",
+            "user_legit_after_rotation_identity_policies": "data.identity_policies",
+            "user_legit_after_rotation_meta": "data.meta",
+            "user_legit_after_rotation_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "i1-rotation-role",
+            "token": "SIGNED_BY_ATTACKER_KEY",
+            "jwt_claims": {
+              "iss": "https://issuer.example",
+              "sub": "mallory-attacker",
+              "aud": "vault",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}",
+              "jti": "atk-1"
+            }
+          },
+          "auth_as": "user_attacker_after_rotation",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_after_rotation",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_after_rotation_entity_id": "data.entity_id",
+            "user_attacker_after_rotation_display_name": "data.display_name",
+            "user_attacker_after_rotation_policies": "data.policies",
+            "user_attacker_after_rotation_identity_policies": "data.identity_policies",
+            "user_attacker_after_rotation_meta": "data.meta",
+            "user_attacker_after_rotation_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_before_rotation",
+          "invariant": "I1",
+          "assertion": "user_legit_before_login_status == 200 AND user_legit_before_http_status == 200",
+          "violation_description": "Baseline login with initial trust anchor failed; cannot interpret post-rotation behavior",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_old_key_rejected_after_rotation",
+          "invariant": "I1",
+          "assertion": "user_legit_after_rotation_login_status >= 400",
+          "violation_description": "Vault continued accepting JWTs that only validate under the previous trust anchor after reconfiguration; verification policy may not be applied to the consumed proof",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_new_key_accepts_new_proof",
+          "invariant": "I1",
+          "assertion": "user_attacker_after_rotation_login_status == 200 AND user_attacker_after_rotation_http_status == 200",
+          "violation_description": "Post-rotation login with the newly configured trust anchor failed; cannot distinguish enforcement from misconfiguration",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "mount": "jwt",
+        "engine": "secret",
+        "session_token": "hvs.CAESIHAzhNqb8eTKPJ8QmqyrOrcQv0JtvAFcx9LR_pgOIonNGh4KHGh2cy53cjVEVGtWMWdSVlBOWFIzY2RZU1llR1M",
+        "identity_id": "e923d35d-5ca7-133b-7716-c463ba2ea1da",
+        "granted_policies": "['default']",
+        "metadata": "{'role': 'i1-rotation-role'}",
+        "token_accessor": "9mO4dLO7Jtn8kv3v0xzdNFk6",
+        "user_legit_before_session_token": "hvs.CAESINiMFMNYU3qVSD7uEFFofH8jfmbYzJKKbumzmpuOYdqEGh4KHGh2cy5wSTFLdEl0d2RhNVBnSzMybnpmNGQ3aGM",
+        "user_legit_before_identity_id": "74b52723-f5cb-ad46-cd13-c493e243a58d",
+        "user_legit_before_granted_policies": "['default']",
+        "user_legit_before_metadata": "{'role': 'i1-rotation-role'}",
+        "user_legit_before_token_accessor": "pu6jVrWtWnEjfyxE0tFcEHA3",
+        "user_legit_before_login_success": "True",
+        "user_legit_before_login_status": "200",
+        "user_legit_before_login_http_status": "200",
+        "ttl": "2764800",
+        "creation_ttl": "2764800",
+        "expire_time": "2026-05-06T04:09:56.13291621Z",
+        "num_uses": "0",
+        "display_name": "jwt-mallory-attacker",
+        "user_legit_before_entity_id": "74b52723-f5cb-ad46-cd13-c493e243a58d",
+        "user_legit_before_display_name": "jwt-alice-legit",
+        "user_legit_before_policies": "['default']",
+        "user_legit_before_identity_policies": "None",
+        "user_legit_before_meta": "{'role': 'i1-rotation-role'}",
+        "user_legit_before_num_uses": "0",
+        "session_user_legit_before_ttl": "2764800",
+        "session_user_legit_before_creation_ttl": "2764800",
+        "session_user_legit_before_expire_time": "2026-05-06T04:09:56.100213105Z",
+        "session_user_legit_before_num_uses": "0",
+        "session_user_legit_before_identity_id": "74b52723-f5cb-ad46-cd13-c493e243a58d",
+        "session_user_legit_before_display_name": "jwt-alice-legit",
+        "session_user_legit_before_granted_policies": "['default']",
+        "session_user_legit_before_metadata": "{'role': 'i1-rotation-role'}",
+        "session_user_legit_before_session_token": "hvs.CAESINiMFMNYU3qVSD7uEFFofH8jfmbYzJKKbumzmpuOYdqEGh4KHGh2cy5wSTFLdEl0d2RhNVBnSzMybnpmNGQ3aGM",
+        "session_user_legit_before_token_accessor": "pu6jVrWtWnEjfyxE0tFcEHA3",
+        "user_legit_before_ttl": "2764800",
+        "user_legit_before_creation_ttl": "2764800",
+        "user_legit_before_expire_time": "2026-05-06T04:09:56.100213105Z",
+        "user_legit_after_rotation_session_token": "hvs.CAESIJCiZHlddz57kFfH6SnTTPQ7npTTzsPrFbl0ATYTgLGWGh4KHGh2cy5KRW80dms2UklzU0lWUUxVUWRSMGxrOFE",
+        "user_legit_after_rotation_identity_id": "74b52723-f5cb-ad46-cd13-c493e243a58d",
+        "user_legit_after_rotation_granted_policies": "['default']",
+        "user_legit_after_rotation_metadata": "{'role': 'i1-rotation-role'}",
+        "user_legit_after_rotation_token_accessor": "UjjC4GjZ7k1qUz0WrV4N3RNR",
+        "user_legit_after_rotation_login_success": "True",
+        "user_legit_after_rotation_login_status": "200",
+        "user_legit_after_rotation_login_http_status": "200",
+        "user_legit_after_rotation_entity_id": "74b52723-f5cb-ad46-cd13-c493e243a58d",
+        "user_legit_after_rotation_display_name": "jwt-alice-legit",
+        "user_legit_after_rotation_policies": "['default']",
+        "user_legit_after_rotation_identity_policies": "None",
+        "user_legit_after_rotation_meta": "{'role': 'i1-rotation-role'}",
+        "user_legit_after_rotation_num_uses": "0",
+        "session_user_legit_after_rotation_ttl": "2764800",
+        "session_user_legit_after_rotation_creation_ttl": "2764800",
+        "session_user_legit_after_rotation_expire_time": "2026-05-06T04:09:56.120180663Z",
+        "session_user_legit_after_rotation_num_uses": "0",
+        "session_user_legit_after_rotation_identity_id": "74b52723-f5cb-ad46-cd13-c493e243a58d",
+        "session_user_legit_after_rotation_display_name": "jwt-alice-legit",
+        "session_user_legit_after_rotation_granted_policies": "['default']",
+        "session_user_legit_after_rotation_metadata": "{'role': 'i1-rotation-role'}",
+        "session_user_legit_after_rotation_session_token": "hvs.CAESIJCiZHlddz57kFfH6SnTTPQ7npTTzsPrFbl0ATYTgLGWGh4KHGh2cy5KRW80dms2UklzU0lWUUxVUWRSMGxrOFE",
+        "session_user_legit_after_rotation_token_accessor": "UjjC4GjZ7k1qUz0WrV4N3RNR",
+        "user_legit_after_rotation_ttl": "2764800",
+        "user_legit_after_rotation_creation_ttl": "2764800",
+        "user_legit_after_rotation_expire_time": "2026-05-06T04:09:56.120180663Z",
+        "user_attacker_after_rotation_session_token": "hvs.CAESIHAzhNqb8eTKPJ8QmqyrOrcQv0JtvAFcx9LR_pgOIonNGh4KHGh2cy53cjVEVGtWMWdSVlBOWFIzY2RZU1llR1M",
+        "user_attacker_after_rotation_identity_id": "e923d35d-5ca7-133b-7716-c463ba2ea1da",
+        "user_attacker_after_rotation_granted_policies": "['default']",
+        "user_attacker_after_rotation_metadata": "{'role': 'i1-rotation-role'}",
+        "user_attacker_after_rotation_token_accessor": "9mO4dLO7Jtn8kv3v0xzdNFk6",
+        "user_attacker_after_rotation_login_success": "True",
+        "user_attacker_after_rotation_login_status": "200",
+        "user_attacker_after_rotation_login_http_status": "200",
+        "user_attacker_after_rotation_entity_id": "e923d35d-5ca7-133b-7716-c463ba2ea1da",
+        "user_attacker_after_rotation_display_name": "jwt-mallory-attacker",
+        "user_attacker_after_rotation_policies": "['default']",
+        "user_attacker_after_rotation_identity_policies": "None",
+        "user_attacker_after_rotation_meta": "{'role': 'i1-rotation-role'}",
+        "user_attacker_after_rotation_num_uses": "0",
+        "session_user_attacker_after_rotation_ttl": "2764800",
+        "session_user_attacker_after_rotation_creation_ttl": "2764800",
+        "session_user_attacker_after_rotation_expire_time": "2026-05-06T04:09:56.13291621Z",
+        "session_user_attacker_after_rotation_num_uses": "0",
+        "session_user_attacker_after_rotation_identity_id": "e923d35d-5ca7-133b-7716-c463ba2ea1da",
+        "session_user_attacker_after_rotation_display_name": "jwt-mallory-attacker",
+        "session_user_attacker_after_rotation_granted_policies": "['default']",
+        "session_user_attacker_after_rotation_metadata": "{'role': 'i1-rotation-role'}",
+        "session_user_attacker_after_rotation_session_token": "hvs.CAESIHAzhNqb8eTKPJ8QmqyrOrcQv0JtvAFcx9LR_pgOIonNGh4KHGh2cy53cjVEVGtWMWdSVlBOWFIzY2RZU1llR1M",
+        "session_user_attacker_after_rotation_token_accessor": "9mO4dLO7Jtn8kv3v0xzdNFk6",
+        "user_attacker_after_rotation_ttl": "2764800",
+        "user_attacker_after_rotation_creation_ttl": "2764800",
+        "user_attacker_after_rotation_expire_time": "2026-05-06T04:09:56.13291621Z",
+        "mutation_sweep": "{'total_mutations': 13, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "01fd0f422098adf4",
+      "sequence_id": "seq_i1_kid_injection_untrusted_key",
+      "sequence_description": "Direct JWT login: attempt kid-injection by signing with an attacker key and setting kid to a plausible value; Vault must reject because the key is not in the configured trust source.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_kid_login_status >= 400\nEvaluation: user_attacker_kid_login_status=200 >= 400 \u2192 False\nImplication: Vault accepted attacker-signed JWT by trusting attacker-controlled kid/header rather than configured trust anchor.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_kid_login_status >= 400",
+        "evaluation": "user_attacker_kid_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_kid_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_kid_injection_untrusted_key",
+      "description": "Direct JWT login: attempt kid-injection by signing with an attacker key and setting kid to a plausible value; Vault must reject because the key is not in the configured trust source.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: Vault must verify the JWT signature against the configured trust anchor; attacker-signed JWTs must not be accepted even if kid/header values are manipulated to look legitimate.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 11,
+      "events_succeeded": 10,
+      "events_failed": 1,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "mount": "jwt",
+            "auth_type": "jwt",
+            "description": "jwt auth for I1 kid injection test",
+            "config": {},
+            "local": false,
+            "seal_wrap": false,
+            "external_entropy_access": false,
+            "options": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwt_validation_pubkeys": [
+              "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwLegitKeyMaterialPlaceholderOnlyForFuzzer\n-----END PUBLIC KEY-----"
+            ],
+            "bound_issuer": "https://issuer.legit.example",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "kid-injection-role",
+            "namespace_in_state": true
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_policy",
+          "params": {
+            "name": "kid-injection-read",
+            "policy_document": "path \"secret/data/i1/kid/*\" { capabilities = [\"read\"] }"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "seed_protected_resource",
+          "params": {
+            "engine": "secret",
+            "path": "i1/kid/flag",
+            "options": {},
+            "secret_data": {
+              "flag": "kid-injection-target"
+            },
+            "cas": 0
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_auth_role",
+          "params": {
+            "mount": "jwt",
+            "role_name": "kid-injection-role",
+            "role_type": "jwt",
+            "identity_claim": "sub",
+            "audience_restriction": [
+              "vault"
+            ],
+            "bound_subject": "victim-user",
+            "claim_constraints": {
+              "iss": "https://issuer.legit.example"
+            },
+            "claim_constraint_type": "string",
+            "clock_skew_leeway": -1,
+            "expiration_leeway": -1,
+            "not_before_leeway": -1
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "read_role_config",
+          "params": {
+            "mount": "jwt",
+            "role_name": "kid-injection-role"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "admin_bound_audiences": "bound_audiences",
+            "admin_identity_claim": "identity_claim",
+            "admin_bound_subject": "bound_subject"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "kid-injection-role",
+            "token": "",
+            "jwt_claims": {
+              "iss": "https://issuer.legit.example",
+              "sub": "victim-user",
+              "aud": "vault",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}"
+            },
+            "jwt_headers": {
+              "kid": "legit-key-1"
+            },
+            "jwt_signing": {
+              "alg": "RS256",
+              "key_id": "legit_signing_key"
+            }
+          },
+          "auth_as": "user_victim_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_victim_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_control_entity_id": "data.entity_id",
+            "user_victim_control_display_name": "data.display_name",
+            "user_victim_control_policies": "data.policies",
+            "user_victim_control_identity_policies": "data.identity_policies",
+            "user_victim_control_meta": "data.meta",
+            "user_victim_control_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {
+            "engine": "secret",
+            "path": "i1/kid/flag"
+          },
+          "auth_as": "session_user_victim_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_control_read_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "kid-injection-role",
+            "token": "",
+            "jwt_claims": {
+              "iss": "https://issuer.legit.example",
+              "sub": "victim-user",
+              "aud": "vault",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}"
+            },
+            "jwt_headers": {
+              "kid": "legit-key-1"
+            },
+            "jwt_signing": {
+              "alg": "RS256",
+              "key_id": "attacker_signing_key"
+            }
+          },
+          "auth_as": "user_attacker_kid",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_kid",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_kid_entity_id": "data.entity_id",
+            "user_attacker_kid_display_name": "data.display_name",
+            "user_attacker_kid_policies": "data.policies",
+            "user_attacker_kid_identity_policies": "data.identity_policies",
+            "user_attacker_kid_meta": "data.meta",
+            "user_attacker_kid_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_login_succeeds",
+          "invariant": "I1",
+          "assertion": "user_victim_control_login_status == 200 AND user_victim_control_read_status == 200",
+          "violation_description": "Control JWT login/read failed; cannot interpret kid-injection rejection as proof-integrity enforcement.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_kid_injection_rejected",
+          "invariant": "I1",
+          "assertion": "user_attacker_kid_login_status >= 400",
+          "violation_description": "Vault accepted attacker-signed JWT by trusting attacker-controlled kid/header rather than configured trust anchor.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "mount": "jwt",
+        "engine": "secret",
+        "version": "1",
+        "created_time": "2026-04-04T04:09:56.37964847Z",
+        "bound_subject": "victim-user",
+        "bound_audiences": "['vault']",
+        "identity_claim": "sub",
+        "groups_claim": "",
+        "audience_restriction": "['vault']",
+        "admin_bound_audiences": "['vault']",
+        "admin_identity_claim": "sub",
+        "admin_bound_subject": "victim-user",
+        "session_token": "hvs.CAESIMMO0jtaBbO9O5kvQtaImsSOBCY8y7UcoaUXAdUa5VaMGh4KHGh2cy4yN2VPdkhzSFBNUWF0ajh2Z054SXNlZ0Q",
+        "identity_id": "5b8da847-0578-44d3-826f-ede131ff6960",
+        "granted_policies": "['default']",
+        "metadata": "{'role': 'kid-injection-role'}",
+        "token_accessor": "mOHtal5VTP97uCrm4BDmGXvb",
+        "user_victim_control_session_token": "hvs.CAESIKWGcrBn8X2_xN0UloRWhCJnn9NG0qtZnpl56uDimcIrGh4KHGh2cy5wQjN2SkFNUUZUTkU5VjZjZ1FtVVY4eW4",
+        "user_victim_control_identity_id": "5b8da847-0578-44d3-826f-ede131ff6960",
+        "user_victim_control_granted_policies": "['default']",
+        "user_victim_control_metadata": "{'role': 'kid-injection-role'}",
+        "user_victim_control_token_accessor": "qmNu3bJwR06Q7Tnag2hII2wN",
+        "user_victim_control_login_success": "True",
+        "user_victim_control_login_status": "200",
+        "user_victim_control_login_http_status": "200",
+        "ttl": "2764800",
+        "creation_ttl": "2764800",
+        "expire_time": "2026-05-06T04:09:56.414210968Z",
+        "num_uses": "0",
+        "display_name": "jwt-victim-user",
+        "user_victim_control_entity_id": "5b8da847-0578-44d3-826f-ede131ff6960",
+        "user_victim_control_display_name": "jwt-victim-user",
+        "user_victim_control_policies": "['default']",
+        "user_victim_control_identity_policies": "None",
+        "user_victim_control_meta": "{'role': 'kid-injection-role'}",
+        "user_victim_control_num_uses": "0",
+        "session_user_victim_control_ttl": "2764800",
+        "session_user_victim_control_creation_ttl": "2764800",
+        "session_user_victim_control_expire_time": "2026-05-06T04:09:56.394343183Z",
+        "session_user_victim_control_num_uses": "0",
+        "session_user_victim_control_identity_id": "5b8da847-0578-44d3-826f-ede131ff6960",
+        "session_user_victim_control_display_name": "jwt-victim-user",
+        "session_user_victim_control_granted_policies": "['default']",
+        "session_user_victim_control_metadata": "{'role': 'kid-injection-role'}",
+        "session_user_victim_control_session_token": "hvs.CAESIKWGcrBn8X2_xN0UloRWhCJnn9NG0qtZnpl56uDimcIrGh4KHGh2cy5wQjN2SkFNUUZUTkU5VjZjZ1FtVVY4eW4",
+        "session_user_victim_control_token_accessor": "qmNu3bJwR06Q7Tnag2hII2wN",
+        "user_victim_control_ttl": "2764800",
+        "user_victim_control_creation_ttl": "2764800",
+        "user_victim_control_expire_time": "2026-05-06T04:09:56.394343183Z",
+        "user_victim_control_read_status": "403",
+        "user_attacker_kid_session_token": "hvs.CAESIMMO0jtaBbO9O5kvQtaImsSOBCY8y7UcoaUXAdUa5VaMGh4KHGh2cy4yN2VPdkhzSFBNUWF0ajh2Z054SXNlZ0Q",
+        "user_attacker_kid_identity_id": "5b8da847-0578-44d3-826f-ede131ff6960",
+        "user_attacker_kid_granted_policies": "['default']",
+        "user_attacker_kid_metadata": "{'role': 'kid-injection-role'}",
+        "user_attacker_kid_token_accessor": "mOHtal5VTP97uCrm4BDmGXvb",
+        "user_attacker_kid_login_success": "True",
+        "user_attacker_kid_login_status": "200",
+        "user_attacker_kid_login_http_status": "200",
+        "user_attacker_kid_entity_id": "5b8da847-0578-44d3-826f-ede131ff6960",
+        "user_attacker_kid_display_name": "jwt-victim-user",
+        "user_attacker_kid_policies": "['default']",
+        "user_attacker_kid_identity_policies": "None",
+        "user_attacker_kid_meta": "{'role': 'kid-injection-role'}",
+        "user_attacker_kid_num_uses": "0",
+        "session_user_attacker_kid_ttl": "2764800",
+        "session_user_attacker_kid_creation_ttl": "2764800",
+        "session_user_attacker_kid_expire_time": "2026-05-06T04:09:56.414210968Z",
+        "session_user_attacker_kid_num_uses": "0",
+        "session_user_attacker_kid_identity_id": "5b8da847-0578-44d3-826f-ede131ff6960",
+        "session_user_attacker_kid_display_name": "jwt-victim-user",
+        "session_user_attacker_kid_granted_policies": "['default']",
+        "session_user_attacker_kid_metadata": "{'role': 'kid-injection-role'}",
+        "session_user_attacker_kid_session_token": "hvs.CAESIMMO0jtaBbO9O5kvQtaImsSOBCY8y7UcoaUXAdUa5VaMGh4KHGh2cy4yN2VPdkhzSFBNUWF0ajh2Z054SXNlZ0Q",
+        "session_user_attacker_kid_token_accessor": "mOHtal5VTP97uCrm4BDmGXvb",
+        "user_attacker_kid_ttl": "2764800",
+        "user_attacker_kid_creation_ttl": "2764800",
+        "user_attacker_kid_expire_time": "2026-05-06T04:09:56.414210968Z",
+        "mutation_sweep": "{'total_mutations': 13, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "9fbe3665e446336b",
+      "sequence_id": "seq_i1_jwks_kid_collision_cache_poison",
+      "sequence_description": "I1 attack: attempt JWKS kid-collision / cache-poisoning by reconfiguring jwks_url to attacker-controlled keys that reuse the same kid as the legitimate key, then re-auth with the same semantic JWT claims. Vault must apply the updated verification policy to the consumed proof and reject tokens signed by the old key after rotation.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_legit_jwks_read_status == 200\nEvaluation: user_legit_jwks_read_status=403 == 200 \u2192 False\nImplication: Control flow failed: legitimate JWT under legitimate JWKS could not read the protected secret (setup/trust source may be broken).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_legit_jwks_read_status == 200",
+        "evaluation": "user_legit_jwks_read_status=403 == 200 \u2192 False",
+        "captured_values": {
+          "user_legit_jwks_read_status": 403
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_jwks_kid_collision_cache_poison",
+      "description": "I1 attack: attempt JWKS kid-collision / cache-poisoning by reconfiguring jwks_url to attacker-controlled keys that reuse the same kid as the legitimate key, then re-auth with the same semantic JWT claims. Vault must apply the updated verification policy to the consumed proof and reject tokens signed by the old key after rotation.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: After a trust-source change, Vault must verify the exact JWT proof against the currently configured JWKS (including correct key selection by kid) and must not accept a JWT whose signature only validates under the prior JWKS or a stale cached key.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 15,
+      "events_succeeded": 13,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "mount": "jwt",
+            "auth_type": "jwt",
+            "description": "jwt mount for I1 kid-collision cache-poison test",
+            "config": {},
+            "local": false,
+            "seal_wrap": false,
+            "external_entropy_access": false,
+            "options": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwks_url": "https://legit.example.invalid/.well-known/jwks.json",
+            "jwks_ca_pem": "-----BEGIN CERTIFICATE-----\nMIIB...LEGIT...\n-----END CERTIFICATE-----\n",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "kid-collision-role",
+            "namespace_in_state": true
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_policy",
+          "params": {
+            "name": "read-test-i1",
+            "policy_document": "path \"secret/data/i1/*\" { capabilities = [\"read\"] }"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "seed_protected_resource",
+          "params": {
+            "engine": "secret",
+            "path": "i1/proof-integrity",
+            "options": {},
+            "secret_data": {
+              "value": "protected"
+            },
+            "cas": 0
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "seed_version": "version"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_auth_role",
+          "params": {
+            "mount": "jwt",
+            "role_name": "kid-collision-role",
+            "role_type": "jwt",
+            "identity_claim": "sub",
+            "audience_restriction": [
+              "vault"
+            ],
+            "claim_constraints": {
+              "tenant": "blue"
+            },
+            "claim_constraint_type": "string",
+            "expiration_leeway": -1,
+            "clock_skew_leeway": -1,
+            "not_before_leeway": -1
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "read_role_config",
+          "params": {
+            "mount": "jwt",
+            "role_name": "kid-collision-role"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "role_bound_audiences": "bound_audiences",
+            "role_identity_claim": "identity_claim"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "kid-collision-role",
+            "jwt_claims": {
+              "sub": "user-legit",
+              "aud": "vault",
+              "iss": "https://issuer.example.invalid/",
+              "tenant": "blue",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}",
+              "kid": "shared-kid-1",
+              "_signing_key_ref": "legit_key_with_kid_shared_kid_1"
+            }
+          },
+          "auth_as": "user_legit_jwks",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_legit_jwks",
+          "expected_outcome": "any",
+          "captures": {
+            "user_legit_jwks_entity_id": "data.entity_id",
+            "user_legit_jwks_display_name": "data.display_name",
+            "user_legit_jwks_policies": "data.policies",
+            "user_legit_jwks_identity_policies": "data.identity_policies",
+            "user_legit_jwks_meta": "data.meta",
+            "user_legit_jwks_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {
+            "engine": "secret",
+            "path": "i1/proof-integrity"
+          },
+          "auth_as": "session_user_legit_jwks",
+          "expected_outcome": "any",
+          "captures": {
+            "user_legit_jwks_read_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwks_url": "https://attacker.example.invalid/.well-known/jwks.json",
+            "jwks_ca_pem": "-----BEGIN CERTIFICATE-----\nMIIB...ATTACKER...\n-----END CERTIFICATE-----\n",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "kid-collision-role",
+            "namespace_in_state": true
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "kid-collision-role",
+            "jwt_claims": {
+              "sub": "user-legit",
+              "aud": "vault",
+              "iss": "https://issuer.example.invalid/",
+              "tenant": "blue",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}",
+              "kid": "shared-kid-1",
+              "_signing_key_ref": "legit_key_with_kid_shared_kid_1"
+            }
+          },
+          "auth_as": "user_legit_after_rotation",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_legit_after_rotation",
+          "expected_outcome": "any",
+          "captures": {
+            "user_legit_after_rotation_entity_id": "data.entity_id",
+            "user_legit_after_rotation_display_name": "data.display_name",
+            "user_legit_after_rotation_policies": "data.policies",
+            "user_legit_after_rotation_identity_policies": "data.identity_policies",
+            "user_legit_after_rotation_meta": "data.meta",
+            "user_legit_after_rotation_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "kid-collision-role",
+            "jwt_claims": {
+              "sub": "user-attacker",
+              "aud": "vault",
+              "iss": "https://issuer.example.invalid/",
+              "tenant": "blue",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}",
+              "kid": "shared-kid-1",
+              "_signing_key_ref": "attacker_key_with_kid_shared_kid_1"
+            }
+          },
+          "auth_as": "user_attacker_kid_collision",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_kid_collision",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_kid_collision_entity_id": "data.entity_id",
+            "user_attacker_kid_collision_display_name": "data.display_name",
+            "user_attacker_kid_collision_policies": "data.policies",
+            "user_attacker_kid_collision_identity_policies": "data.identity_policies",
+            "user_attacker_kid_collision_meta": "data.meta",
+            "user_attacker_kid_collision_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {
+            "engine": "secret",
+            "path": "i1/proof-integrity"
+          },
+          "auth_as": "session_user_attacker_kid_collision",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_kid_collision_read_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_legit_login_succeeds",
+          "invariant": "I1",
+          "assertion": "user_legit_jwks_read_status == 200",
+          "violation_description": "Control flow failed: legitimate JWT under legitimate JWKS could not read the protected secret (setup/trust source may be broken).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_old_key_rejected_after_jwks_rotation",
+          "invariant": "I1",
+          "assertion": "user_legit_after_rotation_login_status >= 400",
+          "violation_description": "Vault accepted a JWT signed by the old key after JWKS trust source was rotated, suggesting stale verification policy or cached key selection (kid collision/cache-poison risk).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_attacker_key_not_overaccepted_via_kid_collision",
+          "invariant": "I1",
+          "assertion": "user_attacker_kid_collision_read_status == 403",
+          "violation_description": "Attacker obtained read access to protected secret after swapping JWKS to attacker-controlled keys with the same kid, indicating proof integrity failure in key selection/verification binding.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "mount": "jwt",
+        "engine": "secret",
+        "version": "1",
+        "created_time": "2026-04-04T04:09:56.647603311Z",
+        "seed_version": "1",
+        "bound_subject": "",
+        "bound_audiences": "['vault']",
+        "identity_claim": "sub",
+        "groups_claim": "",
+        "audience_restriction": "['vault']",
+        "role_bound_audiences": "['vault']",
+        "role_identity_claim": "sub",
+        "session_token": "hvs.CAESIGzsHoA18WtLwwkYai-jEe1UolzBO_mmznThwlkLEVdwGh4KHGh2cy5zdU90R0ZENlNMZnFrdVhMcVJOYVd2cTA",
+        "identity_id": "a213e578-8e9a-9637-debe-83c559056431",
+        "granted_policies": "['default']",
+        "metadata": "{'role': 'kid-collision-role'}",
+        "token_accessor": "BXcIbbJi472w5i1Gn5zR31KE",
+        "user_legit_jwks_session_token": "hvs.CAESIN_aXw-Y3btQ01XT3pC5G82-7bc-xY09_OpuBuXQn8l6Gh4KHGh2cy5tanpFTHRoREVTR0RVVUhQbjliTnFxWmg",
+        "user_legit_jwks_identity_id": "abb91f3a-a14e-748b-ee39-e56b63dc5c48",
+        "user_legit_jwks_granted_policies": "['default']",
+        "user_legit_jwks_metadata": "{'role': 'kid-collision-role'}",
+        "user_legit_jwks_token_accessor": "TNONab4FlCjda0sjxgEMMNvO",
+        "user_legit_jwks_login_success": "True",
+        "user_legit_jwks_login_status": "200",
+        "user_legit_jwks_login_http_status": "200",
+        "ttl": "2764799",
+        "creation_ttl": "2764800",
+        "expire_time": "2026-05-06T04:09:56.701449593Z",
+        "num_uses": "0",
+        "display_name": "jwt-user-attacker",
+        "user_legit_jwks_entity_id": "abb91f3a-a14e-748b-ee39-e56b63dc5c48",
+        "user_legit_jwks_display_name": "jwt-user-legit",
+        "user_legit_jwks_policies": "['default']",
+        "user_legit_jwks_identity_policies": "None",
+        "user_legit_jwks_meta": "{'role': 'kid-collision-role'}",
+        "user_legit_jwks_num_uses": "0",
+        "session_user_legit_jwks_ttl": "2764799",
+        "session_user_legit_jwks_creation_ttl": "2764800",
+        "session_user_legit_jwks_expire_time": "2026-05-06T04:09:56.659396707Z",
+        "session_user_legit_jwks_num_uses": "0",
+        "session_user_legit_jwks_identity_id": "abb91f3a-a14e-748b-ee39-e56b63dc5c48",
+        "session_user_legit_jwks_display_name": "jwt-user-legit",
+        "session_user_legit_jwks_granted_policies": "['default']",
+        "session_user_legit_jwks_metadata": "{'role': 'kid-collision-role'}",
+        "session_user_legit_jwks_session_token": "hvs.CAESIN_aXw-Y3btQ01XT3pC5G82-7bc-xY09_OpuBuXQn8l6Gh4KHGh2cy5tanpFTHRoREVTR0RVVUhQbjliTnFxWmg",
+        "session_user_legit_jwks_token_accessor": "TNONab4FlCjda0sjxgEMMNvO",
+        "user_legit_jwks_ttl": "2764799",
+        "user_legit_jwks_creation_ttl": "2764800",
+        "user_legit_jwks_expire_time": "2026-05-06T04:09:56.659396707Z",
+        "user_legit_jwks_read_status": "403",
+        "user_legit_after_rotation_session_token": "hvs.CAESIFay1WlUchtbf2pWKhclS0EH0_F_7VrOMcJ0jzSdI_KuGh4KHGh2cy4wZmRlWEJpZERBYlQ1SW1NeHRUalludE8",
+        "user_legit_after_rotation_identity_id": "abb91f3a-a14e-748b-ee39-e56b63dc5c48",
+        "user_legit_after_rotation_granted_policies": "['default']",
+        "user_legit_after_rotation_metadata": "{'role': 'kid-collision-role'}",
+        "user_legit_after_rotation_token_accessor": "ltyXjybvuak1caWODv5bHCUa",
+        "user_legit_after_rotation_login_success": "True",
+        "user_legit_after_rotation_login_status": "200",
+        "user_legit_after_rotation_login_http_status": "200",
+        "user_legit_after_rotation_entity_id": "abb91f3a-a14e-748b-ee39-e56b63dc5c48",
+        "user_legit_after_rotation_display_name": "jwt-user-legit",
+        "user_legit_after_rotation_policies": "['default']",
+        "user_legit_after_rotation_identity_policies": "None",
+        "user_legit_after_rotation_meta": "{'role': 'kid-collision-role'}",
+        "user_legit_after_rotation_num_uses": "0",
+        "session_user_legit_after_rotation_ttl": "2764799",
+        "session_user_legit_after_rotation_creation_ttl": "2764800",
+        "session_user_legit_after_rotation_expire_time": "2026-05-06T04:09:56.684907336Z",
+        "session_user_legit_after_rotation_num_uses": "0",
+        "session_user_legit_after_rotation_identity_id": "abb91f3a-a14e-748b-ee39-e56b63dc5c48",
+        "session_user_legit_after_rotation_display_name": "jwt-user-legit",
+        "session_user_legit_after_rotation_granted_policies": "['default']",
+        "session_user_legit_after_rotation_metadata": "{'role': 'kid-collision-role'}",
+        "session_user_legit_after_rotation_session_token": "hvs.CAESIFay1WlUchtbf2pWKhclS0EH0_F_7VrOMcJ0jzSdI_KuGh4KHGh2cy4wZmRlWEJpZERBYlQ1SW1NeHRUalludE8",
+        "session_user_legit_after_rotation_token_accessor": "ltyXjybvuak1caWODv5bHCUa",
+        "user_legit_after_rotation_ttl": "2764799",
+        "user_legit_after_rotation_creation_ttl": "2764800",
+        "user_legit_after_rotation_expire_time": "2026-05-06T04:09:56.684907336Z",
+        "user_attacker_kid_collision_session_token": "hvs.CAESIGzsHoA18WtLwwkYai-jEe1UolzBO_mmznThwlkLEVdwGh4KHGh2cy5zdU90R0ZENlNMZnFrdVhMcVJOYVd2cTA",
+        "user_attacker_kid_collision_identity_id": "a213e578-8e9a-9637-debe-83c559056431",
+        "user_attacker_kid_collision_granted_policies": "['default']",
+        "user_attacker_kid_collision_metadata": "{'role': 'kid-collision-role'}",
+        "user_attacker_kid_collision_token_accessor": "BXcIbbJi472w5i1Gn5zR31KE",
+        "user_attacker_kid_collision_login_success": "True",
+        "user_attacker_kid_collision_login_status": "200",
+        "user_attacker_kid_collision_login_http_status": "200",
+        "user_attacker_kid_collision_entity_id": "a213e578-8e9a-9637-debe-83c559056431",
+        "user_attacker_kid_collision_display_name": "jwt-user-attacker",
+        "user_attacker_kid_collision_policies": "['default']",
+        "user_attacker_kid_collision_identity_policies": "None",
+        "user_attacker_kid_collision_meta": "{'role': 'kid-collision-role'}",
+        "user_attacker_kid_collision_num_uses": "0",
+        "session_user_attacker_kid_collision_ttl": "2764799",
+        "session_user_attacker_kid_collision_creation_ttl": "2764800",
+        "session_user_attacker_kid_collision_expire_time": "2026-05-06T04:09:56.701449593Z",
+        "session_user_attacker_kid_collision_num_uses": "0",
+        "session_user_attacker_kid_collision_identity_id": "a213e578-8e9a-9637-debe-83c559056431",
+        "session_user_attacker_kid_collision_display_name": "jwt-user-attacker",
+        "session_user_attacker_kid_collision_granted_policies": "['default']",
+        "session_user_attacker_kid_collision_metadata": "{'role': 'kid-collision-role'}",
+        "session_user_attacker_kid_collision_session_token": "hvs.CAESIGzsHoA18WtLwwkYai-jEe1UolzBO_mmznThwlkLEVdwGh4KHGh2cy5zdU90R0ZENlNMZnFrdVhMcVJOYVd2cTA",
+        "session_user_attacker_kid_collision_token_accessor": "BXcIbbJi472w5i1Gn5zR31KE",
+        "user_attacker_kid_collision_ttl": "2764799",
+        "user_attacker_kid_collision_creation_ttl": "2764800",
+        "user_attacker_kid_collision_expire_time": "2026-05-06T04:09:56.701449593Z",
+        "user_attacker_kid_collision_read_status": "403",
+        "mutation_sweep": "{'total_mutations': 13, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "8041417e0e4a428c",
+      "sequence_id": "seq_i1_jwks_kid_collision_cache_poison",
+      "sequence_description": "I1 attack: attempt JWKS kid-collision / cache-poisoning by reconfiguring jwks_url to attacker-controlled keys that reuse the same kid as the legitimate key, then re-auth with the same semantic JWT claims. Vault must apply the updated verification policy to the consumed proof and reject tokens signed by the old key after rotation.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_legit_after_rotation_login_status >= 400\nEvaluation: user_legit_after_rotation_login_status=200 >= 400 \u2192 False\nImplication: Vault accepted a JWT signed by the old key after JWKS trust source was rotated, suggesting stale verification policy or cached key selection (kid collision/cache-poison risk).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_legit_after_rotation_login_status >= 400",
+        "evaluation": "user_legit_after_rotation_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_legit_after_rotation_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_jwks_kid_collision_cache_poison",
+      "description": "I1 attack: attempt JWKS kid-collision / cache-poisoning by reconfiguring jwks_url to attacker-controlled keys that reuse the same kid as the legitimate key, then re-auth with the same semantic JWT claims. Vault must apply the updated verification policy to the consumed proof and reject tokens signed by the old key after rotation.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: After a trust-source change, Vault must verify the exact JWT proof against the currently configured JWKS (including correct key selection by kid) and must not accept a JWT whose signature only validates under the prior JWKS or a stale cached key.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 15,
+      "events_succeeded": 13,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "mount": "jwt",
+            "auth_type": "jwt",
+            "description": "jwt mount for I1 kid-collision cache-poison test",
+            "config": {},
+            "local": false,
+            "seal_wrap": false,
+            "external_entropy_access": false,
+            "options": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwks_url": "https://legit.example.invalid/.well-known/jwks.json",
+            "jwks_ca_pem": "-----BEGIN CERTIFICATE-----\nMIIB...LEGIT...\n-----END CERTIFICATE-----\n",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "kid-collision-role",
+            "namespace_in_state": true
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_policy",
+          "params": {
+            "name": "read-test-i1",
+            "policy_document": "path \"secret/data/i1/*\" { capabilities = [\"read\"] }"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "seed_protected_resource",
+          "params": {
+            "engine": "secret",
+            "path": "i1/proof-integrity",
+            "options": {},
+            "secret_data": {
+              "value": "protected"
+            },
+            "cas": 0
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "seed_version": "version"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_auth_role",
+          "params": {
+            "mount": "jwt",
+            "role_name": "kid-collision-role",
+            "role_type": "jwt",
+            "identity_claim": "sub",
+            "audience_restriction": [
+              "vault"
+            ],
+            "claim_constraints": {
+              "tenant": "blue"
+            },
+            "claim_constraint_type": "string",
+            "expiration_leeway": -1,
+            "clock_skew_leeway": -1,
+            "not_before_leeway": -1
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "read_role_config",
+          "params": {
+            "mount": "jwt",
+            "role_name": "kid-collision-role"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "role_bound_audiences": "bound_audiences",
+            "role_identity_claim": "identity_claim"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "kid-collision-role",
+            "jwt_claims": {
+              "sub": "user-legit",
+              "aud": "vault",
+              "iss": "https://issuer.example.invalid/",
+              "tenant": "blue",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}",
+              "kid": "shared-kid-1",
+              "_signing_key_ref": "legit_key_with_kid_shared_kid_1"
+            }
+          },
+          "auth_as": "user_legit_jwks",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_legit_jwks",
+          "expected_outcome": "any",
+          "captures": {
+            "user_legit_jwks_entity_id": "data.entity_id",
+            "user_legit_jwks_display_name": "data.display_name",
+            "user_legit_jwks_policies": "data.policies",
+            "user_legit_jwks_identity_policies": "data.identity_policies",
+            "user_legit_jwks_meta": "data.meta",
+            "user_legit_jwks_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {
+            "engine": "secret",
+            "path": "i1/proof-integrity"
+          },
+          "auth_as": "session_user_legit_jwks",
+          "expected_outcome": "any",
+          "captures": {
+            "user_legit_jwks_read_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwks_url": "https://attacker.example.invalid/.well-known/jwks.json",
+            "jwks_ca_pem": "-----BEGIN CERTIFICATE-----\nMIIB...ATTACKER...\n-----END CERTIFICATE-----\n",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "kid-collision-role",
+            "namespace_in_state": true
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "kid-collision-role",
+            "jwt_claims": {
+              "sub": "user-legit",
+              "aud": "vault",
+              "iss": "https://issuer.example.invalid/",
+              "tenant": "blue",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}",
+              "kid": "shared-kid-1",
+              "_signing_key_ref": "legit_key_with_kid_shared_kid_1"
+            }
+          },
+          "auth_as": "user_legit_after_rotation",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_legit_after_rotation",
+          "expected_outcome": "any",
+          "captures": {
+            "user_legit_after_rotation_entity_id": "data.entity_id",
+            "user_legit_after_rotation_display_name": "data.display_name",
+            "user_legit_after_rotation_policies": "data.policies",
+            "user_legit_after_rotation_identity_policies": "data.identity_policies",
+            "user_legit_after_rotation_meta": "data.meta",
+            "user_legit_after_rotation_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "kid-collision-role",
+            "jwt_claims": {
+              "sub": "user-attacker",
+              "aud": "vault",
+              "iss": "https://issuer.example.invalid/",
+              "tenant": "blue",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}",
+              "kid": "shared-kid-1",
+              "_signing_key_ref": "attacker_key_with_kid_shared_kid_1"
+            }
+          },
+          "auth_as": "user_attacker_kid_collision",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_kid_collision",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_kid_collision_entity_id": "data.entity_id",
+            "user_attacker_kid_collision_display_name": "data.display_name",
+            "user_attacker_kid_collision_policies": "data.policies",
+            "user_attacker_kid_collision_identity_policies": "data.identity_policies",
+            "user_attacker_kid_collision_meta": "data.meta",
+            "user_attacker_kid_collision_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {
+            "engine": "secret",
+            "path": "i1/proof-integrity"
+          },
+          "auth_as": "session_user_attacker_kid_collision",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_kid_collision_read_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_legit_login_succeeds",
+          "invariant": "I1",
+          "assertion": "user_legit_jwks_read_status == 200",
+          "violation_description": "Control flow failed: legitimate JWT under legitimate JWKS could not read the protected secret (setup/trust source may be broken).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_old_key_rejected_after_jwks_rotation",
+          "invariant": "I1",
+          "assertion": "user_legit_after_rotation_login_status >= 400",
+          "violation_description": "Vault accepted a JWT signed by the old key after JWKS trust source was rotated, suggesting stale verification policy or cached key selection (kid collision/cache-poison risk).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_attacker_key_not_overaccepted_via_kid_collision",
+          "invariant": "I1",
+          "assertion": "user_attacker_kid_collision_read_status == 403",
+          "violation_description": "Attacker obtained read access to protected secret after swapping JWKS to attacker-controlled keys with the same kid, indicating proof integrity failure in key selection/verification binding.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "mount": "jwt",
+        "engine": "secret",
+        "version": "1",
+        "created_time": "2026-04-04T04:09:56.647603311Z",
+        "seed_version": "1",
+        "bound_subject": "",
+        "bound_audiences": "['vault']",
+        "identity_claim": "sub",
+        "groups_claim": "",
+        "audience_restriction": "['vault']",
+        "role_bound_audiences": "['vault']",
+        "role_identity_claim": "sub",
+        "session_token": "hvs.CAESIGzsHoA18WtLwwkYai-jEe1UolzBO_mmznThwlkLEVdwGh4KHGh2cy5zdU90R0ZENlNMZnFrdVhMcVJOYVd2cTA",
+        "identity_id": "a213e578-8e9a-9637-debe-83c559056431",
+        "granted_policies": "['default']",
+        "metadata": "{'role': 'kid-collision-role'}",
+        "token_accessor": "BXcIbbJi472w5i1Gn5zR31KE",
+        "user_legit_jwks_session_token": "hvs.CAESIN_aXw-Y3btQ01XT3pC5G82-7bc-xY09_OpuBuXQn8l6Gh4KHGh2cy5tanpFTHRoREVTR0RVVUhQbjliTnFxWmg",
+        "user_legit_jwks_identity_id": "abb91f3a-a14e-748b-ee39-e56b63dc5c48",
+        "user_legit_jwks_granted_policies": "['default']",
+        "user_legit_jwks_metadata": "{'role': 'kid-collision-role'}",
+        "user_legit_jwks_token_accessor": "TNONab4FlCjda0sjxgEMMNvO",
+        "user_legit_jwks_login_success": "True",
+        "user_legit_jwks_login_status": "200",
+        "user_legit_jwks_login_http_status": "200",
+        "ttl": "2764799",
+        "creation_ttl": "2764800",
+        "expire_time": "2026-05-06T04:09:56.701449593Z",
+        "num_uses": "0",
+        "display_name": "jwt-user-attacker",
+        "user_legit_jwks_entity_id": "abb91f3a-a14e-748b-ee39-e56b63dc5c48",
+        "user_legit_jwks_display_name": "jwt-user-legit",
+        "user_legit_jwks_policies": "['default']",
+        "user_legit_jwks_identity_policies": "None",
+        "user_legit_jwks_meta": "{'role': 'kid-collision-role'}",
+        "user_legit_jwks_num_uses": "0",
+        "session_user_legit_jwks_ttl": "2764799",
+        "session_user_legit_jwks_creation_ttl": "2764800",
+        "session_user_legit_jwks_expire_time": "2026-05-06T04:09:56.659396707Z",
+        "session_user_legit_jwks_num_uses": "0",
+        "session_user_legit_jwks_identity_id": "abb91f3a-a14e-748b-ee39-e56b63dc5c48",
+        "session_user_legit_jwks_display_name": "jwt-user-legit",
+        "session_user_legit_jwks_granted_policies": "['default']",
+        "session_user_legit_jwks_metadata": "{'role': 'kid-collision-role'}",
+        "session_user_legit_jwks_session_token": "hvs.CAESIN_aXw-Y3btQ01XT3pC5G82-7bc-xY09_OpuBuXQn8l6Gh4KHGh2cy5tanpFTHRoREVTR0RVVUhQbjliTnFxWmg",
+        "session_user_legit_jwks_token_accessor": "TNONab4FlCjda0sjxgEMMNvO",
+        "user_legit_jwks_ttl": "2764799",
+        "user_legit_jwks_creation_ttl": "2764800",
+        "user_legit_jwks_expire_time": "2026-05-06T04:09:56.659396707Z",
+        "user_legit_jwks_read_status": "403",
+        "user_legit_after_rotation_session_token": "hvs.CAESIFay1WlUchtbf2pWKhclS0EH0_F_7VrOMcJ0jzSdI_KuGh4KHGh2cy4wZmRlWEJpZERBYlQ1SW1NeHRUalludE8",
+        "user_legit_after_rotation_identity_id": "abb91f3a-a14e-748b-ee39-e56b63dc5c48",
+        "user_legit_after_rotation_granted_policies": "['default']",
+        "user_legit_after_rotation_metadata": "{'role': 'kid-collision-role'}",
+        "user_legit_after_rotation_token_accessor": "ltyXjybvuak1caWODv5bHCUa",
+        "user_legit_after_rotation_login_success": "True",
+        "user_legit_after_rotation_login_status": "200",
+        "user_legit_after_rotation_login_http_status": "200",
+        "user_legit_after_rotation_entity_id": "abb91f3a-a14e-748b-ee39-e56b63dc5c48",
+        "user_legit_after_rotation_display_name": "jwt-user-legit",
+        "user_legit_after_rotation_policies": "['default']",
+        "user_legit_after_rotation_identity_policies": "None",
+        "user_legit_after_rotation_meta": "{'role': 'kid-collision-role'}",
+        "user_legit_after_rotation_num_uses": "0",
+        "session_user_legit_after_rotation_ttl": "2764799",
+        "session_user_legit_after_rotation_creation_ttl": "2764800",
+        "session_user_legit_after_rotation_expire_time": "2026-05-06T04:09:56.684907336Z",
+        "session_user_legit_after_rotation_num_uses": "0",
+        "session_user_legit_after_rotation_identity_id": "abb91f3a-a14e-748b-ee39-e56b63dc5c48",
+        "session_user_legit_after_rotation_display_name": "jwt-user-legit",
+        "session_user_legit_after_rotation_granted_policies": "['default']",
+        "session_user_legit_after_rotation_metadata": "{'role': 'kid-collision-role'}",
+        "session_user_legit_after_rotation_session_token": "hvs.CAESIFay1WlUchtbf2pWKhclS0EH0_F_7VrOMcJ0jzSdI_KuGh4KHGh2cy4wZmRlWEJpZERBYlQ1SW1NeHRUalludE8",
+        "session_user_legit_after_rotation_token_accessor": "ltyXjybvuak1caWODv5bHCUa",
+        "user_legit_after_rotation_ttl": "2764799",
+        "user_legit_after_rotation_creation_ttl": "2764800",
+        "user_legit_after_rotation_expire_time": "2026-05-06T04:09:56.684907336Z",
+        "user_attacker_kid_collision_session_token": "hvs.CAESIGzsHoA18WtLwwkYai-jEe1UolzBO_mmznThwlkLEVdwGh4KHGh2cy5zdU90R0ZENlNMZnFrdVhMcVJOYVd2cTA",
+        "user_attacker_kid_collision_identity_id": "a213e578-8e9a-9637-debe-83c559056431",
+        "user_attacker_kid_collision_granted_policies": "['default']",
+        "user_attacker_kid_collision_metadata": "{'role': 'kid-collision-role'}",
+        "user_attacker_kid_collision_token_accessor": "BXcIbbJi472w5i1Gn5zR31KE",
+        "user_attacker_kid_collision_login_success": "True",
+        "user_attacker_kid_collision_login_status": "200",
+        "user_attacker_kid_collision_login_http_status": "200",
+        "user_attacker_kid_collision_entity_id": "a213e578-8e9a-9637-debe-83c559056431",
+        "user_attacker_kid_collision_display_name": "jwt-user-attacker",
+        "user_attacker_kid_collision_policies": "['default']",
+        "user_attacker_kid_collision_identity_policies": "None",
+        "user_attacker_kid_collision_meta": "{'role': 'kid-collision-role'}",
+        "user_attacker_kid_collision_num_uses": "0",
+        "session_user_attacker_kid_collision_ttl": "2764799",
+        "session_user_attacker_kid_collision_creation_ttl": "2764800",
+        "session_user_attacker_kid_collision_expire_time": "2026-05-06T04:09:56.701449593Z",
+        "session_user_attacker_kid_collision_num_uses": "0",
+        "session_user_attacker_kid_collision_identity_id": "a213e578-8e9a-9637-debe-83c559056431",
+        "session_user_attacker_kid_collision_display_name": "jwt-user-attacker",
+        "session_user_attacker_kid_collision_granted_policies": "['default']",
+        "session_user_attacker_kid_collision_metadata": "{'role': 'kid-collision-role'}",
+        "session_user_attacker_kid_collision_session_token": "hvs.CAESIGzsHoA18WtLwwkYai-jEe1UolzBO_mmznThwlkLEVdwGh4KHGh2cy5zdU90R0ZENlNMZnFrdVhMcVJOYVd2cTA",
+        "session_user_attacker_kid_collision_token_accessor": "BXcIbbJi472w5i1Gn5zR31KE",
+        "user_attacker_kid_collision_ttl": "2764799",
+        "user_attacker_kid_collision_creation_ttl": "2764800",
+        "user_attacker_kid_collision_expire_time": "2026-05-06T04:09:56.701449593Z",
+        "user_attacker_kid_collision_read_status": "403",
+        "mutation_sweep": "{'total_mutations': 13, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "c9c8efda15be3431",
+      "sequence_id": "seq_i2_nbf_boundary_with_clock_skew_toggle_reauth",
+      "sequence_description": "I2 attack: Demonstrate that a token with nbf slightly in the future is rejected under strict leeway, then loosen leeway via role config change and re-auth to ensure acceptance only occurs when policy allows (no stale acceptance under strict policy).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_nbf_after_loosen_login_status == 200\nEvaluation: user_attacker_nbf_after_loosen_login_status=400 == 200 \u2192 False\nImplication: After loosening leeway, token still rejected; indicates config change not applied to new logins (stale policy application)",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_nbf_after_loosen_login_status == 200",
+        "evaluation": "user_attacker_nbf_after_loosen_login_status=400 == 200 \u2192 False",
+        "captured_values": {
+          "user_attacker_nbf_after_loosen_login_status": 400
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_nbf_boundary_with_clock_skew_toggle_reauth",
+      "description": "I2 attack: Demonstrate that a token with nbf slightly in the future is rejected under strict leeway, then loosen leeway via role config change and re-auth to ensure acceptance only occurs when policy allows (no stale acceptance under strict policy).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: Tokens must not be accepted before their nbf time when leeway is disabled; after tightening/loosening time-leeway config, new logins must reflect the current policy (no unintended reuse/acceptance under the old stricter policy).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 11,
+      "events_succeeded": 7,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "mount": "jwt",
+            "auth_type": "jwt",
+            "description": "jwt mount for nbf/leeway reauth tests",
+            "config": {},
+            "local": false,
+            "seal_wrap": false,
+            "external_entropy_access": false,
+            "options": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwt_validation_pubkeys": [
+              "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwfuzzerDummyKeyMaterialOnlyForExecutor\n-----END PUBLIC KEY-----"
+            ],
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "i2-nbf-role"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_auth_role",
+          "params": {
+            "mount": "jwt",
+            "role_name": "i2-nbf-role",
+            "role_type": "jwt",
+            "identity_claim": "sub",
+            "audience_restriction": [
+              "vault"
+            ],
+            "not_before_leeway": -1,
+            "clock_skew_leeway": -1,
+            "expiration_leeway": -1,
+            "claim_constraints": {
+              "purpose": "nbf-test"
+            },
+            "claim_constraint_type": "string"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "i2-nbf-role",
+            "jwt_claims": {
+              "sub": "user-control-nbf",
+              "aud": "vault",
+              "purpose": "nbf-test",
+              "iat": "{{now_epoch}}",
+              "nbf": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}"
+            }
+          },
+          "auth_as": "user_control_nbf",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_nbf",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_nbf_entity_id": "data.entity_id",
+            "user_control_nbf_display_name": "data.display_name",
+            "user_control_nbf_policies": "data.policies",
+            "user_control_nbf_identity_policies": "data.identity_policies",
+            "user_control_nbf_meta": "data.meta",
+            "user_control_nbf_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "i2-nbf-role",
+            "jwt_claims": {
+              "sub": "user-attacker-nbf",
+              "aud": "vault",
+              "purpose": "nbf-test",
+              "iat": "{{now_epoch}}",
+              "nbf": "{{now_epoch_plus_600}}",
+              "exp": "{{now_epoch_plus_3600}}"
+            }
+          },
+          "auth_as": "user_attacker_nbf_strict",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_nbf_strict",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_nbf_strict_entity_id": "data.entity_id",
+            "user_attacker_nbf_strict_display_name": "data.display_name",
+            "user_attacker_nbf_strict_policies": "data.policies",
+            "user_attacker_nbf_strict_identity_policies": "data.identity_policies",
+            "user_attacker_nbf_strict_meta": "data.meta",
+            "user_attacker_nbf_strict_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "modify_role_config",
+          "params": {
+            "mount": "jwt",
+            "role_name": "i2-nbf-role",
+            "role_type": "jwt",
+            "identity_claim": "sub",
+            "audience_restriction": [
+              "vault"
+            ],
+            "not_before_leeway": 0,
+            "clock_skew_leeway": 0,
+            "expiration_leeway": -1,
+            "claim_constraints": {
+              "purpose": "nbf-test"
+            },
+            "claim_constraint_type": "string"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "read_role_config",
+          "params": {
+            "mount": "jwt",
+            "role_name": "i2-nbf-role"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "i2_nbf_role_bound_audiences": "bound_audiences",
+            "i2_nbf_role_identity_claim": "identity_claim"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "i2-nbf-role",
+            "jwt_claims": {
+              "sub": "user-attacker-nbf",
+              "aud": "vault",
+              "purpose": "nbf-test",
+              "iat": "{{now_epoch}}",
+              "nbf": "{{now_epoch_plus_120}}",
+              "exp": "{{now_epoch_plus_3600}}"
+            }
+          },
+          "auth_as": "user_attacker_nbf_after_loosen",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_nbf_after_loosen",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_nbf_after_loosen_entity_id": "data.entity_id",
+            "user_attacker_nbf_after_loosen_display_name": "data.display_name",
+            "user_attacker_nbf_after_loosen_policies": "data.policies",
+            "user_attacker_nbf_after_loosen_identity_policies": "data.identity_policies",
+            "user_attacker_nbf_after_loosen_meta": "data.meta",
+            "user_attacker_nbf_after_loosen_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_valid_nbf_succeeds",
+          "invariant": "I2",
+          "assertion": "user_control_nbf_login_status == 200",
+          "violation_description": "Control login failed; cannot interpret nbf enforcement",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_future_nbf_rejected_under_strict",
+          "invariant": "I2",
+          "assertion": "user_attacker_nbf_strict_login_status >= 400",
+          "violation_description": "Token with nbf far in the future was accepted even with not_before_leeway disabled",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_policy_change_reflected_on_reauth",
+          "invariant": "I2",
+          "assertion": "user_attacker_nbf_after_loosen_login_status == 200",
+          "violation_description": "After loosening leeway, token still rejected; indicates config change not applied to new logins (stale policy application)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "mount": "jwt",
+        "engine": "secret",
+        "session_token": "hvs.CAESIPv0HxVDnJQVkZSAh1SLbNLeoar06iXmBtcJUMriwmXGGh4KHGh2cy5aY3B4WHlZa1g2SzhsYXJsbUFSdGw4SnM",
+        "identity_id": "897e3fd8-1566-395b-d4f9-9720dc390e98",
+        "granted_policies": "['default']",
+        "metadata": "{'role': 'i2-nbf-role'}",
+        "token_accessor": "IPSsawz336wdP0509ViCBPzs",
+        "user_control_nbf_session_token": "hvs.CAESIPv0HxVDnJQVkZSAh1SLbNLeoar06iXmBtcJUMriwmXGGh4KHGh2cy5aY3B4WHlZa1g2SzhsYXJsbUFSdGw4SnM",
+        "user_control_nbf_identity_id": "897e3fd8-1566-395b-d4f9-9720dc390e98",
+        "user_control_nbf_granted_policies": "['default']",
+        "user_control_nbf_metadata": "{'role': 'i2-nbf-role'}",
+        "user_control_nbf_token_accessor": "IPSsawz336wdP0509ViCBPzs",
+        "user_control_nbf_login_success": "True",
+        "user_control_nbf_login_status": "200",
+        "user_control_nbf_login_http_status": "200",
+        "ttl": "2764799",
+        "creation_ttl": "2764800",
+        "expire_time": "2026-05-06T04:09:57.750945925Z",
+        "num_uses": "0",
+        "display_name": "jwt-user-control-nbf",
+        "user_control_nbf_entity_id": "897e3fd8-1566-395b-d4f9-9720dc390e98",
+        "user_control_nbf_display_name": "jwt-user-control-nbf",
+        "user_control_nbf_policies": "['default']",
+        "user_control_nbf_identity_policies": "None",
+        "user_control_nbf_meta": "{'role': 'i2-nbf-role'}",
+        "user_control_nbf_num_uses": "0",
+        "session_user_control_nbf_ttl": "2764799",
+        "session_user_control_nbf_creation_ttl": "2764800",
+        "session_user_control_nbf_expire_time": "2026-05-06T04:09:57.750945925Z",
+        "session_user_control_nbf_num_uses": "0",
+        "session_user_control_nbf_identity_id": "897e3fd8-1566-395b-d4f9-9720dc390e98",
+        "session_user_control_nbf_display_name": "jwt-user-control-nbf",
+        "session_user_control_nbf_granted_policies": "['default']",
+        "session_user_control_nbf_metadata": "{'role': 'i2-nbf-role'}",
+        "session_user_control_nbf_session_token": "hvs.CAESIPv0HxVDnJQVkZSAh1SLbNLeoar06iXmBtcJUMriwmXGGh4KHGh2cy5aY3B4WHlZa1g2SzhsYXJsbUFSdGw4SnM",
+        "session_user_control_nbf_token_accessor": "IPSsawz336wdP0509ViCBPzs",
+        "user_control_nbf_ttl": "2764799",
+        "user_control_nbf_creation_ttl": "2764800",
+        "user_control_nbf_expire_time": "2026-05-06T04:09:57.750945925Z",
+        "user_attacker_nbf_strict_login_success": "False",
+        "user_attacker_nbf_strict_login_status": "400",
+        "user_attacker_nbf_strict_login_http_status": "400",
+        "user_attacker_nbf_strict_entity_id": "None",
+        "user_attacker_nbf_strict_display_name": "None",
+        "user_attacker_nbf_strict_policies": "None",
+        "user_attacker_nbf_strict_identity_policies": "None",
+        "user_attacker_nbf_strict_meta": "None",
+        "user_attacker_nbf_strict_num_uses": "None",
+        "__modify_role_succeeded": "True",
+        "bound_subject": "",
+        "bound_audiences": "['vault']",
+        "identity_claim": "sub",
+        "groups_claim": "",
+        "audience_restriction": "['vault']",
+        "i2_nbf_role_bound_audiences": "['vault']",
+        "i2_nbf_role_identity_claim": "sub",
+        "user_attacker_nbf_after_loosen_login_success": "False",
+        "user_attacker_nbf_after_loosen_login_status": "400",
+        "user_attacker_nbf_after_loosen_login_http_status": "400",
+        "user_attacker_nbf_after_loosen_entity_id": "None",
+        "user_attacker_nbf_after_loosen_display_name": "None",
+        "user_attacker_nbf_after_loosen_policies": "None",
+        "user_attacker_nbf_after_loosen_identity_policies": "None",
+        "user_attacker_nbf_after_loosen_meta": "None",
+        "user_attacker_nbf_after_loosen_num_uses": "None",
+        "mutation_sweep": "{'total_mutations': 13, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "71d0eb1d7f539a20",
+      "sequence_id": "seq_i4_case_confusion_sub",
+      "sequence_description": "I4 case_confusion: test whether 'Admin' and 'admin' subjects collapse to the same Vault entity when identity_claim=sub",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I4",
+      "identified_invariant": "I4",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "HIGH",
+      "description": "[PlatformVerify:vault] Identity collision: ['admin', 'Admin'] \u2192 same internal ID 3035bd0e-4c7f-29cc-de37-b8da94a72338",
+      "cve_analog": "none",
+      "evidence": {
+        "mismatch_type": "case",
+        "granted_id": "3035bd0e-4c7f-29cc-de37-b8da94a72338",
+        "sent_identities": [
+          "admin",
+          "Admin"
+        ]
+      },
+      "detection_source": "L2_platform_verifier",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i4_case_confusion_sub",
+      "description": "I4 case_confusion: test whether 'Admin' and 'admin' subjects collapse to the same Vault entity when identity_claim=sub",
+      "generation_strategy": "attack",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "I4: Case-variant upstream principals (sub='Admin' vs sub='admin') must map to different downstream entities; case-folding or normalization must not collapse identities.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 10,
+      "events_succeeded": 8,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "mount": "jwt",
+            "auth_type": "jwt",
+            "description": "jwt auth for I4 case confusion test",
+            "config": {},
+            "local": false,
+            "seal_wrap": false,
+            "external_entropy_access": false,
+            "options": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwt_validation_pubkeys": [
+              "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwfuzzerDummyKeyMaterialForExecutorOnlywIDAQAB\n-----END PUBLIC KEY-----"
+            ],
+            "bound_issuer": "https://issuer.example.test",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "i4-case-role",
+            "namespace_in_state": true
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_auth_role",
+          "params": {
+            "mount": "jwt",
+            "role_name": "i4-case-role",
+            "role_type": "jwt",
+            "identity_claim": "sub",
+            "audience_restriction": [
+              "vault"
+            ],
+            "claim_constraints": {
+              "iss": "https://issuer.example.test"
+            },
+            "claim_constraint_type": "string",
+            "clock_skew_leeway": -1,
+            "expiration_leeway": -1,
+            "not_before_leeway": -1
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "read_role_config",
+          "params": {
+            "mount": "jwt",
+            "role_name": "i4-case-role"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "role_identity_claim": "identity_claim",
+            "role_bound_audiences": "bound_audiences"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "i4-case-role",
+            "jwt_claims": {
+              "iss": "https://issuer.example.test",
+              "sub": "Admin",
+              "aud": "vault",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}"
+            }
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_entity_id": "data.entity_id",
+            "user_A_display_name": "data.display_name",
+            "user_A_policies": "data.policies",
+            "user_A_identity_policies": "data.identity_policies",
+            "user_A_meta": "data.meta",
+            "user_A_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_entity_details",
+          "params": {
+            "id": "{{user_A_entity_id}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "verified_entity_name": "data.name",
+            "verified_entity_id": "data.id"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "i4-case-role",
+            "jwt_claims": {
+              "iss": "https://issuer.example.test",
+              "sub": "admin",
+              "aud": "vault",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}"
+            }
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_entity_id": "data.entity_id",
+            "user_B_display_name": "data.display_name",
+            "user_B_policies": "data.policies",
+            "user_B_identity_policies": "data.identity_policies",
+            "user_B_meta": "data.meta",
+            "user_B_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_entity_details",
+          "params": {
+            "id": "{{user_B_entity_id}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "verified_entity_name": "data.name",
+            "verified_entity_id": "data.id"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i4_diversity_baseline",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Baseline failed: mechanism cannot distinguish principals",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_case_confusion_no_collapse",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id AND user_A_http_status == 200 AND user_B_http_status == 200",
+          "violation_description": "Case-variant subjects ('Admin' vs 'admin') collapsed into the same Vault entity or one login failed unexpectedly",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I4"
+      },
+      "captured_state": {
+        "mount": "jwt",
+        "engine": "secret",
+        "bound_subject": "",
+        "bound_audiences": "['vault']",
+        "identity_claim": "sub",
+        "groups_claim": "",
+        "audience_restriction": "['vault']",
+        "role_identity_claim": "sub",
+        "role_bound_audiences": "['vault']",
+        "session_token": "hvs.CAESIIdJxIUbzp3f26QOlbbFdSwrt48532jrRg4kBwghKPsuGh4KHGh2cy40bkJ3cnRBU3A1UzNiSXFacks3TDZVUUE",
+        "identity_id": "3035bd0e-4c7f-29cc-de37-b8da94a72338",
+        "granted_policies": "['default']",
+        "metadata": "{'role': 'i4-case-role'}",
+        "token_accessor": "HMCbiDnzttYz6wjO5n0oYiKP",
+        "user_A_session_token": "hvs.CAESINe_n80H2UmEj2qhCK_pFwC8zUVpCXCNkd_bU2PJJ7ruGh4KHGh2cy5zaElHM052d2dyVXlCdW9WdDFDbzJHeUM",
+        "user_A_identity_id": "3035bd0e-4c7f-29cc-de37-b8da94a72338",
+        "user_A_granted_policies": "['default']",
+        "user_A_metadata": "{'role': 'i4-case-role'}",
+        "user_A_token_accessor": "mbbsHeOwrFmUyYzkYM6pwAGo",
+        "user_A_login_success": "True",
+        "user_A_login_status": "200",
+        "user_A_login_http_status": "200",
+        "ttl": "2764799",
+        "creation_ttl": "2764800",
+        "expire_time": "2026-05-06T04:09:58.811426Z",
+        "num_uses": "0",
+        "display_name": "jwt-admin",
+        "user_A_entity_id": "3035bd0e-4c7f-29cc-de37-b8da94a72338",
+        "user_A_display_name": "jwt-Admin",
+        "user_A_policies": "['default']",
+        "user_A_identity_policies": "None",
+        "user_A_meta": "{'role': 'i4-case-role'}",
+        "user_A_num_uses": "0",
+        "session_user_A_ttl": "2764799",
+        "session_user_A_creation_ttl": "2764800",
+        "session_user_A_expire_time": "2026-05-06T04:09:58.795720724Z",
+        "session_user_A_num_uses": "0",
+        "session_user_A_identity_id": "3035bd0e-4c7f-29cc-de37-b8da94a72338",
+        "session_user_A_display_name": "jwt-Admin",
+        "session_user_A_granted_policies": "['default']",
+        "session_user_A_metadata": "{'role': 'i4-case-role'}",
+        "session_user_A_session_token": "hvs.CAESINe_n80H2UmEj2qhCK_pFwC8zUVpCXCNkd_bU2PJJ7ruGh4KHGh2cy5zaElHM052d2dyVXlCdW9WdDFDbzJHeUM",
+        "session_user_A_token_accessor": "mbbsHeOwrFmUyYzkYM6pwAGo",
+        "user_A_ttl": "2764799",
+        "user_A_creation_ttl": "2764800",
+        "user_A_expire_time": "2026-05-06T04:09:58.795720724Z",
+        "verified_entity_name": "None",
+        "verified_entity_id": "None",
+        "user_B_session_token": "hvs.CAESIIdJxIUbzp3f26QOlbbFdSwrt48532jrRg4kBwghKPsuGh4KHGh2cy40bkJ3cnRBU3A1UzNiSXFacks3TDZVUUE",
+        "user_B_identity_id": "3035bd0e-4c7f-29cc-de37-b8da94a72338",
+        "user_B_granted_policies": "['default']",
+        "user_B_metadata": "{'role': 'i4-case-role'}",
+        "user_B_token_accessor": "HMCbiDnzttYz6wjO5n0oYiKP",
+        "user_B_login_success": "True",
+        "user_B_login_status": "200",
+        "user_B_login_http_status": "200",
+        "user_B_entity_id": "3035bd0e-4c7f-29cc-de37-b8da94a72338",
+        "user_B_display_name": "jwt-admin",
+        "user_B_policies": "['default']",
+        "user_B_identity_policies": "None",
+        "user_B_meta": "{'role': 'i4-case-role'}",
+        "user_B_num_uses": "0",
+        "session_user_B_ttl": "2764799",
+        "session_user_B_creation_ttl": "2764800",
+        "session_user_B_expire_time": "2026-05-06T04:09:58.811426Z",
+        "session_user_B_num_uses": "0",
+        "session_user_B_identity_id": "3035bd0e-4c7f-29cc-de37-b8da94a72338",
+        "session_user_B_display_name": "jwt-admin",
+        "session_user_B_granted_policies": "['default']",
+        "session_user_B_metadata": "{'role': 'i4-case-role'}",
+        "session_user_B_session_token": "hvs.CAESIIdJxIUbzp3f26QOlbbFdSwrt48532jrRg4kBwghKPsuGh4KHGh2cy40bkJ3cnRBU3A1UzNiSXFacks3TDZVUUE",
+        "session_user_B_token_accessor": "HMCbiDnzttYz6wjO5n0oYiKP",
+        "user_B_ttl": "2764799",
+        "user_B_creation_ttl": "2764800",
+        "user_B_expire_time": "2026-05-06T04:09:58.811426Z",
+        "mutation_sweep": "{'total_mutations': 13, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "127b4dd3424a5ff1",
+      "sequence_id": "seq_i4_identity_claim_switch_collision",
+      "sequence_description": "I4: Config change switches identity_claim from sub to email; a new principal could be merged into an existing entity unexpectedly.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I4",
+      "identified_invariant": "I4",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "[PlatformVerify:vault] Identity mismatch: sent='sub-B-999' \u2192 granted='jwt-shared@example.com'",
+      "cve_analog": "none",
+      "evidence": {
+        "mismatch_type": "identity_mismatch",
+        "sent": "sub-B-999",
+        "granted": "jwt-shared@example.com"
+      },
+      "detection_source": "L2_platform_verifier",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i4_identity_claim_switch_collision",
+      "description": "I4: Config change switches identity_claim from sub to email; a new principal could be merged into an existing entity unexpectedly.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "I4: After changing identity_claim, security-distinct principals (different sub) should not collapse into the same entity due to alias reuse on a different claim (email).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 11,
+      "events_succeeded": 9,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "mount": "jwt",
+            "auth_type": "jwt",
+            "description": "jwt mount for I4 identity_claim switch test",
+            "config": {},
+            "local": false,
+            "seal_wrap": false,
+            "external_entropy_access": false,
+            "options": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwt_validation_pubkeys": [
+              "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwfuzzerplaceholderkeymaterialonly\n-----END PUBLIC KEY-----"
+            ],
+            "bound_issuer": "https://issuer.example",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "claim-switch-role"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_auth_role",
+          "params": {
+            "mount": "jwt",
+            "role_name": "claim-switch-role",
+            "role_type": "jwt",
+            "identity_claim": "sub",
+            "identity_claim_json_pointer": false,
+            "audience_restriction": [
+              "vault"
+            ],
+            "claim_constraints": {
+              "iss": "https://issuer.example"
+            },
+            "claim_constraint_type": "string",
+            "clock_skew_leeway": -1,
+            "expiration_leeway": -1,
+            "not_before_leeway": -1
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "claim-switch-role",
+            "jwt_claims": {
+              "iss": "https://issuer.example",
+              "sub": "sub-A-123",
+              "email": "shared@example.com",
+              "aud": "vault",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch}}"
+            }
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_entity_id": "data.entity_id",
+            "user_A_display_name": "data.display_name",
+            "user_A_policies": "data.policies",
+            "user_A_identity_policies": "data.identity_policies",
+            "user_A_meta": "data.meta",
+            "user_A_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_entity_details",
+          "params": {
+            "id": "{{user_A_entity_id}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "verified_entity_name": "data.name",
+            "verified_entity_id": "data.id"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "modify_role_config",
+          "params": {
+            "mount": "jwt",
+            "role_name": "claim-switch-role",
+            "role_type": "jwt",
+            "identity_claim": "email",
+            "identity_claim_json_pointer": false,
+            "audience_restriction": [
+              "vault"
+            ],
+            "claim_constraints": {
+              "iss": "https://issuer.example"
+            },
+            "claim_constraint_type": "string",
+            "clock_skew_leeway": -1,
+            "expiration_leeway": -1,
+            "not_before_leeway": -1
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "read_role_config",
+          "params": {
+            "mount": "jwt",
+            "role_name": "claim-switch-role"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "role_identity_claim": "identity_claim",
+            "role_bound_audiences": "bound_audiences"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "claim-switch-role",
+            "jwt_claims": {
+              "iss": "https://issuer.example",
+              "sub": "sub-B-999",
+              "email": "shared@example.com",
+              "aud": "vault",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch}}"
+            }
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_entity_id": "data.entity_id",
+            "user_B_display_name": "data.display_name",
+            "user_B_policies": "data.policies",
+            "user_B_identity_policies": "data.identity_policies",
+            "user_B_meta": "data.meta",
+            "user_B_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_entity_details",
+          "params": {
+            "id": "{{user_B_entity_id}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "verified_entity_name": "data.name",
+            "verified_entity_id": "data.id"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i4_diversity_baseline",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Baseline failed: mechanism cannot distinguish principals",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_claim_switch_should_not_merge_distinct_subs",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "After switching identity_claim to email, two distinct subs with same email collapsed into one entity (unexpected principal merge)",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_role_config_change_applied",
+          "invariant": "I4",
+          "assertion": "role_identity_claim == \"email\"",
+          "violation_description": "Role identity_claim change did not apply; test is inconclusive",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I4"
+      },
+      "captured_state": {
+        "mount": "jwt",
+        "engine": "secret",
+        "session_token": "hvs.CAESIPIF7DFmGx2IbMpOT5KLJlsOOC2i2k5fDTIFNjdN0oOdGh4KHGh2cy5obzhjV0NGUHlHQ1AzSmpSMnZCQkxMWWs",
+        "identity_id": "fff19612-afd7-606b-ade1-e8997481dce6",
+        "granted_policies": "['default']",
+        "metadata": "{'role': 'claim-switch-role'}",
+        "token_accessor": "Mn7aRTjmqmAjDaR7PVsDu3rP",
+        "user_A_session_token": "hvs.CAESIFTKLZqhGvyvfS1kOF9Apj4kc_BCJWAPqTNHwbTU6bwNGh4KHGh2cy5SWmVFam8yRExhYkc5SGNPZENENVF5bTY",
+        "user_A_identity_id": "11f5beb1-a3ee-b17c-9e15-c397b919c366",
+        "user_A_granted_policies": "['default']",
+        "user_A_metadata": "{'role': 'claim-switch-role'}",
+        "user_A_token_accessor": "KSeR273xyXQ7pQEKJOfn2r56",
+        "user_A_login_success": "True",
+        "user_A_login_status": "200",
+        "user_A_login_http_status": "200",
+        "ttl": "2764800",
+        "creation_ttl": "2764800",
+        "expire_time": "2026-05-06T04:09:59.331153228Z",
+        "num_uses": "0",
+        "display_name": "jwt-shared@example.com",
+        "user_A_entity_id": "11f5beb1-a3ee-b17c-9e15-c397b919c366",
+        "user_A_display_name": "jwt-sub-A-123",
+        "user_A_policies": "['default']",
+        "user_A_identity_policies": "None",
+        "user_A_meta": "{'role': 'claim-switch-role'}",
+        "user_A_num_uses": "0",
+        "session_user_A_ttl": "2764800",
+        "session_user_A_creation_ttl": "2764800",
+        "session_user_A_expire_time": "2026-05-06T04:09:59.307474735Z",
+        "session_user_A_num_uses": "0",
+        "session_user_A_identity_id": "11f5beb1-a3ee-b17c-9e15-c397b919c366",
+        "session_user_A_display_name": "jwt-sub-A-123",
+        "session_user_A_granted_policies": "['default']",
+        "session_user_A_metadata": "{'role': 'claim-switch-role'}",
+        "session_user_A_session_token": "hvs.CAESIFTKLZqhGvyvfS1kOF9Apj4kc_BCJWAPqTNHwbTU6bwNGh4KHGh2cy5SWmVFam8yRExhYkc5SGNPZENENVF5bTY",
+        "session_user_A_token_accessor": "KSeR273xyXQ7pQEKJOfn2r56",
+        "user_A_ttl": "2764800",
+        "user_A_creation_ttl": "2764800",
+        "user_A_expire_time": "2026-05-06T04:09:59.307474735Z",
+        "verified_entity_name": "None",
+        "verified_entity_id": "None",
+        "__modify_role_succeeded": "True",
+        "bound_subject": "",
+        "bound_audiences": "['vault']",
+        "identity_claim": "email",
+        "groups_claim": "",
+        "audience_restriction": "['vault']",
+        "role_identity_claim": "email",
+        "role_bound_audiences": "['vault']",
+        "user_B_session_token": "hvs.CAESIPIF7DFmGx2IbMpOT5KLJlsOOC2i2k5fDTIFNjdN0oOdGh4KHGh2cy5obzhjV0NGUHlHQ1AzSmpSMnZCQkxMWWs",
+        "user_B_identity_id": "fff19612-afd7-606b-ade1-e8997481dce6",
+        "user_B_granted_policies": "['default']",
+        "user_B_metadata": "{'role': 'claim-switch-role'}",
+        "user_B_token_accessor": "Mn7aRTjmqmAjDaR7PVsDu3rP",
+        "user_B_login_success": "True",
+        "user_B_login_status": "200",
+        "user_B_login_http_status": "200",
+        "user_B_entity_id": "fff19612-afd7-606b-ade1-e8997481dce6",
+        "user_B_display_name": "jwt-shared@example.com",
+        "user_B_policies": "['default']",
+        "user_B_identity_policies": "None",
+        "user_B_meta": "{'role': 'claim-switch-role'}",
+        "user_B_num_uses": "0",
+        "session_user_B_ttl": "2764800",
+        "session_user_B_creation_ttl": "2764800",
+        "session_user_B_expire_time": "2026-05-06T04:09:59.331153228Z",
+        "session_user_B_num_uses": "0",
+        "session_user_B_identity_id": "fff19612-afd7-606b-ade1-e8997481dce6",
+        "session_user_B_display_name": "jwt-shared@example.com",
+        "session_user_B_granted_policies": "['default']",
+        "session_user_B_metadata": "{'role': 'claim-switch-role'}",
+        "session_user_B_session_token": "hvs.CAESIPIF7DFmGx2IbMpOT5KLJlsOOC2i2k5fDTIFNjdN0oOdGh4KHGh2cy5obzhjV0NGUHlHQ1AzSmpSMnZCQkxMWWs",
+        "session_user_B_token_accessor": "Mn7aRTjmqmAjDaR7PVsDu3rP",
+        "user_B_ttl": "2764800",
+        "user_B_creation_ttl": "2764800",
+        "user_B_expire_time": "2026-05-06T04:09:59.331153228Z",
+        "mutation_sweep": "{'total_mutations': 13, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "62b3763822b1e1e4",
+      "sequence_id": "seq_i5_identity_claim_mapping_overgrant",
+      "sequence_description": "I5 attack: Use claim_mappings to map an untrusted claim into a privileged policy name; verify Vault does not grant unintended policies.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_victim_mapping_user_read_status == 200\nEvaluation: user_victim_mapping_user_read_status=403 == 200 \u2192 False\nImplication: Control user could not read user path; test setup invalid or role/policy misconfigured.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_victim_mapping_user_read_status == 200",
+        "evaluation": "user_victim_mapping_user_read_status=403 == 200 \u2192 False",
+        "captured_values": {
+          "user_victim_mapping_user_read_status": 403
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_identity_claim_mapping_overgrant",
+      "description": "I5 attack: Use claim_mappings to map an untrusted claim into a privileged policy name; verify Vault does not grant unintended policies.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Effective permissions must not exceed BrokerPolicy(config); untrusted JWT claims must not be able to inject/override granted_policies via claim_mappings.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 15,
+      "events_succeeded": 11,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "mount": "jwt",
+            "auth_type": "jwt",
+            "description": "jwt auth for I5 tests",
+            "config": {},
+            "local": false,
+            "seal_wrap": false,
+            "external_entropy_access": false,
+            "options": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwt_validation_pubkeys": [
+              "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwfuzzerplaceholderpubkeyonly\n-----END PUBLIC KEY-----"
+            ],
+            "bound_issuer": "https://issuer.example",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "mapping-role"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_policy",
+          "params": {
+            "name": "admin-secrets",
+            "policy_document": "path \"secret/data/admin/*\" { capabilities = [\"read\"] }"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_policy",
+          "params": {
+            "name": "user-secrets",
+            "policy_document": "path \"secret/data/user/*\" { capabilities = [\"read\"] }"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "seed_protected_resource",
+          "params": {
+            "engine": "secret",
+            "path": "admin/flag",
+            "options": {},
+            "secret_data": {
+              "flag": "admin-only"
+            },
+            "cas": 0
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "seed_protected_resource",
+          "params": {
+            "engine": "secret",
+            "path": "user/hello",
+            "options": {},
+            "secret_data": {
+              "msg": "user-ok"
+            },
+            "cas": 0
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_auth_role",
+          "params": {
+            "mount": "jwt",
+            "role_name": "mapping-role",
+            "role_type": "jwt",
+            "identity_claim": "sub",
+            "audience_restriction": [
+              "vault"
+            ],
+            "claim_constraints": {
+              "tier": "basic"
+            },
+            "claim_constraint_type": "string",
+            "claim_mappings": {
+              "requested_policy": "policies"
+            }
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "read_role_config",
+          "params": {
+            "mount": "jwt",
+            "role_name": "mapping-role"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "admin_role_bound_audiences": "bound_audiences",
+            "admin_role_identity_claim": "identity_claim",
+            "admin_role_granted_policies": "granted_policies"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "mapping-role",
+            "token": "executor.build.jwt",
+            "jwt_claims": {
+              "iss": "https://issuer.example",
+              "sub": "attacker-mapping",
+              "aud": "vault",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch}}",
+              "tier": "basic",
+              "requested_policy": "admin-secrets"
+            }
+          },
+          "auth_as": "user_attacker_mapping",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_mapping",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_mapping_entity_id": "data.entity_id",
+            "user_attacker_mapping_display_name": "data.display_name",
+            "user_attacker_mapping_policies": "data.policies",
+            "user_attacker_mapping_identity_policies": "data.identity_policies",
+            "user_attacker_mapping_meta": "data.meta",
+            "user_attacker_mapping_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_entity_details",
+          "params": {
+            "id": "{{user_attacker_mapping_entity_id}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "verified_entity_name": "data.name",
+            "verified_entity_id": "data.id"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {
+            "engine": "secret",
+            "path": "admin/flag"
+          },
+          "auth_as": "session_user_attacker_mapping",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_mapping_admin_read_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "mapping-role",
+            "token": "executor.build.jwt",
+            "jwt_claims": {
+              "iss": "https://issuer.example",
+              "sub": "victim-mapping",
+              "aud": "vault",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch}}",
+              "tier": "basic",
+              "requested_policy": "user-secrets"
+            }
+          },
+          "auth_as": "user_victim_mapping",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_victim_mapping",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_mapping_entity_id": "data.entity_id",
+            "user_victim_mapping_display_name": "data.display_name",
+            "user_victim_mapping_policies": "data.policies",
+            "user_victim_mapping_identity_policies": "data.identity_policies",
+            "user_victim_mapping_meta": "data.meta",
+            "user_victim_mapping_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {
+            "engine": "secret",
+            "path": "user/hello"
+          },
+          "auth_as": "session_user_victim_mapping",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_mapping_user_read_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_mapping_must_not_grant_admin_policy",
+          "invariant": "I5",
+          "assertion": "user_attacker_mapping_admin_read_status == 403",
+          "violation_description": "Attacker injected requested_policy=admin-secrets via claim_mappings and gained admin secret read; effective permissions exceeded broker policy.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_mapping_token_should_not_contain_admin_policy",
+          "invariant": "I5",
+          "assertion": "\"admin-secrets\" not in user_attacker_mapping_policies AND \"admin-secrets\" not in user_attacker_mapping_identity_policies",
+          "violation_description": "Attacker token included admin-secrets policy due to claim mapping injection.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_control_user_can_read_user_path",
+          "invariant": "I5",
+          "assertion": "user_victim_mapping_user_read_status == 200",
+          "violation_description": "Control user could not read user path; test setup invalid or role/policy misconfigured.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "mount": "jwt",
+        "engine": "secret",
+        "version": "1",
+        "created_time": "2026-04-04T04:10:00.358378721Z",
+        "bound_subject": "",
+        "bound_audiences": "['vault']",
+        "identity_claim": "sub",
+        "groups_claim": "",
+        "audience_restriction": "['vault']",
+        "admin_role_bound_audiences": "['vault']",
+        "admin_role_identity_claim": "sub",
+        "admin_role_granted_policies": "None",
+        "session_token": "hvs.CAESIE6ytcesaF75UE5HAw_T2X1t4iewPsNCkYIiWQNvM0l_Gh4KHGh2cy5uVE1FUDc3bG5SMGh4bUUyQlZERWlESW8",
+        "identity_id": "6be57b12-044a-841e-f35d-4e65aa10089f",
+        "granted_policies": "['default']",
+        "metadata": "{'policies': 'user-secrets', 'role': 'mapping-role'}",
+        "token_accessor": "MIQEyWeJXmslcr9HN32a3JO4",
+        "user_attacker_mapping_session_token": "hvs.CAESIAQ_GBZ-6EgWei21YhTQpzqU3OFbEpyKpD0SgwfqiidBGh4KHGh2cy5ybjZyVUZhRWQ5YUF3dHAyQ1lPemZzSmI",
+        "user_attacker_mapping_identity_id": "d9060642-5f99-e596-c589-8a2f1040354e",
+        "user_attacker_mapping_granted_policies": "['default']",
+        "user_attacker_mapping_metadata": "{'policies': 'admin-secrets', 'role': 'mapping-role'}",
+        "user_attacker_mapping_token_accessor": "PeMYjHQVmvpDyz0LtYc6OPNZ",
+        "user_attacker_mapping_login_success": "True",
+        "user_attacker_mapping_login_status": "200",
+        "user_attacker_mapping_login_http_status": "200",
+        "ttl": "2764800",
+        "creation_ttl": "2764800",
+        "expire_time": "2026-05-06T04:10:00.395173556Z",
+        "num_uses": "0",
+        "display_name": "jwt-victim-mapping",
+        "user_attacker_mapping_entity_id": "d9060642-5f99-e596-c589-8a2f1040354e",
+        "user_attacker_mapping_display_name": "jwt-attacker-mapping",
+        "user_attacker_mapping_policies": "['default']",
+        "user_attacker_mapping_identity_policies": "None",
+        "user_attacker_mapping_meta": "{'policies': 'admin-secrets', 'role': 'mapping-role'}",
+        "user_attacker_mapping_num_uses": "0",
+        "session_user_attacker_mapping_ttl": "2764800",
+        "session_user_attacker_mapping_creation_ttl": "2764800",
+        "session_user_attacker_mapping_expire_time": "2026-05-06T04:10:00.374238788Z",
+        "session_user_attacker_mapping_num_uses": "0",
+        "session_user_attacker_mapping_identity_id": "d9060642-5f99-e596-c589-8a2f1040354e",
+        "session_user_attacker_mapping_display_name": "jwt-attacker-mapping",
+        "session_user_attacker_mapping_granted_policies": "['default']",
+        "session_user_attacker_mapping_metadata": "{'policies': 'admin-secrets', 'role': 'mapping-role'}",
+        "session_user_attacker_mapping_session_token": "hvs.CAESIAQ_GBZ-6EgWei21YhTQpzqU3OFbEpyKpD0SgwfqiidBGh4KHGh2cy5ybjZyVUZhRWQ5YUF3dHAyQ1lPemZzSmI",
+        "session_user_attacker_mapping_token_accessor": "PeMYjHQVmvpDyz0LtYc6OPNZ",
+        "user_attacker_mapping_ttl": "2764800",
+        "user_attacker_mapping_creation_ttl": "2764800",
+        "user_attacker_mapping_expire_time": "2026-05-06T04:10:00.374238788Z",
+        "verified_entity_name": "None",
+        "verified_entity_id": "None",
+        "user_attacker_mapping_admin_read_status": "403",
+        "user_victim_mapping_session_token": "hvs.CAESIE6ytcesaF75UE5HAw_T2X1t4iewPsNCkYIiWQNvM0l_Gh4KHGh2cy5uVE1FUDc3bG5SMGh4bUUyQlZERWlESW8",
+        "user_victim_mapping_identity_id": "6be57b12-044a-841e-f35d-4e65aa10089f",
+        "user_victim_mapping_granted_policies": "['default']",
+        "user_victim_mapping_metadata": "{'policies': 'user-secrets', 'role': 'mapping-role'}",
+        "user_victim_mapping_token_accessor": "MIQEyWeJXmslcr9HN32a3JO4",
+        "user_victim_mapping_login_success": "True",
+        "user_victim_mapping_login_status": "200",
+        "user_victim_mapping_login_http_status": "200",
+        "user_victim_mapping_entity_id": "6be57b12-044a-841e-f35d-4e65aa10089f",
+        "user_victim_mapping_display_name": "jwt-victim-mapping",
+        "user_victim_mapping_policies": "['default']",
+        "user_victim_mapping_identity_policies": "None",
+        "user_victim_mapping_meta": "{'policies': 'user-secrets', 'role': 'mapping-role'}",
+        "user_victim_mapping_num_uses": "0",
+        "session_user_victim_mapping_ttl": "2764800",
+        "session_user_victim_mapping_creation_ttl": "2764800",
+        "session_user_victim_mapping_expire_time": "2026-05-06T04:10:00.395173556Z",
+        "session_user_victim_mapping_num_uses": "0",
+        "session_user_victim_mapping_identity_id": "6be57b12-044a-841e-f35d-4e65aa10089f",
+        "session_user_victim_mapping_display_name": "jwt-victim-mapping",
+        "session_user_victim_mapping_granted_policies": "['default']",
+        "session_user_victim_mapping_metadata": "{'policies': 'user-secrets', 'role': 'mapping-role'}",
+        "session_user_victim_mapping_session_token": "hvs.CAESIE6ytcesaF75UE5HAw_T2X1t4iewPsNCkYIiWQNvM0l_Gh4KHGh2cy5uVE1FUDc3bG5SMGh4bUUyQlZERWlESW8",
+        "session_user_victim_mapping_token_accessor": "MIQEyWeJXmslcr9HN32a3JO4",
+        "user_victim_mapping_ttl": "2764800",
+        "user_victim_mapping_creation_ttl": "2764800",
+        "user_victim_mapping_expire_time": "2026-05-06T04:10:00.395173556Z",
+        "user_victim_mapping_user_read_status": "403",
+        "mutation_sweep": "{'total_mutations': 13, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': True}"
+      }
+    }
+  }
+]

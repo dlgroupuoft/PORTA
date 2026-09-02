@@ -1,0 +1,4748 @@
+[
+  {
+    "finding": {
+      "finding_id": "c53566888582752a",
+      "sequence_id": "seq_i1_saml_cert_substitution_control_vs_attack",
+      "sequence_description": "I1 SAML cert substitution: control login with trusted CA-based signature validation, then attempt attacker-signed forged assertion; acceptance indicates signature verification not applied to consumed proof.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "SAML assertion accepted without audience restriction (i5_saml_no_conditions). The SP does not enforce AudienceRestriction, allowing assertions intended for other services to be consumed.",
+      "cve_analog": "none",
+      "evidence": {
+        "mutation": "i5_saml_no_conditions",
+        "mutation_name": "i5_saml_no_conditions",
+        "source": "mutation_sweep"
+      },
+      "detection_source": "mutation_sweep",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_saml_cert_substitution_control_vs_attack",
+      "description": "I1 SAML cert substitution: control login with trusted CA-based signature validation, then attempt attacker-signed forged assertion; acceptance indicates signature verification not applied to consumed proof.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: Dex must reject SAML assertions not signed by the configured trusted IdP certificate (CA/caData).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_provider",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_type": "saml",
+            "connector_name": "saml-i1-cert-substitution",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "https://trusted-idp.example/idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-control-1",
+            "nonce": "nonce-control-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_control_init",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "AUTO",
+            "relay_state": "AUTO"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_entity_id": "sub",
+            "user_control_display_name": "name",
+            "user_control_policies": "groups",
+            "user_control_identity_policies": "groups",
+            "user_control_meta": ".",
+            "user_control_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-attack-1",
+            "nonce": "nonce-attack-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_attacker_init",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "AUTO",
+            "relay_state": "AUTO"
+          },
+          "auth_as": "user_attacker",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_entity_id": "sub",
+            "user_attacker_display_name": "name",
+            "user_attacker_policies": "groups",
+            "user_attacker_identity_policies": "groups",
+            "user_attacker_meta": ".",
+            "user_attacker_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_must_succeed",
+          "invariant": "I1",
+          "assertion": "user_control_login_status < 400 AND user_control_http_status == 200",
+          "violation_description": "Control SAML login failed; cannot attribute attack acceptance/rejection to signature validation behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_reject_attacker_signed_assertion",
+          "invariant": "I1",
+          "assertion": "user_attacker_login_status >= 400 OR user_attacker_http_status != 200",
+          "violation_description": "Dex accepted an attacker-signed forged SAML assertion even though signature validation was configured with a trusted CA/cert.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_login_success": "True",
+        "user_control_login_status": "200",
+        "user_control_login_http_status": "200",
+        "user_control_entity_id": "None",
+        "user_control_display_name": "None",
+        "user_control_policies": "None",
+        "user_control_identity_policies": "None",
+        "user_control_meta": "None",
+        "user_control_email": "None",
+        "user_attacker_login_success": "True",
+        "user_attacker_login_status": "200",
+        "user_attacker_login_http_status": "200",
+        "user_attacker_entity_id": "None",
+        "user_attacker_display_name": "None",
+        "user_attacker_policies": "None",
+        "user_attacker_identity_policies": "None",
+        "user_attacker_meta": "None",
+        "user_attacker_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "505a1a0952db89c9",
+      "sequence_id": "seq_i1_saml_cert_substitution_control_vs_attack",
+      "sequence_description": "I1 SAML cert substitution: control login with trusted CA-based signature validation, then attempt attacker-signed forged assertion; acceptance indicates signature verification not applied to consumed proof.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "SAML assertion accepted without audience restriction (i5_saml_no_audience_restriction). The SP does not enforce AudienceRestriction, allowing assertions intended for other services to be consumed.",
+      "cve_analog": "none",
+      "evidence": {
+        "mutation": "i5_saml_no_audience_restriction",
+        "mutation_name": "i5_saml_no_audience_restriction",
+        "source": "mutation_sweep"
+      },
+      "detection_source": "mutation_sweep",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_saml_cert_substitution_control_vs_attack",
+      "description": "I1 SAML cert substitution: control login with trusted CA-based signature validation, then attempt attacker-signed forged assertion; acceptance indicates signature verification not applied to consumed proof.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: Dex must reject SAML assertions not signed by the configured trusted IdP certificate (CA/caData).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_provider",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_type": "saml",
+            "connector_name": "saml-i1-cert-substitution",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "https://trusted-idp.example/idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-control-1",
+            "nonce": "nonce-control-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_control_init",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "AUTO",
+            "relay_state": "AUTO"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_entity_id": "sub",
+            "user_control_display_name": "name",
+            "user_control_policies": "groups",
+            "user_control_identity_policies": "groups",
+            "user_control_meta": ".",
+            "user_control_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-attack-1",
+            "nonce": "nonce-attack-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_attacker_init",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "AUTO",
+            "relay_state": "AUTO"
+          },
+          "auth_as": "user_attacker",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_entity_id": "sub",
+            "user_attacker_display_name": "name",
+            "user_attacker_policies": "groups",
+            "user_attacker_identity_policies": "groups",
+            "user_attacker_meta": ".",
+            "user_attacker_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_must_succeed",
+          "invariant": "I1",
+          "assertion": "user_control_login_status < 400 AND user_control_http_status == 200",
+          "violation_description": "Control SAML login failed; cannot attribute attack acceptance/rejection to signature validation behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_reject_attacker_signed_assertion",
+          "invariant": "I1",
+          "assertion": "user_attacker_login_status >= 400 OR user_attacker_http_status != 200",
+          "violation_description": "Dex accepted an attacker-signed forged SAML assertion even though signature validation was configured with a trusted CA/cert.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_login_success": "True",
+        "user_control_login_status": "200",
+        "user_control_login_http_status": "200",
+        "user_control_entity_id": "None",
+        "user_control_display_name": "None",
+        "user_control_policies": "None",
+        "user_control_identity_policies": "None",
+        "user_control_meta": "None",
+        "user_control_email": "None",
+        "user_attacker_login_success": "True",
+        "user_attacker_login_status": "200",
+        "user_attacker_login_http_status": "200",
+        "user_attacker_entity_id": "None",
+        "user_attacker_display_name": "None",
+        "user_attacker_policies": "None",
+        "user_attacker_identity_policies": "None",
+        "user_attacker_meta": "None",
+        "user_attacker_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "f1363c3cd88aba5d",
+      "sequence_id": "seq_i1_saml_cert_substitution_control_vs_attack",
+      "sequence_description": "I1 SAML cert substitution: control login with trusted CA-based signature validation, then attempt attacker-signed forged assertion; acceptance indicates signature verification not applied to consumed proof.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "SAML assertion accepted with <Audience> set to a different SP. Platform failed to validate AudienceRestriction against its own entity ID.",
+      "cve_analog": "none",
+      "evidence": {
+        "mutation_name": "i5_saml_wrong_audience",
+        "source": "mutation_sweep"
+      },
+      "detection_source": "mutation_sweep",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_saml_cert_substitution_control_vs_attack",
+      "description": "I1 SAML cert substitution: control login with trusted CA-based signature validation, then attempt attacker-signed forged assertion; acceptance indicates signature verification not applied to consumed proof.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: Dex must reject SAML assertions not signed by the configured trusted IdP certificate (CA/caData).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_provider",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_type": "saml",
+            "connector_name": "saml-i1-cert-substitution",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "https://trusted-idp.example/idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-control-1",
+            "nonce": "nonce-control-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_control_init",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "AUTO",
+            "relay_state": "AUTO"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_entity_id": "sub",
+            "user_control_display_name": "name",
+            "user_control_policies": "groups",
+            "user_control_identity_policies": "groups",
+            "user_control_meta": ".",
+            "user_control_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-attack-1",
+            "nonce": "nonce-attack-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_attacker_init",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "AUTO",
+            "relay_state": "AUTO"
+          },
+          "auth_as": "user_attacker",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_entity_id": "sub",
+            "user_attacker_display_name": "name",
+            "user_attacker_policies": "groups",
+            "user_attacker_identity_policies": "groups",
+            "user_attacker_meta": ".",
+            "user_attacker_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_must_succeed",
+          "invariant": "I1",
+          "assertion": "user_control_login_status < 400 AND user_control_http_status == 200",
+          "violation_description": "Control SAML login failed; cannot attribute attack acceptance/rejection to signature validation behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_reject_attacker_signed_assertion",
+          "invariant": "I1",
+          "assertion": "user_attacker_login_status >= 400 OR user_attacker_http_status != 200",
+          "violation_description": "Dex accepted an attacker-signed forged SAML assertion even though signature validation was configured with a trusted CA/cert.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_login_success": "True",
+        "user_control_login_status": "200",
+        "user_control_login_http_status": "200",
+        "user_control_entity_id": "None",
+        "user_control_display_name": "None",
+        "user_control_policies": "None",
+        "user_control_identity_policies": "None",
+        "user_control_meta": "None",
+        "user_control_email": "None",
+        "user_attacker_login_success": "True",
+        "user_attacker_login_status": "200",
+        "user_attacker_login_http_status": "200",
+        "user_attacker_entity_id": "None",
+        "user_attacker_display_name": "None",
+        "user_attacker_policies": "None",
+        "user_attacker_identity_policies": "None",
+        "user_attacker_meta": "None",
+        "user_attacker_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "090618f46b12c5bb",
+      "sequence_id": "seq_i2_saml_assertion_id_replay_cross_principal",
+      "sequence_description": "Replay the exact same SAML Assertion/@ID across two SP-initiated sessions, changing NameID/email to simulate cross-principal replay. Second submission must be rejected if Dex tracks assertion IDs.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_replay_login_status >= 400\nEvaluation: user_attacker_replay_login_status=200 >= 400 \u2192 False\nImplication: Dex accepted a replayed SAML assertion with the same Assertion/@ID in a later session (replay not detected).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_replay_login_status >= 400",
+        "evaluation": "user_attacker_replay_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_replay_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_saml_assertion_id_replay_cross_principal",
+      "description": "Replay the exact same SAML Assertion/@ID across two SP-initiated sessions, changing NameID/email to simulate cross-principal replay. Second submission must be rejected if Dex tracks assertion IDs.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A SAML assertion artifact (Assertion/@ID) must be one-time; reusing the same assertion ID in a later session must be rejected even if other attributes differ.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_replay_1",
+            "nonce": "n_replay_1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_victim_init",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_init_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "target_identity": "victim",
+            "email": "victim@example.com",
+            "provider": "saml",
+            "realm": "default",
+            "fixed_assertion_id": "_replay_test",
+            "saml_response": "AUTO",
+            "relay_state": "AUTO"
+          },
+          "auth_as": "user_victim_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_first_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_victim_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_first_entity_id": "sub",
+            "user_victim_first_display_name": "name",
+            "user_victim_first_policies": "groups",
+            "user_victim_first_identity_policies": "groups",
+            "user_victim_first_meta": ".",
+            "user_victim_first_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_replay_2",
+            "nonce": "n_replay_2",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_attacker_init",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_init_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "target_identity": "attacker",
+            "email": "attacker@example.com",
+            "provider": "saml",
+            "realm": "default",
+            "fixed_assertion_id": "_replay_test",
+            "saml_response": "AUTO",
+            "relay_state": "AUTO"
+          },
+          "auth_as": "user_attacker_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_replay_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_replay_entity_id": "sub",
+            "user_attacker_replay_display_name": "name",
+            "user_attacker_replay_policies": "groups",
+            "user_attacker_replay_identity_policies": "groups",
+            "user_attacker_replay_meta": ".",
+            "user_attacker_replay_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_first_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_victim_first_login_success == true AND user_victim_first_http_status == 200",
+          "violation_description": "Control SAML login did not succeed; replay test is inconclusive due to broken setup/flow.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_assertion_id_replay_rejected",
+          "invariant": "I2",
+          "assertion": "user_attacker_replay_login_status >= 400",
+          "violation_description": "Dex accepted a replayed SAML assertion with the same Assertion/@ID in a later session (replay not detected).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_victim_init_http_status": "200",
+        "user_victim_first_http_status": "200",
+        "user_victim_first_login_success": "True",
+        "user_victim_first_login_status": "200",
+        "user_victim_first_login_http_status": "200",
+        "user_victim_first_entity_id": "None",
+        "user_victim_first_display_name": "None",
+        "user_victim_first_policies": "None",
+        "user_victim_first_identity_policies": "None",
+        "user_victim_first_meta": "None",
+        "user_victim_first_email": "None",
+        "user_attacker_init_http_status": "200",
+        "user_attacker_replay_http_status": "200",
+        "user_attacker_replay_login_success": "True",
+        "user_attacker_replay_login_status": "200",
+        "user_attacker_replay_login_http_status": "200",
+        "user_attacker_replay_entity_id": "None",
+        "user_attacker_replay_display_name": "None",
+        "user_attacker_replay_policies": "None",
+        "user_attacker_replay_identity_policies": "None",
+        "user_attacker_replay_meta": "None",
+        "user_attacker_replay_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "0fe60cbf487c8ec6",
+      "sequence_id": "seq_i2_saml_assertion_id_replay_same_session",
+      "sequence_description": "Replay the exact same SAML Assertion/@ID twice within the same SP-initiated session (same RelayState) to test whether Dex enforces one-time consumption of the assertion artifact.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_replay_second_login_status >= 400\nEvaluation: user_replay_second_login_status=200 >= 400 \u2192 False\nImplication: Dex accepted the same SAML Assertion/@ID twice within the same SP-initiated session (replay not prevented).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_replay_second_login_status >= 400",
+        "evaluation": "user_replay_second_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_replay_second_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_saml_assertion_id_replay_same_session",
+      "description": "Replay the exact same SAML Assertion/@ID twice within the same SP-initiated session (same RelayState) to test whether Dex enforces one-time consumption of the assertion artifact.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A SAML assertion artifact (Assertion/@ID) must not be accepted more than once, even if replayed immediately within the same SP-initiated session context.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 3,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_replay_same_session",
+            "nonce": "n_replay_same_session",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_replay_init",
+          "expected_outcome": "any",
+          "captures": {
+            "user_replay_init_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE(target_identity=user_replay_victim,email=victim@example.com,provider=saml,realm=default,fixed_assertion_id=_replay_same_session)",
+            "relay_state": "st_replay_same_session"
+          },
+          "auth_as": "user_replay_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_replay_first_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE(target_identity=user_replay_victim,email=victim@example.com,provider=saml,realm=default,fixed_assertion_id=_replay_same_session)",
+            "relay_state": "st_replay_same_session"
+          },
+          "auth_as": "user_replay_second",
+          "expected_outcome": "any",
+          "captures": {
+            "user_replay_second_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_replay_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_replay_first_entity_id": "sub",
+            "user_replay_first_display_name": "name",
+            "user_replay_first_policies": "groups",
+            "user_replay_first_identity_policies": "groups",
+            "user_replay_first_meta": ".",
+            "user_replay_first_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_replay_second",
+          "expected_outcome": "any",
+          "captures": {
+            "user_replay_second_entity_id": "sub",
+            "user_replay_second_display_name": "name",
+            "user_replay_second_policies": "groups",
+            "user_replay_second_identity_policies": "groups",
+            "user_replay_second_meta": ".",
+            "user_replay_second_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_flow_started",
+          "invariant": "I2",
+          "assertion": "user_replay_init_http_status == 200 OR user_replay_init_http_status == 302",
+          "violation_description": "SP-initiated SAML flow did not start successfully; replay result would be inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_first_accepts_control",
+          "invariant": "I2",
+          "assertion": "user_replay_first_login_status == 200 OR user_replay_first_login_status == 302",
+          "violation_description": "Control SAML login did not succeed; replay result would be inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_assertion_id_replay_rejected_same_session",
+          "invariant": "I2",
+          "assertion": "user_replay_second_login_status >= 400",
+          "violation_description": "Dex accepted the same SAML Assertion/@ID twice within the same SP-initiated session (replay not prevented).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_replay_init_http_status": "200",
+        "user_replay_first_http_status": "200",
+        "user_replay_first_login_success": "True",
+        "user_replay_first_login_status": "200",
+        "user_replay_first_login_http_status": "200",
+        "user_replay_second_http_status": "200",
+        "user_replay_second_login_success": "True",
+        "user_replay_second_login_status": "200",
+        "user_replay_second_login_http_status": "200",
+        "user_replay_first_entity_id": "None",
+        "user_replay_first_display_name": "None",
+        "user_replay_first_policies": "None",
+        "user_replay_first_identity_policies": "None",
+        "user_replay_first_meta": "None",
+        "user_replay_first_email": "None",
+        "user_replay_second_entity_id": "None",
+        "user_replay_second_display_name": "None",
+        "user_replay_second_policies": "None",
+        "user_replay_second_identity_policies": "None",
+        "user_replay_second_meta": "None",
+        "user_replay_second_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "a8020b741bad96e1",
+      "sequence_id": "seq_i2_saml_replay_after_revoke_session",
+      "sequence_description": "Obtain a SAML login, revoke the resulting session token, then attempt to replay the same SAML Assertion/@ID in a new SP-initiated flow. Revoke should not make the original assertion reusable.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: admin_revoke_http_status == 200\nEvaluation: admin_revoke_http_status=404 == 200 \u2192 False\nImplication: Session revoke failed; cannot interpret replay-after-revoke behavior.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "admin_revoke_http_status == 200",
+        "evaluation": "admin_revoke_http_status=404 == 200 \u2192 False",
+        "captured_values": {
+          "admin_revoke_http_status": 404
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_saml_replay_after_revoke_session",
+      "description": "Obtain a SAML login, revoke the resulting session token, then attempt to replay the same SAML Assertion/@ID in a new SP-initiated flow. Revoke should not make the original assertion reusable.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: Revoking a session must not reset anti-replay state for previously-consumed SAML assertions; the same Assertion/@ID must still be rejected on replay.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 4,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_revoke_then_replay_1",
+            "nonce": "n_revoke_then_replay_1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_revoke_init1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_revoke_init1_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE(target_identity=user_revoke_victim,email=victim@example.com,provider=saml,realm=default,fixed_assertion_id=_replay_after_revoke)",
+            "relay_state": "st_revoke_then_replay_1"
+          },
+          "auth_as": "user_revoke_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_revoke_first_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_revoke_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_revoke_first_entity_id": "sub",
+            "user_revoke_first_display_name": "name",
+            "user_revoke_first_policies": "groups",
+            "user_revoke_first_identity_policies": "groups",
+            "user_revoke_first_meta": ".",
+            "user_revoke_first_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "session_token": "{{session_user_revoke_first.session_token}}",
+            "token_type_hint": "access_token",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "admin_revoke_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_revoke_then_replay_2",
+            "nonce": "n_revoke_then_replay_2",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_revoke_init2",
+          "expected_outcome": "any",
+          "captures": {
+            "user_revoke_init2_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE(target_identity=user_revoke_victim,email=victim@example.com,provider=saml,realm=default,fixed_assertion_id=_replay_after_revoke)",
+            "relay_state": "st_revoke_then_replay_2"
+          },
+          "auth_as": "user_revoke_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_revoke_replay_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_revoke_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_revoke_replay_entity_id": "sub",
+            "user_revoke_replay_display_name": "name",
+            "user_revoke_replay_policies": "groups",
+            "user_revoke_replay_identity_policies": "groups",
+            "user_revoke_replay_meta": ".",
+            "user_revoke_replay_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_flow_started_1",
+          "invariant": "I2",
+          "assertion": "user_revoke_init1_http_status == 200 OR user_revoke_init1_http_status == 302",
+          "violation_description": "First SP-initiated SAML flow did not start; test is inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_control_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_revoke_first_login_status == 200 OR user_revoke_first_login_status == 302",
+          "violation_description": "Control SAML login did not succeed; replay-after-revoke test is inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_revoke_succeeds",
+          "invariant": "I2",
+          "assertion": "admin_revoke_http_status == 200",
+          "violation_description": "Session revoke failed; cannot interpret replay-after-revoke behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_control_flow_started_2",
+          "invariant": "I2",
+          "assertion": "user_revoke_init2_http_status == 200 OR user_revoke_init2_http_status == 302",
+          "violation_description": "Second SP-initiated SAML flow did not start; replay-after-revoke test is inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_assertion_id_replay_rejected_after_revoke",
+          "invariant": "I2",
+          "assertion": "user_revoke_replay_login_status >= 400",
+          "violation_description": "Dex accepted a replayed SAML Assertion/@ID after revoking the prior session, indicating replay state is not enforced or is incorrectly tied to session lifetime.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_revoke_init1_http_status": "200",
+        "user_revoke_first_http_status": "200",
+        "user_revoke_first_login_success": "True",
+        "user_revoke_first_login_status": "200",
+        "user_revoke_first_login_http_status": "200",
+        "user_revoke_first_entity_id": "None",
+        "user_revoke_first_display_name": "None",
+        "user_revoke_first_policies": "None",
+        "user_revoke_first_identity_policies": "None",
+        "user_revoke_first_meta": "None",
+        "user_revoke_first_email": "None",
+        "admin_revoke_http_status": "404",
+        "user_revoke_init2_http_status": "200",
+        "user_revoke_replay_http_status": "200",
+        "user_revoke_replay_login_success": "True",
+        "user_revoke_replay_login_status": "200",
+        "user_revoke_replay_login_http_status": "200",
+        "user_revoke_replay_entity_id": "None",
+        "user_revoke_replay_display_name": "None",
+        "user_revoke_replay_policies": "None",
+        "user_revoke_replay_identity_policies": "None",
+        "user_revoke_replay_meta": "None",
+        "user_revoke_replay_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "0b5faa52fde8fb69",
+      "sequence_id": "seq_i2_saml_replay_after_revoke_session",
+      "sequence_description": "Obtain a SAML login, revoke the resulting session token, then attempt to replay the same SAML Assertion/@ID in a new SP-initiated flow. Revoke should not make the original assertion reusable.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_revoke_replay_login_status >= 400\nEvaluation: user_revoke_replay_login_status=200 >= 400 \u2192 False\nImplication: Dex accepted a replayed SAML Assertion/@ID after revoking the prior session, indicating replay state is not enforced or is incorrectly tied to session lifetime.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_revoke_replay_login_status >= 400",
+        "evaluation": "user_revoke_replay_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_revoke_replay_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_saml_replay_after_revoke_session",
+      "description": "Obtain a SAML login, revoke the resulting session token, then attempt to replay the same SAML Assertion/@ID in a new SP-initiated flow. Revoke should not make the original assertion reusable.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: Revoking a session must not reset anti-replay state for previously-consumed SAML assertions; the same Assertion/@ID must still be rejected on replay.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 4,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_revoke_then_replay_1",
+            "nonce": "n_revoke_then_replay_1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_revoke_init1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_revoke_init1_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE(target_identity=user_revoke_victim,email=victim@example.com,provider=saml,realm=default,fixed_assertion_id=_replay_after_revoke)",
+            "relay_state": "st_revoke_then_replay_1"
+          },
+          "auth_as": "user_revoke_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_revoke_first_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_revoke_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_revoke_first_entity_id": "sub",
+            "user_revoke_first_display_name": "name",
+            "user_revoke_first_policies": "groups",
+            "user_revoke_first_identity_policies": "groups",
+            "user_revoke_first_meta": ".",
+            "user_revoke_first_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "session_token": "{{session_user_revoke_first.session_token}}",
+            "token_type_hint": "access_token",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "admin_revoke_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_revoke_then_replay_2",
+            "nonce": "n_revoke_then_replay_2",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_revoke_init2",
+          "expected_outcome": "any",
+          "captures": {
+            "user_revoke_init2_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE(target_identity=user_revoke_victim,email=victim@example.com,provider=saml,realm=default,fixed_assertion_id=_replay_after_revoke)",
+            "relay_state": "st_revoke_then_replay_2"
+          },
+          "auth_as": "user_revoke_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_revoke_replay_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_revoke_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_revoke_replay_entity_id": "sub",
+            "user_revoke_replay_display_name": "name",
+            "user_revoke_replay_policies": "groups",
+            "user_revoke_replay_identity_policies": "groups",
+            "user_revoke_replay_meta": ".",
+            "user_revoke_replay_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_flow_started_1",
+          "invariant": "I2",
+          "assertion": "user_revoke_init1_http_status == 200 OR user_revoke_init1_http_status == 302",
+          "violation_description": "First SP-initiated SAML flow did not start; test is inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_control_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_revoke_first_login_status == 200 OR user_revoke_first_login_status == 302",
+          "violation_description": "Control SAML login did not succeed; replay-after-revoke test is inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_revoke_succeeds",
+          "invariant": "I2",
+          "assertion": "admin_revoke_http_status == 200",
+          "violation_description": "Session revoke failed; cannot interpret replay-after-revoke behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_control_flow_started_2",
+          "invariant": "I2",
+          "assertion": "user_revoke_init2_http_status == 200 OR user_revoke_init2_http_status == 302",
+          "violation_description": "Second SP-initiated SAML flow did not start; replay-after-revoke test is inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_assertion_id_replay_rejected_after_revoke",
+          "invariant": "I2",
+          "assertion": "user_revoke_replay_login_status >= 400",
+          "violation_description": "Dex accepted a replayed SAML Assertion/@ID after revoking the prior session, indicating replay state is not enforced or is incorrectly tied to session lifetime.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_revoke_init1_http_status": "200",
+        "user_revoke_first_http_status": "200",
+        "user_revoke_first_login_success": "True",
+        "user_revoke_first_login_status": "200",
+        "user_revoke_first_login_http_status": "200",
+        "user_revoke_first_entity_id": "None",
+        "user_revoke_first_display_name": "None",
+        "user_revoke_first_policies": "None",
+        "user_revoke_first_identity_policies": "None",
+        "user_revoke_first_meta": "None",
+        "user_revoke_first_email": "None",
+        "admin_revoke_http_status": "404",
+        "user_revoke_init2_http_status": "200",
+        "user_revoke_replay_http_status": "200",
+        "user_revoke_replay_login_success": "True",
+        "user_revoke_replay_login_status": "200",
+        "user_revoke_replay_login_http_status": "200",
+        "user_revoke_replay_entity_id": "None",
+        "user_revoke_replay_display_name": "None",
+        "user_revoke_replay_policies": "None",
+        "user_revoke_replay_identity_policies": "None",
+        "user_revoke_replay_meta": "None",
+        "user_revoke_replay_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "f06fab833c23a0ff",
+      "sequence_id": "seq_i2_saml_expired_assertion_after_config_change_reauth",
+      "sequence_description": "Control SAML login succeeds, then change connector audience expectation (entityIssuer override) and attempt an expired assertion login. Expired assertion must still be rejected regardless of config changes.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_exp_cfg_expired_login_status >= 400\nEvaluation: user_exp_cfg_expired_login_status=200 >= 400 \u2192 False\nImplication: Dex accepted an expired SAML assertion (NotOnOrAfter in the past) after connector config change, indicating missing/incorrect time validity enforcement.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_exp_cfg_expired_login_status >= 400",
+        "evaluation": "user_exp_cfg_expired_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_exp_cfg_expired_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_saml_expired_assertion_after_config_change_reauth",
+      "description": "Control SAML login succeeds, then change connector audience expectation (entityIssuer override) and attempt an expired assertion login. Expired assertion must still be rejected regardless of config changes.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: SAML assertion time validity (NotOnOrAfter) must be enforced consistently and must not be bypassable after connector configuration changes and re-authentication.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 4,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_expired_cfg_control",
+            "nonce": "n_expired_cfg_control",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_exp_cfg_init1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exp_cfg_init1_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE(target_identity=user_exp_cfg_victim,email=victim@example.com,provider=saml,realm=default)",
+            "relay_state": "st_expired_cfg_control"
+          },
+          "auth_as": "user_exp_cfg_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exp_cfg_control_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_exp_cfg_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exp_cfg_control_entity_id": "sub",
+            "user_exp_cfg_control_display_name": "name",
+            "user_exp_cfg_control_policies": "groups",
+            "user_exp_cfg_control_identity_policies": "groups",
+            "user_exp_cfg_control_meta": ".",
+            "user_exp_cfg_control_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "urn:example:audience:override",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_expired_cfg_attack",
+            "nonce": "n_expired_cfg_attack",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_exp_cfg_init2",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exp_cfg_init2_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE(target_identity=user_exp_cfg_attacker,email=attacker@example.com,provider=saml,realm=default,expired_assertion=true)",
+            "relay_state": "st_expired_cfg_attack"
+          },
+          "auth_as": "user_exp_cfg_expired",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exp_cfg_expired_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_exp_cfg_expired",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exp_cfg_expired_entity_id": "sub",
+            "user_exp_cfg_expired_display_name": "name",
+            "user_exp_cfg_expired_policies": "groups",
+            "user_exp_cfg_expired_identity_policies": "groups",
+            "user_exp_cfg_expired_meta": ".",
+            "user_exp_cfg_expired_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_flow_started",
+          "invariant": "I2",
+          "assertion": "user_exp_cfg_init1_http_status == 200 OR user_exp_cfg_init1_http_status == 302",
+          "violation_description": "Control SP-initiated SAML flow did not start; expired-assertion test is inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_control_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_exp_cfg_control_login_status == 200 OR user_exp_cfg_control_login_status == 302",
+          "violation_description": "Control SAML login did not succeed; expired-assertion test is inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_attack_flow_started",
+          "invariant": "I2",
+          "assertion": "user_exp_cfg_init2_http_status == 200 OR user_exp_cfg_init2_http_status == 302",
+          "violation_description": "Attack SP-initiated SAML flow did not start; expired-assertion test is inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_assertion_rejected_after_config_change",
+          "invariant": "I2",
+          "assertion": "user_exp_cfg_expired_login_status >= 400",
+          "violation_description": "Dex accepted an expired SAML assertion (NotOnOrAfter in the past) after connector config change, indicating missing/incorrect time validity enforcement.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_exp_cfg_init1_http_status": "200",
+        "user_exp_cfg_control_http_status": "200",
+        "user_exp_cfg_control_login_success": "True",
+        "user_exp_cfg_control_login_status": "200",
+        "user_exp_cfg_control_login_http_status": "200",
+        "user_exp_cfg_control_entity_id": "None",
+        "user_exp_cfg_control_display_name": "None",
+        "user_exp_cfg_control_policies": "None",
+        "user_exp_cfg_control_identity_policies": "None",
+        "user_exp_cfg_control_meta": "None",
+        "user_exp_cfg_control_email": "None",
+        "user_exp_cfg_init2_http_status": "200",
+        "user_exp_cfg_expired_http_status": "200",
+        "user_exp_cfg_expired_login_success": "True",
+        "user_exp_cfg_expired_login_status": "200",
+        "user_exp_cfg_expired_login_http_status": "200",
+        "user_exp_cfg_expired_entity_id": "None",
+        "user_exp_cfg_expired_display_name": "None",
+        "user_exp_cfg_expired_policies": "None",
+        "user_exp_cfg_expired_identity_policies": "None",
+        "user_exp_cfg_expired_meta": "None",
+        "user_exp_cfg_expired_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "f4ea7cae2c0597c5",
+      "sequence_id": "seq_i2_saml_assertion_id_replay_after_connector_recreate",
+      "sequence_description": "Replay the same SAML Assertion/@ID across two SP-initiated sessions, but between attempts delete/recreate the connector to test whether replay cache is improperly scoped to connector instance lifetime.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_replay_after_recreate_login_status >= 400\nEvaluation: user_replay_after_recreate_login_status=200 >= 400 \u2192 False\nImplication: Dex accepted a replayed SAML assertion ID after connector recreation (replay cache improperly reset/scoped).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_replay_after_recreate_login_status >= 400",
+        "evaluation": "user_replay_after_recreate_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_replay_after_recreate_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_saml_assertion_id_replay_after_connector_recreate",
+      "description": "Replay the same SAML Assertion/@ID across two SP-initiated sessions, but between attempts delete/recreate the connector to test whether replay cache is improperly scoped to connector instance lifetime.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: SAML assertion IDs must not become reusable after connector recreation; replay protection must survive connector lifecycle changes.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 4,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml-i2-replay-pre",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-replay-recreate-1",
+            "nonce": "n-replay-recreate-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_first_init",
+          "expected_outcome": "any",
+          "captures": {
+            "user_first_init_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE(target_identity=first-user;email=first@example.com;provider=saml;realm=default;fixed_assertion_id=_replay_after_recreate)",
+            "relay_state": "st-replay-recreate-1"
+          },
+          "auth_as": "user_first",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_first_entity_id": "sub",
+            "user_first_display_name": "name",
+            "user_first_policies": "groups",
+            "user_first_identity_policies": "groups",
+            "user_first_meta": ".",
+            "user_first_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml-i2-replay-post",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-replay-recreate-2",
+            "nonce": "n-replay-recreate-2",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_replay_init",
+          "expected_outcome": "any",
+          "captures": {
+            "user_replay_init_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE(target_identity=replay-user;email=replay@example.com;provider=saml;realm=default;fixed_assertion_id=_replay_after_recreate)",
+            "relay_state": "st-replay-recreate-2"
+          },
+          "auth_as": "user_replay_after_recreate",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_replay_after_recreate",
+          "expected_outcome": "any",
+          "captures": {
+            "user_replay_after_recreate_entity_id": "sub",
+            "user_replay_after_recreate_display_name": "name",
+            "user_replay_after_recreate_policies": "groups",
+            "user_replay_after_recreate_identity_policies": "groups",
+            "user_replay_after_recreate_meta": ".",
+            "user_replay_after_recreate_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "cleanup1_http_status": "http_status"
+          },
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_first_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_first_login_success == true AND user_first_http_status == 200",
+          "violation_description": "Initial login failed; cannot evaluate replay-after-recreate behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_replay_rejected_even_after_connector_recreate",
+          "invariant": "I2",
+          "assertion": "user_replay_after_recreate_login_status >= 400",
+          "violation_description": "Dex accepted a replayed SAML assertion ID after connector recreation (replay cache improperly reset/scoped).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_first_init_http_status": "200",
+        "user_first_login_success": "True",
+        "user_first_login_status": "200",
+        "user_first_login_http_status": "200",
+        "user_first_entity_id": "None",
+        "user_first_display_name": "None",
+        "user_first_policies": "None",
+        "user_first_identity_policies": "None",
+        "user_first_meta": "None",
+        "user_first_email": "None",
+        "user_replay_init_http_status": "200",
+        "user_replay_after_recreate_login_success": "True",
+        "user_replay_after_recreate_login_status": "200",
+        "user_replay_after_recreate_login_http_status": "200",
+        "user_replay_after_recreate_entity_id": "None",
+        "user_replay_after_recreate_display_name": "None",
+        "user_replay_after_recreate_policies": "None",
+        "user_replay_after_recreate_identity_policies": "None",
+        "user_replay_after_recreate_meta": "None",
+        "user_replay_after_recreate_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "9484d6aabe6b048d",
+      "sequence_id": "seq_i2_saml_expired_then_replay_same_assertion_id",
+      "sequence_description": "Control SAML login succeeds, then attempt an expired assertion (should be rejected). If rejected, try replaying the exact same expired assertion ID in a fresh SP-initiated flow to detect any cache/TTL confusion that could allow reuse of expired artifacts.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_expired_login_status >= 400\nEvaluation: user_expired_login_status=200 >= 400 \u2192 False\nImplication: Dex accepted an expired SAML assertion (NotOnOrAfter in the past) \u2014 freshness enforcement failure",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_expired_login_status >= 400",
+        "evaluation": "user_expired_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_expired_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_saml_expired_then_replay_same_assertion_id",
+      "description": "Control SAML login succeeds, then attempt an expired assertion (should be rejected). If rejected, try replaying the exact same expired assertion ID in a fresh SP-initiated flow to detect any cache/TTL confusion that could allow reuse of expired artifacts.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A SAML assertion that is expired (NotOnOrAfter in the past) must never be accepted, and re-submitting the same expired assertion artifact (same Assertion/@ID) in a new SP-initiated flow must also be rejected (no replay/TTL confusion).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 10,
+      "events_succeeded": 6,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_control_1",
+            "nonce": "n_control_1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_control_init",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_init_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "target_identity": "control-user",
+            "email": "control@example.com",
+            "provider": "saml",
+            "realm": "default"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_entity_id": "sub",
+            "user_control_display_name": "name",
+            "user_control_policies": "groups",
+            "user_control_identity_policies": "groups",
+            "user_control_meta": ".",
+            "user_control_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_expired_1",
+            "nonce": "n_expired_1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_expired_init",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_init_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "target_identity": "expired-user",
+            "email": "expired@example.com",
+            "provider": "saml",
+            "realm": "default",
+            "expired_assertion": true,
+            "fixed_assertion_id": "_expired_replay_id_1"
+          },
+          "auth_as": "user_expired",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_expired",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_entity_id": "sub",
+            "user_expired_display_name": "name",
+            "user_expired_policies": "groups",
+            "user_expired_identity_policies": "groups",
+            "user_expired_meta": ".",
+            "user_expired_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_expired_replay_1",
+            "nonce": "n_expired_replay_1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_expired_replay_init",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_replay_init_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "target_identity": "expired-user-replay",
+            "email": "expired-replay@example.com",
+            "provider": "saml",
+            "realm": "default",
+            "expired_assertion": true,
+            "fixed_assertion_id": "_expired_replay_id_1"
+          },
+          "auth_as": "user_expired_replay",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_expired_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_replay_entity_id": "sub",
+            "user_expired_replay_display_name": "name",
+            "user_expired_replay_policies": "groups",
+            "user_expired_replay_identity_policies": "groups",
+            "user_expired_replay_meta": ".",
+            "user_expired_replay_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "cleanup_http_status": "http_status"
+          },
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_flow_works",
+          "invariant": "I2",
+          "assertion": "user_control_login_status < 400 AND user_control_http_status == 200",
+          "violation_description": "Control SAML login did not succeed; cannot interpret expired/replay results",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_assertion_rejected",
+          "invariant": "I2",
+          "assertion": "user_expired_login_status >= 400",
+          "violation_description": "Dex accepted an expired SAML assertion (NotOnOrAfter in the past) \u2014 freshness enforcement failure",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_assertion_replay_rejected",
+          "invariant": "I2",
+          "assertion": "user_expired_replay_login_status >= 400",
+          "violation_description": "Dex accepted a replay of the same expired SAML assertion ID in a new SP-initiated flow \u2014 anti-replay/TTL confusion",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_init_http_status": "200",
+        "user_control_login_success": "True",
+        "user_control_login_status": "200",
+        "user_control_login_http_status": "200",
+        "user_control_entity_id": "None",
+        "user_control_display_name": "None",
+        "user_control_policies": "None",
+        "user_control_identity_policies": "None",
+        "user_control_meta": "None",
+        "user_control_email": "None",
+        "user_expired_init_http_status": "200",
+        "user_expired_login_success": "True",
+        "user_expired_login_status": "200",
+        "user_expired_login_http_status": "200",
+        "user_expired_entity_id": "None",
+        "user_expired_display_name": "None",
+        "user_expired_policies": "None",
+        "user_expired_identity_policies": "None",
+        "user_expired_meta": "None",
+        "user_expired_email": "None",
+        "user_expired_replay_init_http_status": "200",
+        "user_expired_replay_login_success": "True",
+        "user_expired_replay_login_status": "200",
+        "user_expired_replay_login_http_status": "200",
+        "user_expired_replay_entity_id": "None",
+        "user_expired_replay_display_name": "None",
+        "user_expired_replay_policies": "None",
+        "user_expired_replay_identity_policies": "None",
+        "user_expired_replay_meta": "None",
+        "user_expired_replay_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "50a418483b500f03",
+      "sequence_id": "seq_i2_saml_expired_then_replay_same_assertion_id",
+      "sequence_description": "Control SAML login succeeds, then attempt an expired assertion (should be rejected). If rejected, try replaying the exact same expired assertion ID in a fresh SP-initiated flow to detect any cache/TTL confusion that could allow reuse of expired artifacts.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_expired_replay_login_status >= 400\nEvaluation: user_expired_replay_login_status=200 >= 400 \u2192 False\nImplication: Dex accepted a replay of the same expired SAML assertion ID in a new SP-initiated flow \u2014 anti-replay/TTL confusion",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_expired_replay_login_status >= 400",
+        "evaluation": "user_expired_replay_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_expired_replay_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_saml_expired_then_replay_same_assertion_id",
+      "description": "Control SAML login succeeds, then attempt an expired assertion (should be rejected). If rejected, try replaying the exact same expired assertion ID in a fresh SP-initiated flow to detect any cache/TTL confusion that could allow reuse of expired artifacts.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A SAML assertion that is expired (NotOnOrAfter in the past) must never be accepted, and re-submitting the same expired assertion artifact (same Assertion/@ID) in a new SP-initiated flow must also be rejected (no replay/TTL confusion).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 10,
+      "events_succeeded": 6,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_control_1",
+            "nonce": "n_control_1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_control_init",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_init_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "target_identity": "control-user",
+            "email": "control@example.com",
+            "provider": "saml",
+            "realm": "default"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_entity_id": "sub",
+            "user_control_display_name": "name",
+            "user_control_policies": "groups",
+            "user_control_identity_policies": "groups",
+            "user_control_meta": ".",
+            "user_control_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_expired_1",
+            "nonce": "n_expired_1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_expired_init",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_init_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "target_identity": "expired-user",
+            "email": "expired@example.com",
+            "provider": "saml",
+            "realm": "default",
+            "expired_assertion": true,
+            "fixed_assertion_id": "_expired_replay_id_1"
+          },
+          "auth_as": "user_expired",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_expired",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_entity_id": "sub",
+            "user_expired_display_name": "name",
+            "user_expired_policies": "groups",
+            "user_expired_identity_policies": "groups",
+            "user_expired_meta": ".",
+            "user_expired_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_expired_replay_1",
+            "nonce": "n_expired_replay_1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_expired_replay_init",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_replay_init_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "target_identity": "expired-user-replay",
+            "email": "expired-replay@example.com",
+            "provider": "saml",
+            "realm": "default",
+            "expired_assertion": true,
+            "fixed_assertion_id": "_expired_replay_id_1"
+          },
+          "auth_as": "user_expired_replay",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_expired_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_replay_entity_id": "sub",
+            "user_expired_replay_display_name": "name",
+            "user_expired_replay_policies": "groups",
+            "user_expired_replay_identity_policies": "groups",
+            "user_expired_replay_meta": ".",
+            "user_expired_replay_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "cleanup_http_status": "http_status"
+          },
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_flow_works",
+          "invariant": "I2",
+          "assertion": "user_control_login_status < 400 AND user_control_http_status == 200",
+          "violation_description": "Control SAML login did not succeed; cannot interpret expired/replay results",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_assertion_rejected",
+          "invariant": "I2",
+          "assertion": "user_expired_login_status >= 400",
+          "violation_description": "Dex accepted an expired SAML assertion (NotOnOrAfter in the past) \u2014 freshness enforcement failure",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_assertion_replay_rejected",
+          "invariant": "I2",
+          "assertion": "user_expired_replay_login_status >= 400",
+          "violation_description": "Dex accepted a replay of the same expired SAML assertion ID in a new SP-initiated flow \u2014 anti-replay/TTL confusion",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_init_http_status": "200",
+        "user_control_login_success": "True",
+        "user_control_login_status": "200",
+        "user_control_login_http_status": "200",
+        "user_control_entity_id": "None",
+        "user_control_display_name": "None",
+        "user_control_policies": "None",
+        "user_control_identity_policies": "None",
+        "user_control_meta": "None",
+        "user_control_email": "None",
+        "user_expired_init_http_status": "200",
+        "user_expired_login_success": "True",
+        "user_expired_login_status": "200",
+        "user_expired_login_http_status": "200",
+        "user_expired_entity_id": "None",
+        "user_expired_display_name": "None",
+        "user_expired_policies": "None",
+        "user_expired_identity_policies": "None",
+        "user_expired_meta": "None",
+        "user_expired_email": "None",
+        "user_expired_replay_init_http_status": "200",
+        "user_expired_replay_login_success": "True",
+        "user_expired_replay_login_status": "200",
+        "user_expired_replay_login_http_status": "200",
+        "user_expired_replay_entity_id": "None",
+        "user_expired_replay_display_name": "None",
+        "user_expired_replay_policies": "None",
+        "user_expired_replay_identity_policies": "None",
+        "user_expired_replay_meta": "None",
+        "user_expired_replay_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "81edb698feefd5a4",
+      "sequence_id": "seq_i3_saml_connector_recreate_mid_flow",
+      "sequence_description": "Mid-flight connector mutation: start SP-initiated SAML flow, then delete and recreate the connector with same connector_id before posting SAMLResponse. Response should be rejected if Dex binds the flow to connector instance/config and prevents step-skipping across connector lifetimes.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_midflight_login_status >= 400\nEvaluation: user_attacker_midflight_login_status=200 >= 400 \u2192 False\nImplication: Dex accepted a SAMLResponse for a flow whose connector was deleted/recreated mid-flight (flow not atomic / connector-instance binding failure).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_midflight_login_status >= 400",
+        "evaluation": "user_attacker_midflight_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_midflight_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i3_saml_connector_recreate_mid_flow",
+      "description": "Mid-flight connector mutation: start SP-initiated SAML flow, then delete and recreate the connector with same connector_id before posting SAMLResponse. Response should be rejected if Dex binds the flow to connector instance/config and prevents step-skipping across connector lifetimes.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: SP-initiated SAML flow must be atomic and bound to the connector instance/config that issued the AuthnRequest; deleting/recreating the connector mid-flow must not allow completion.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 2,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-midflight",
+            "nonce": "nonce-midflight",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_victim_flow",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml-recreated",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "AUTO_FORGE(target_identity=bob;email=bob@example.com;provider=saml;realm=default)",
+            "relay_state": "state-midflight"
+          },
+          "auth_as": "user_attacker_midflight",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_midflight",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_midflight_entity_id": "sub",
+            "user_attacker_midflight_display_name": "name",
+            "user_attacker_midflight_policies": "groups",
+            "user_attacker_midflight_identity_policies": "groups",
+            "user_attacker_midflight_meta": ".",
+            "user_attacker_midflight_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i3_reject_midflight_connector_recreate",
+          "invariant": "I3",
+          "assertion": "user_attacker_midflight_login_status >= 400",
+          "violation_description": "Dex accepted a SAMLResponse for a flow whose connector was deleted/recreated mid-flight (flow not atomic / connector-instance binding failure).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_attacker_midflight_login_success": "True",
+        "user_attacker_midflight_login_status": "200",
+        "user_attacker_midflight_login_http_status": "200",
+        "user_attacker_midflight_entity_id": "None",
+        "user_attacker_midflight_display_name": "None",
+        "user_attacker_midflight_policies": "None",
+        "user_attacker_midflight_identity_policies": "None",
+        "user_attacker_midflight_meta": "None",
+        "user_attacker_midflight_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "364c23cbd2f16dbe",
+      "sequence_id": "seq_i3_saml_callback_without_authnrequest",
+      "sequence_description": "Attempt to skip SP-initiated step: POST a forged SAMLResponse to /callback without first calling /auth (no AuthnRequest/InResponseTo binding). Expect Dex to reject.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_skip_login_status >= 400\nEvaluation: user_attacker_skip_login_status=200 >= 400 \u2192 False\nImplication: Dex accepted a SAMLResponse without a prior /auth-initiated AuthnRequest (step skipping / missing InResponseTo binding).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_skip_login_status >= 400",
+        "evaluation": "user_attacker_skip_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_skip_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i3_saml_callback_without_authnrequest",
+      "description": "Attempt to skip SP-initiated step: POST a forged SAMLResponse to /callback without first calling /auth (no AuthnRequest/InResponseTo binding). Expect Dex to reject.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: Dex must enforce SP-initiated flow ordering and reject SAML callbacks that are not bound to a prior /auth-initiated AuthnRequest (no step skipping).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 3,
+      "events_succeeded": 1,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://mock-idp/sso",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "http://mock-idp/issuer",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE",
+            "relay_state": "FORGE"
+          },
+          "auth_as": "user_attacker_skip",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_skip_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_skip",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_skip_entity_id": "sub",
+            "user_attacker_skip_display_name": "name",
+            "user_attacker_skip_policies": "groups",
+            "user_attacker_skip_identity_policies": "groups",
+            "user_attacker_skip_meta": ".",
+            "user_attacker_skip_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i3_reject_unprompted_saml_callback",
+          "invariant": "I3",
+          "assertion": "user_attacker_skip_login_status >= 400",
+          "violation_description": "Dex accepted a SAMLResponse without a prior /auth-initiated AuthnRequest (step skipping / missing InResponseTo binding).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_attacker_skip_login_status": "200",
+        "user_attacker_skip_login_success": "True",
+        "user_attacker_skip_login_http_status": "200",
+        "user_attacker_skip_entity_id": "None",
+        "user_attacker_skip_display_name": "None",
+        "user_attacker_skip_policies": "None",
+        "user_attacker_skip_identity_policies": "None",
+        "user_attacker_skip_meta": "None",
+        "user_attacker_skip_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "bab2744a099dc4a2",
+      "sequence_id": "seq_i3_saml_midflight_issuer_change",
+      "sequence_description": "Start SP-initiated SAML flow, then change connector expected issuer (ssoIssuer) before posting SAMLResponse. Response should be rejected if flow is coherently bound to the initiating connector config/state.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_midflight_login_status >= 400\nEvaluation: user_midflight_login_status=200 >= 400 \u2192 False\nImplication: Dex accepted a SAMLResponse for a flow initiated under issuer-A after the connector was reconfigured to issuer-B mid-flight (flow not atomic / config-splicing possible).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_midflight_login_status >= 400",
+        "evaluation": "user_midflight_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_midflight_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i3_saml_midflight_issuer_change",
+      "description": "Start SP-initiated SAML flow, then change connector expected issuer (ssoIssuer) before posting SAMLResponse. Response should be rejected if flow is coherently bound to the initiating connector config/state.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: A multi-step SAML flow must be atomic and bound to the connector configuration at initiation; mid-flight config changes must not allow completing an earlier flow under a different policy.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 2,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://mock-idp/sso",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "http://mock-idp/issuer-A",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-midflight",
+            "nonce": "nonce-midflight",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_midflight",
+          "expected_outcome": "any",
+          "captures": {
+            "user_midflight_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://mock-idp/sso",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "http://mock-idp/issuer-B",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE",
+            "relay_state": "FROM_PREVIOUS_AUTH"
+          },
+          "auth_as": "user_midflight",
+          "expected_outcome": "any",
+          "captures": {
+            "user_midflight_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_midflight",
+          "expected_outcome": "any",
+          "captures": {
+            "user_midflight_entity_id": "sub",
+            "user_midflight_display_name": "name",
+            "user_midflight_policies": "groups",
+            "user_midflight_identity_policies": "groups",
+            "user_midflight_meta": ".",
+            "user_midflight_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i3_reject_midflight_policy_swap",
+          "invariant": "I3",
+          "assertion": "user_midflight_login_status >= 400",
+          "violation_description": "Dex accepted a SAMLResponse for a flow initiated under issuer-A after the connector was reconfigured to issuer-B mid-flight (flow not atomic / config-splicing possible).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_midflight_http_status": "200",
+        "user_midflight_login_status": "200",
+        "user_midflight_login_success": "True",
+        "user_midflight_login_http_status": "200",
+        "user_midflight_entity_id": "None",
+        "user_midflight_display_name": "None",
+        "user_midflight_policies": "None",
+        "user_midflight_identity_policies": "None",
+        "user_midflight_meta": "None",
+        "user_midflight_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "969ca24bd01a1f6e",
+      "sequence_id": "seq_i3_saml_cross_identity_relaystate_splice",
+      "sequence_description": "Cross-identity splicing: start two SP-initiated SAML flows, then attempt to complete flow-A using flow-B's RelayState while asserting a different NameID/email. Should be rejected if response is bound to the correct request/session.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_cross_identity_http_status >= 400\nEvaluation: user_attacker_cross_identity_http_status=200 >= 400 \u2192 False\nImplication: Dex accepted a SAMLResponse under a different session's RelayState while changing asserted principal attributes, indicating flow/session splicing.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_cross_identity_http_status >= 400",
+        "evaluation": "user_attacker_cross_identity_http_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_cross_identity_http_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i3_saml_cross_identity_relaystate_splice",
+      "description": "Cross-identity splicing: start two SP-initiated SAML flows, then attempt to complete flow-A using flow-B's RelayState while asserting a different NameID/email. Should be rejected if response is bound to the correct request/session.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: Dex must prevent cross-session splicing where a SAMLResponse for one browser/session is accepted under another session's RelayState, even if both are for the same client.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 3,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-1",
+            "nonce": "nonce-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_flow_1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_flow_1_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-2",
+            "nonce": "nonce-2",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_flow_2",
+          "expected_outcome": "any",
+          "captures": {
+            "user_flow_2_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE(target_identity=attackerNameID,email=victimC@example.com,provider=saml,realm=default,idp_entity_id=trusted-idp)",
+            "relay_state": "state-2"
+          },
+          "auth_as": "user_attacker_cross_identity",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_cross_identity_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_cross_identity",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_cross_identity_entity_id": "sub",
+            "user_attacker_cross_identity_display_name": "name",
+            "user_attacker_cross_identity_policies": "groups",
+            "user_attacker_cross_identity_identity_policies": "groups",
+            "user_attacker_cross_identity_meta": ".",
+            "user_attacker_cross_identity_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "cleanup_status": "http_status"
+          },
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i3_cross_identity_relaystate_splice_rejected",
+          "invariant": "I3",
+          "assertion": "user_attacker_cross_identity_http_status >= 400",
+          "violation_description": "Dex accepted a SAMLResponse under a different session's RelayState while changing asserted principal attributes, indicating flow/session splicing.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_flow_1_http_status": "200",
+        "user_flow_2_http_status": "200",
+        "user_attacker_cross_identity_http_status": "200",
+        "user_attacker_cross_identity_login_success": "True",
+        "user_attacker_cross_identity_login_status": "200",
+        "user_attacker_cross_identity_login_http_status": "200",
+        "user_attacker_cross_identity_entity_id": "None",
+        "user_attacker_cross_identity_display_name": "None",
+        "user_attacker_cross_identity_policies": "None",
+        "user_attacker_cross_identity_identity_policies": "None",
+        "user_attacker_cross_identity_meta": "None",
+        "user_attacker_cross_identity_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "51abf73739ff9564",
+      "sequence_id": "seq_i3_saml_relaystate_replay_same_flow",
+      "sequence_description": "I3 flow coherence: attempt to reuse (replay) the same SP-initiated SAML callback context (RelayState) to authenticate a second time without starting a new /auth flow. Expect Dex to reject the second callback because the flow should be one-shot and order-preserving.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_second_login_status >= 400\nEvaluation: user_attacker_second_login_status=200 >= 400 \u2192 False\nImplication: Dex accepted a second SAML callback using the same RelayState without a fresh /auth initiation, indicating flow non-atomicity / step re-use (flow coherence violation).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_second_login_status >= 400",
+        "evaluation": "user_attacker_second_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_second_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i3_saml_relaystate_replay_same_flow",
+      "description": "I3 flow coherence: attempt to reuse (replay) the same SP-initiated SAML callback context (RelayState) to authenticate a second time without starting a new /auth flow. Expect Dex to reject the second callback because the flow should be one-shot and order-preserving.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: The SAML SP-initiated flow must be atomic and one-shot; a callback context (RelayState/InResponseTo binding) must not be reusable to complete a second login without a fresh /auth initiation.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 3,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-reuse-1",
+            "nonce": "nonce-reuse-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_flow_init",
+          "expected_outcome": "any",
+          "captures": {
+            "flow_init_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE(target_identity=victim-first,email=victim.first@example.com,provider=saml,realm=default)",
+            "relay_state": "state-reuse-1"
+          },
+          "auth_as": "user_victim_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_first_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_victim_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_first_entity_id": "sub",
+            "user_victim_first_display_name": "name",
+            "user_victim_first_policies": "groups",
+            "user_victim_first_identity_policies": "groups",
+            "user_victim_first_meta": ".",
+            "user_victim_first_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE(target_identity=attacker-second,email=attacker.second@example.com,provider=saml,realm=default)",
+            "relay_state": "state-reuse-1"
+          },
+          "auth_as": "user_attacker_second",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_second_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_second",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_second_entity_id": "sub",
+            "user_attacker_second_display_name": "name",
+            "user_attacker_second_policies": "groups",
+            "user_attacker_second_identity_policies": "groups",
+            "user_attacker_second_meta": ".",
+            "user_attacker_second_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i3_relaystate_reuse_rejected",
+          "invariant": "I3",
+          "assertion": "user_attacker_second_login_status >= 400",
+          "violation_description": "Dex accepted a second SAML callback using the same RelayState without a fresh /auth initiation, indicating flow non-atomicity / step re-use (flow coherence violation).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i3_control_first_login_succeeds",
+          "invariant": "I3",
+          "assertion": "user_victim_first_login_status < 400 AND user_victim_first_http_status == 200",
+          "violation_description": "Control SAML login did not succeed; cannot attribute second-step behavior to flow coherence enforcement.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "flow_init_http_status": "200",
+        "user_victim_first_login_status": "200",
+        "user_victim_first_login_success": "True",
+        "user_victim_first_login_http_status": "200",
+        "user_victim_first_entity_id": "None",
+        "user_victim_first_display_name": "None",
+        "user_victim_first_policies": "None",
+        "user_victim_first_identity_policies": "None",
+        "user_victim_first_meta": "None",
+        "user_victim_first_email": "None",
+        "user_attacker_second_login_status": "200",
+        "user_attacker_second_login_success": "True",
+        "user_attacker_second_login_http_status": "200",
+        "user_attacker_second_entity_id": "None",
+        "user_attacker_second_display_name": "None",
+        "user_attacker_second_policies": "None",
+        "user_attacker_second_identity_policies": "None",
+        "user_attacker_second_meta": "None",
+        "user_attacker_second_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "db58cced98d74fa2",
+      "sequence_id": "seq_i4_saml_empty_nameid_collision",
+      "sequence_description": "I4 empty-sub/NameID: attempt to authenticate two distinct upstream principals where one has an empty NameID; ensure Dex does not collapse empty/blank NameID into another user's identity.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "Server returned HTTP 500 on saml_login (auth_as=user_B): <!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">\n    <title>dex</title>\n    <meta name=\"viewport\" content=\"width=device-wid. Login endpoints must not return 5xx for any input.",
+      "cve_analog": "none",
+      "evidence": {
+        "event_type": "saml_login",
+        "http_status": 500,
+        "error": "<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">\n    <title>dex</title>\n    <meta name=\"viewport\" content=\"width=device-wid",
+        "params_keys": [
+          "connector_id",
+          "saml_response",
+          "relay_state",
+          "target_identity",
+          "email",
+          "provider",
+          "realm",
+          "idp_entity_id"
+        ]
+      },
+      "detection_source": "L1_syntactic",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i4_saml_empty_nameid_collision",
+      "description": "I4 empty-sub/NameID: attempt to authenticate two distinct upstream principals where one has an empty NameID; ensure Dex does not collapse empty/blank NameID into another user's identity.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "I4: Distinct upstream principals (NameID='userA' vs NameID='') must not map to the same downstream identity; empty NameID must not alias an existing subject.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 3,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "http://localhost:5556/dex/callback",
+            "sso_issuer": "https://idp.example.com/saml",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-empty-nameid-A",
+            "nonce": "nonce-empty-nameid-A",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE",
+            "relay_state": "FROM_AUTH",
+            "target_identity": "userA-emptynameid-test",
+            "email": "userA@example.com",
+            "provider": "saml",
+            "realm": "dex",
+            "idp_entity_id": "https://idp.example.com/saml"
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_entity_id": "sub",
+            "user_A_display_name": "name",
+            "user_A_policies": "groups",
+            "user_A_identity_policies": "groups",
+            "user_A_meta": ".",
+            "user_A_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-empty-nameid-B",
+            "nonce": "nonce-empty-nameid-B",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE",
+            "relay_state": "FROM_AUTH",
+            "target_identity": "",
+            "email": "blank-nameid@example.com",
+            "provider": "saml",
+            "realm": "dex",
+            "idp_entity_id": "https://idp.example.com/saml"
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_entity_id": "sub",
+            "user_B_display_name": "name",
+            "user_B_policies": "groups",
+            "user_B_identity_policies": "groups",
+            "user_B_meta": ".",
+            "user_B_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i4_diversity_baseline",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Baseline failed: mechanism cannot distinguish principals",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_empty_nameid_not_accepted_or_not_colliding",
+          "invariant": "I4",
+          "assertion": "user_B_http_status >= 400 OR user_A_entity_id != user_B_entity_id",
+          "violation_description": "Empty NameID was accepted and collapsed into an existing downstream identity (principal binding failure)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I4"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_A_auth_http_status": "200",
+        "user_A_login_success": "True",
+        "user_A_login_status": "200",
+        "user_A_login_http_status": "200",
+        "user_A_entity_id": "None",
+        "user_A_display_name": "None",
+        "user_A_policies": "None",
+        "user_A_identity_policies": "None",
+        "user_A_meta": "None",
+        "user_A_email": "None",
+        "user_B_auth_http_status": "200",
+        "user_B_login_success": "False",
+        "user_B_login_status": "500",
+        "user_B_login_http_status": "500",
+        "user_B_entity_id": "None",
+        "user_B_display_name": "None",
+        "user_B_policies": "None",
+        "user_B_identity_policies": "None",
+        "user_B_meta": "None",
+        "user_B_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "0fe7e0563e1c12b3",
+      "sequence_id": "seq_i5_saml_no_conditions_acceptance",
+      "sequence_description": "SAML control login succeeds, then attempt SAML login with Conditions removed (no audience/time bounds). If accepted, Dex grants a session without upstream intent constraints.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_nocond_login_status >= 400\nEvaluation: user_attacker_nocond_login_status=200 >= 400 \u2192 False\nImplication: Dex accepted a SAML assertion without Conditions (no audience/time bounds), violating authorization binding.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_nocond_login_status >= 400",
+        "evaluation": "user_attacker_nocond_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_nocond_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_saml_no_conditions_acceptance",
+      "description": "SAML control login succeeds, then attempt SAML login with Conditions removed (no audience/time bounds). If accepted, Dex grants a session without upstream intent constraints.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Dex must not grant an authenticated session when the SAML assertion omits Conditions (no audience/time bounds), because EffectivePerms would not be bounded by UpstreamIntent \u2229 BrokerPolicy.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_provider",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_type": "saml",
+            "connector_name": "test-saml-i5-no-conditions",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-control-1",
+            "nonce": "nonce-control-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "AUTO",
+            "relay_state": "AUTO",
+            "target_identity": "control-user",
+            "email": "control-user@example.com",
+            "provider": "saml",
+            "realm": "default",
+            "idp_entity_id": "trusted-idp"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_entity_id": "sub",
+            "user_control_display_name": "name",
+            "user_control_policies": "groups",
+            "user_control_identity_policies": "groups",
+            "user_control_meta": ".",
+            "user_control_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-attack-nocond-1",
+            "nonce": "nonce-attack-nocond-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_attacker_nocond",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_nocond_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "AUTO",
+            "relay_state": "AUTO",
+            "target_identity": "attacker-nocond",
+            "email": "attacker-nocond@example.com",
+            "provider": "saml",
+            "realm": "default",
+            "remove_conditions": true,
+            "idp_entity_id": "trusted-idp"
+          },
+          "auth_as": "user_attacker_nocond",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_nocond",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_nocond_entity_id": "sub",
+            "user_attacker_nocond_display_name": "name",
+            "user_attacker_nocond_policies": "groups",
+            "user_attacker_nocond_identity_policies": "groups",
+            "user_attacker_nocond_meta": ".",
+            "user_attacker_nocond_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_control_login_must_work",
+          "invariant": "I5",
+          "assertion": "user_control_login_status < 400 AND user_control_http_status == 200",
+          "violation_description": "Control SAML login failed; cannot interpret no-conditions result (setup may be broken).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_reject_no_conditions",
+          "invariant": "I5",
+          "assertion": "user_attacker_nocond_login_status >= 400",
+          "violation_description": "Dex accepted a SAML assertion without Conditions (no audience/time bounds), violating authorization binding.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_auth_http_status": "200",
+        "user_control_login_success": "True",
+        "user_control_login_status": "200",
+        "user_control_login_http_status": "200",
+        "user_control_entity_id": "None",
+        "user_control_display_name": "None",
+        "user_control_policies": "None",
+        "user_control_identity_policies": "None",
+        "user_control_meta": "None",
+        "user_control_email": "None",
+        "user_attacker_nocond_auth_http_status": "200",
+        "user_attacker_nocond_login_success": "True",
+        "user_attacker_nocond_login_status": "200",
+        "user_attacker_nocond_login_http_status": "200",
+        "user_attacker_nocond_entity_id": "None",
+        "user_attacker_nocond_display_name": "None",
+        "user_attacker_nocond_policies": "None",
+        "user_attacker_nocond_identity_policies": "None",
+        "user_attacker_nocond_meta": "None",
+        "user_attacker_nocond_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "adf293f1d0db4a4f",
+      "sequence_id": "seq_i5_saml_wrong_audience_entityissuer_override",
+      "sequence_description": "Control SAML login succeeds with correct audience (entityIssuer override), then attacker submits assertion with wrong AudienceRestriction to test audience binding enforcement.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_wrong_aud_login_status >= 400\nEvaluation: user_attacker_wrong_aud_login_status=200 >= 400 \u2192 False\nImplication: Dex accepted a SAML assertion with an AudienceRestriction that does not match the configured expected audience (entityIssuer override), violating authorization binding.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_wrong_aud_login_status >= 400",
+        "evaluation": "user_attacker_wrong_aud_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_wrong_aud_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_saml_wrong_audience_entityissuer_override",
+      "description": "Control SAML login succeeds with correct audience (entityIssuer override), then attacker submits assertion with wrong AudienceRestriction to test audience binding enforcement.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Dex must enforce SAML AudienceRestriction against the configured expected audience (entityIssuer overrides redirectURI); a token/session must not be issued when the assertion audience does not match broker policy.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "urn:expected-audience:entityIssuer",
+            "sso_issuer": "urn:trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-control-1",
+            "nonce": "n-control-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE",
+            "relay_state": "st-control-1"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_entity_id": "sub",
+            "user_control_display_name": "name",
+            "user_control_policies": "groups",
+            "user_control_identity_policies": "groups",
+            "user_control_meta": ".",
+            "user_control_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-attack-1",
+            "nonce": "n-attack-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_attacker_wrong_aud",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_wrong_aud_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE_WRONG_AUDIENCE",
+            "relay_state": "st-attack-1"
+          },
+          "auth_as": "user_attacker_wrong_aud",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_wrong_aud",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_wrong_aud_entity_id": "sub",
+            "user_attacker_wrong_aud_display_name": "name",
+            "user_attacker_wrong_aud_policies": "groups",
+            "user_attacker_wrong_aud_identity_policies": "groups",
+            "user_attacker_wrong_aud_meta": ".",
+            "user_attacker_wrong_aud_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "cleanup_http_status": "http_status"
+          },
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_control_login_must_work",
+          "invariant": "I5",
+          "assertion": "user_control_login_status == 200 AND user_control_http_status == 200",
+          "violation_description": "Control SAML login failed; cannot evaluate audience-binding enforcement reliably.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_reject_wrong_audience_under_entityissuer",
+          "invariant": "I5",
+          "assertion": "user_attacker_wrong_aud_login_status >= 400",
+          "violation_description": "Dex accepted a SAML assertion with an AudienceRestriction that does not match the configured expected audience (entityIssuer override), violating authorization binding.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_auth_http_status": "200",
+        "user_control_login_success": "True",
+        "user_control_login_status": "200",
+        "user_control_login_http_status": "200",
+        "user_control_entity_id": "None",
+        "user_control_display_name": "None",
+        "user_control_policies": "None",
+        "user_control_identity_policies": "None",
+        "user_control_meta": "None",
+        "user_control_email": "None",
+        "user_attacker_wrong_aud_auth_http_status": "200",
+        "user_attacker_wrong_aud_login_success": "True",
+        "user_attacker_wrong_aud_login_status": "200",
+        "user_attacker_wrong_aud_login_http_status": "200",
+        "user_attacker_wrong_aud_entity_id": "None",
+        "user_attacker_wrong_aud_display_name": "None",
+        "user_attacker_wrong_aud_policies": "None",
+        "user_attacker_wrong_aud_identity_policies": "None",
+        "user_attacker_wrong_aud_meta": "None",
+        "user_attacker_wrong_aud_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "79003dbed8cee3ea",
+      "sequence_id": "seq_i5_saml_config_change_entityissuer_then_wrong_audience_reauth",
+      "sequence_description": "Config change + re-auth: first configure connector without entityIssuer (audience defaults to redirectURI) and perform control login; then reconfigure with entityIssuer and attempt login with assertion still targeting old audience to ensure policy change is enforced.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_postchange_attack_login_status >= 400\nEvaluation: user_postchange_attack_login_status=200 >= 400 \u2192 False\nImplication: After changing expected audience via entityIssuer, Dex still accepted an assertion scoped to the old audience (redirectURI), violating authorization binding under updated broker policy.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_postchange_attack_login_status >= 400",
+        "evaluation": "user_postchange_attack_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_postchange_attack_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_saml_config_change_entityissuer_then_wrong_audience_reauth",
+      "description": "Config change + re-auth: first configure connector without entityIssuer (audience defaults to redirectURI) and perform control login; then reconfigure with entityIssuer and attempt login with assertion still targeting old audience to ensure policy change is enforced.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: After a broker policy change (expected audience changes via entityIssuer), Dex must enforce the new audience binding and not accept assertions scoped to the previous audience.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 4,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "urn:trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-pre-1",
+            "nonce": "n-pre-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_prechange",
+          "expected_outcome": "any",
+          "captures": {
+            "user_prechange_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE_AUD_REDIRECTURI",
+            "relay_state": "st-pre-1"
+          },
+          "auth_as": "user_prechange",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_prechange",
+          "expected_outcome": "any",
+          "captures": {
+            "user_prechange_entity_id": "sub",
+            "user_prechange_display_name": "name",
+            "user_prechange_policies": "groups",
+            "user_prechange_identity_policies": "groups",
+            "user_prechange_meta": ".",
+            "user_prechange_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "urn:new-expected-audience:entityIssuer",
+            "sso_issuer": "urn:trusted-idp",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-post-1",
+            "nonce": "n-post-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_postchange_attack",
+          "expected_outcome": "any",
+          "captures": {
+            "user_postchange_attack_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "FORGE_AUD_REDIRECTURI",
+            "relay_state": "st-post-1"
+          },
+          "auth_as": "user_postchange_attack",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_postchange_attack",
+          "expected_outcome": "any",
+          "captures": {
+            "user_postchange_attack_entity_id": "sub",
+            "user_postchange_attack_display_name": "name",
+            "user_postchange_attack_policies": "groups",
+            "user_postchange_attack_identity_policies": "groups",
+            "user_postchange_attack_meta": ".",
+            "user_postchange_attack_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "cleanup1_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "cleanup2_http_status": "http_status"
+          },
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_prechange_control_login_ok",
+          "invariant": "I5",
+          "assertion": "user_prechange_login_status == 200 AND user_prechange_http_status == 200",
+          "violation_description": "Pre-change control login failed; cannot evaluate enforcement across config change.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_postchange_old_audience_rejected",
+          "invariant": "I5",
+          "assertion": "user_postchange_attack_login_status >= 400",
+          "violation_description": "After changing expected audience via entityIssuer, Dex still accepted an assertion scoped to the old audience (redirectURI), violating authorization binding under updated broker policy.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_prechange_auth_http_status": "200",
+        "user_prechange_login_success": "True",
+        "user_prechange_login_status": "200",
+        "user_prechange_login_http_status": "200",
+        "user_prechange_entity_id": "None",
+        "user_prechange_display_name": "None",
+        "user_prechange_policies": "None",
+        "user_prechange_identity_policies": "None",
+        "user_prechange_meta": "None",
+        "user_prechange_email": "None",
+        "user_postchange_attack_auth_http_status": "200",
+        "user_postchange_attack_login_success": "True",
+        "user_postchange_attack_login_status": "200",
+        "user_postchange_attack_login_http_status": "200",
+        "user_postchange_attack_entity_id": "None",
+        "user_postchange_attack_display_name": "None",
+        "user_postchange_attack_policies": "None",
+        "user_postchange_attack_identity_policies": "None",
+        "user_postchange_attack_meta": "None",
+        "user_postchange_attack_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "36d1d1275137f8a1",
+      "sequence_id": "seq_i5_saml_entityissuer_override_enforced_reauth",
+      "sequence_description": "I5 audience binding under config change: first login with redirectURI-based audience; then reconfigure entityIssuer override and ensure old-audience assertions are rejected (no stale audience acceptance).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_after_change_attack_login_status >= 400\nEvaluation: user_after_change_attack_login_status=200 >= 400 \u2192 False\nImplication: Dex accepted SAML login after audience policy change when it should have rejected assertions targeting the previous audience, indicating audience-binding/policy-staleness over-grant",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_after_change_attack_login_status >= 400",
+        "evaluation": "user_after_change_attack_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_after_change_attack_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_saml_entityissuer_override_enforced_reauth",
+      "description": "I5 audience binding under config change: first login with redirectURI-based audience; then reconfigure entityIssuer override and ensure old-audience assertions are rejected (no stale audience acceptance).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Effective permissions must be bounded by current BrokerPolicy(config). After changing expected audience (entityIssuer override), Dex must not accept assertions targeting the previous audience (redirectURI).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 4,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "",
+            "sso_issuer": "https://trusted-idp.example",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email",
+            "response_type": "code",
+            "state": "st-before-1",
+            "nonce": "n-before-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_before_change",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "AUTO",
+            "relay_state": "st-before-1"
+          },
+          "auth_as": "user_before_change",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_before_change",
+          "expected_outcome": "any",
+          "captures": {
+            "user_before_change_entity_id": "sub",
+            "user_before_change_display_name": "name",
+            "user_before_change_policies": "groups",
+            "user_before_change_identity_policies": "groups",
+            "user_before_change_meta": ".",
+            "user_before_change_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_id": "test-saml",
+            "connector_name": "test-saml",
+            "connector_type": "saml",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "ca_data": "",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "urn:sp:expected-audience:new",
+            "sso_issuer": "https://trusted-idp.example",
+            "groups_delim": "",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email",
+            "response_type": "code",
+            "state": "st-after-attack-1",
+            "nonce": "n-after-attack-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_after_change_attack",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "AUTO",
+            "relay_state": "st-after-attack-1"
+          },
+          "auth_as": "user_after_change_attack",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_after_change_attack",
+          "expected_outcome": "any",
+          "captures": {
+            "user_after_change_attack_entity_id": "sub",
+            "user_after_change_attack_display_name": "name",
+            "user_after_change_attack_policies": "groups",
+            "user_after_change_attack_identity_policies": "groups",
+            "user_after_change_attack_meta": ".",
+            "user_after_change_attack_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_before_change_control_login_succeeds",
+          "invariant": "I5",
+          "assertion": "user_before_change_http_status == 200",
+          "violation_description": "Control login before config change failed; cannot evaluate audience-binding behavior across reconfiguration",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_after_change_old_audience_rejected",
+          "invariant": "I5",
+          "assertion": "user_after_change_attack_login_status >= 400",
+          "violation_description": "Dex accepted SAML login after audience policy change when it should have rejected assertions targeting the previous audience, indicating audience-binding/policy-staleness over-grant",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_before_change_login_success": "True",
+        "user_before_change_login_status": "200",
+        "user_before_change_login_http_status": "200",
+        "user_before_change_entity_id": "None",
+        "user_before_change_display_name": "None",
+        "user_before_change_policies": "None",
+        "user_before_change_identity_policies": "None",
+        "user_before_change_meta": "None",
+        "user_before_change_email": "None",
+        "user_after_change_attack_login_success": "True",
+        "user_after_change_attack_login_status": "200",
+        "user_after_change_attack_login_http_status": "200",
+        "user_after_change_attack_entity_id": "None",
+        "user_after_change_attack_display_name": "None",
+        "user_after_change_attack_policies": "None",
+        "user_after_change_attack_identity_policies": "None",
+        "user_after_change_attack_meta": "None",
+        "user_after_change_attack_email": "None",
+        "mutation_sweep": "{'total_mutations': 3, 'violations_raw': 3, 'violations_after_kbf': 3, 'baseline_success': True}"
+      }
+    }
+  }
+]

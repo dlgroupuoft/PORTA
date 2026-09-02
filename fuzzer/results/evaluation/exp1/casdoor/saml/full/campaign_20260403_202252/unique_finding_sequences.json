@@ -1,0 +1,1065 @@
+[
+  {
+    "finding": {
+      "finding_id": "708631d3f339126b",
+      "sequence_id": "seq_casdoor_i2_token_still_active_after_logout_all",
+      "sequence_description": "Obtain an OAuth access token via password login, introspect it as active, then perform SSO logoutAll=true and verify the same token becomes inactive (freshness/session revocation).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I4",
+      "identified_invariant": "I4",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "[PlatformVerify:casdoor] Identity mismatch: sent='i2_logoutall_user' \u2192 granted='i2-logoutall@test.local'",
+      "cve_analog": "none",
+      "evidence": {
+        "mismatch_type": "identity_mismatch",
+        "sent": "i2_logoutall_user",
+        "granted": "i2-logoutall@test.local"
+      },
+      "detection_source": "L2_platform_verifier",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_casdoor_i2_token_still_active_after_logout_all",
+      "description": "Obtain an OAuth access token via password login, introspect it as active, then perform SSO logoutAll=true and verify the same token becomes inactive (freshness/session revocation).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: After global logout (logoutAll=true), previously issued session tokens must not remain usable/active.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 4,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "update_application",
+          "params": {
+            "owner": "admin",
+            "name": "app-test",
+            "enable_exclusive_signin": false
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "i2_logoutall_user",
+            "display_name": "I2 LogoutAll User",
+            "email": "i2-logoutall@test.local",
+            "password": "LogoutAll123456!",
+            "type": "normal-user",
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "app-test",
+            "client_secret": "unused-by-executor",
+            "username": "i2_logoutall_user",
+            "password": "LogoutAll123456!",
+            "scope": "openid profile email"
+          },
+          "auth_as": "user_before_logoutall",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{session_user_before_logoutall.session_token}}"
+          },
+          "auth_as": "session_user_before_logoutall",
+          "expected_outcome": "any",
+          "captures": {
+            "user_before_logoutall_entity_id": "sub",
+            "user_before_logoutall_identity_name": "preferred_username",
+            "user_before_logoutall_display_name": "name",
+            "user_before_logoutall_meta": "$",
+            "user_before_logoutall_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{session_user_before_logoutall.session_token}}",
+            "token_type_hint": "access_token",
+            "token": "{{session_user_before_logoutall.session_token}}"
+          },
+          "auth_as": "session_user_before_logoutall",
+          "expected_outcome": "any",
+          "captures": {
+            "active": "user_before_logoutall_active",
+            "http_status": "user_before_logoutall_introspect_http_status",
+            "exp": "user_before_logoutall_exp",
+            "iat": "user_before_logoutall_iat",
+            "ttl": "user_before_logoutall_ttl"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "logout_all": true
+          },
+          "auth_as": "session_user_before_logoutall",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "user_before_logoutall_logoutall_http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{session_user_before_logoutall.session_token}}",
+            "token_type_hint": "access_token",
+            "token": "{{session_user_before_logoutall.session_token}}"
+          },
+          "auth_as": "session_user_before_logoutall",
+          "expected_outcome": "any",
+          "captures": {
+            "active": "user_after_logoutall_active",
+            "http_status": "user_after_logoutall_introspect_http_status",
+            "ttl": "user_after_logoutall_ttl"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity_bearer",
+          "params": {},
+          "auth_as": "session_user_before_logoutall",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "user_after_logoutall_userinfo_http_status",
+            "identity_id": "user_after_logoutall_identity_id",
+            "ttl": "user_after_logoutall_userinfo_ttl"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_password_login_control_ok",
+          "invariant": "I2",
+          "assertion": "user_before_logoutall_login_status < 400 AND user_before_logoutall_http_status < 400",
+          "violation_description": "Control password login failed; cannot interpret logoutAll revocation behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_token_active_before_logoutall",
+          "invariant": "I2",
+          "assertion": "user_before_logoutall_introspect_http_status < 400 AND user_before_logoutall_active == true",
+          "violation_description": "Token was not active before logoutAll; revocation test is inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_logoutall_revokes_token",
+          "invariant": "I2",
+          "assertion": "user_after_logoutall_active != true",
+          "violation_description": "Token remained active after logoutAll=true \u2014 session/token revocation freshness failure.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_userinfo_rejected_after_logoutall",
+          "invariant": "I2",
+          "assertion": "user_after_logoutall_userinfo_http_status >= 400",
+          "violation_description": "Bearer token still usable at /api/userinfo after logoutAll=true \u2014 logout did not invalidate token.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "{'status': 'error', 'msg': 'Access token has expired, expireTime = 2026-04-03T20:34:13Z', 'data': None, 'data2': None}",
+        "session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2xvZ291dGFsbF91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjM0OjEzWiIsInVwZGF0ZWRUaW1lIjoiM",
+        "user_before_logoutall_entity_id": "81c3d5ff-5234-474a-946b-bd422ffe7efb",
+        "user_before_logoutall_email": "i2-logoutall@test.local",
+        "user_before_logoutall_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2xvZ291dGFsbF91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjM0OjEzWiIsInVwZGF0ZWRUaW1lIjoiM",
+        "user_before_logoutall_metadata": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2xvZ291dGFsbF91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjM0OjEzWiIsInVwZGF0ZWRUaW1lIjoiM",
+        "user_before_logoutall_login_success": "True",
+        "user_before_logoutall_login_status": "200",
+        "user_before_logoutall_login_http_status": "200",
+        "user_before_logoutall_identity_name": "None",
+        "user_before_logoutall_display_name": "None",
+        "user_before_logoutall_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "active": "None",
+        "http_status": "None",
+        "exp": "None",
+        "iat": "None",
+        "ttl": "None",
+        "num_uses": "{'status': 'error', 'msg': 'Access token has expired, expireTime = 2026-04-03T20:34:13Z', 'data': None, 'data2': None}",
+        "identity_policies": "{'status': 'error', 'msg': 'Access token has expired, expireTime = 2026-04-03T20:34:13Z', 'data': None, 'data2': None}",
+        "identity_id": "None",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "3080003f86aa41f3",
+      "sequence_id": "seq_casdoor_i4_saml_nameid_case_confusion_same_email",
+      "sequence_description": "Baseline two distinct local users. Then attempt SAML login where attacker varies NameID case (AttackerCase vs attackercase) while keeping a unique email, to see if Casdoor collapses principals via case-insensitive username mapping fallback.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I4",
+      "identified_invariant": "I4",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_case1_entity_id != user_attacker_case2_entity_id\nEvaluation: user_attacker_case1_entity_id='AttackerCase' != 'AttackerCase' \u2192 False\nImplication: Two security-distinct SAML principals differing by NameID case collapsed to the same downstream identity (case confusion / unintended normalization)",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_case1_entity_id != user_attacker_case2_entity_id",
+        "evaluation": "user_attacker_case1_entity_id='AttackerCase' != 'AttackerCase' \u2192 False",
+        "captured_values": {
+          "user_attacker_case1_entity_id": "AttackerCase",
+          "user_attacker_case2_entity_id": "AttackerCase"
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_casdoor_i4_saml_nameid_case_confusion_same_email",
+      "description": "Baseline two distinct local users. Then attempt SAML login where attacker varies NameID case (AttackerCase vs attackercase) while keeping a unique email, to see if Casdoor collapses principals via case-insensitive username mapping fallback.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "I4: Distinct upstream SAML principals that differ only by NameID case must not collapse into the same downstream Casdoor subject unless explicitly configured to lowercase usernames.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 12,
+      "events_succeeded": 10,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "i4_case_victimA",
+            "display_name": "I4 Case Victim A",
+            "email": "i4_case_victima@test.local",
+            "password": "VictimA123456!",
+            "type": "normal-user",
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "i4_case_victimB",
+            "display_name": "I4 Case Victim B",
+            "email": "i4_case_victimb@test.local",
+            "password": "VictimB123456!",
+            "type": "normal-user",
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "app-test",
+            "client_secret": "unused-by-executor",
+            "username": "i4_case_victimA",
+            "password": "VictimA123456!",
+            "scope": "openid profile email"
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_A_session_token}}"
+          },
+          "auth_as": "session_user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_entity_id": "sub",
+            "user_A_identity_name": "preferred_username",
+            "user_A_display_name": "name",
+            "user_A_meta": "$",
+            "user_A_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "app-test",
+            "client_secret": "unused-by-executor",
+            "username": "i4_case_victimB",
+            "password": "VictimB123456!",
+            "scope": "openid profile email"
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_B_session_token}}"
+          },
+          "auth_as": "session_user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_entity_id": "sub",
+            "user_B_identity_name": "preferred_username",
+            "user_B_display_name": "name",
+            "user_B_meta": "$",
+            "user_B_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "app-test",
+            "redirect_uri": "http://localhost:8000/callback",
+            "response_type": "code",
+            "scope": "openid profile email",
+            "state": "i4_case_state_1",
+            "code_challenge_method": "S256",
+            "code_challenge": "i4casechallenge1",
+            "resource": "http://localhost:8000/"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "type": "login",
+            "method": "saml",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "i4_case_state_1",
+            "redirect_uri": "http://localhost:8000/callback",
+            "saml_response": "AUTO",
+            "target_identity": "AttackerCase",
+            "email": "i4_case_attacker_unique@test.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_attacker_case1",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attacker_case1_session_token}}"
+          },
+          "auth_as": "session_user_attacker_case1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_case1_entity_id": "sub",
+            "user_attacker_case1_identity_name": "preferred_username",
+            "user_attacker_case1_display_name": "name",
+            "user_attacker_case1_meta": "$",
+            "user_attacker_case1_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "app-test",
+            "redirect_uri": "http://localhost:8000/callback",
+            "response_type": "code",
+            "scope": "openid profile email",
+            "state": "i4_case_state_2",
+            "code_challenge_method": "S256",
+            "code_challenge": "i4casechallenge2",
+            "resource": "http://localhost:8000/"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "type": "login",
+            "method": "saml",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "i4_case_state_2",
+            "redirect_uri": "http://localhost:8000/callback",
+            "saml_response": "AUTO",
+            "target_identity": "attackercase",
+            "email": "i4_case_attacker_unique2@test.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_attacker_case2",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attacker_case2_session_token}}"
+          },
+          "auth_as": "session_user_attacker_case2",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_case2_entity_id": "sub",
+            "user_attacker_case2_identity_name": "preferred_username",
+            "user_attacker_case2_display_name": "name",
+            "user_attacker_case2_meta": "$",
+            "user_attacker_case2_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i4_diversity_baseline",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Baseline failed: mechanism cannot distinguish principals",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_saml_nameid_case_should_not_collapse",
+          "invariant": "I4",
+          "assertion": "user_attacker_case1_entity_id != user_attacker_case2_entity_id",
+          "violation_description": "Two security-distinct SAML principals differing by NameID case collapsed to the same downstream identity (case confusion / unintended normalization)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I4"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "session_token": "85d9f9d3ca94c0ddc0db",
+        "user_A_entity_id": "73e14b0a-a9c9-471c-b962-e6bc61801c64",
+        "user_A_email": "i4_case_victima@test.local",
+        "user_A_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6Imk0X2Nhc2VfdmljdGltQSIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDozNDo1M1oiLCJ1cGRhdGVkVGltZSI6IjIwM",
+        "user_A_metadata": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6Imk0X2Nhc2VfdmljdGltQSIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDozNDo1M1oiLCJ1cGRhdGVkVGltZSI6IjIwM",
+        "user_A_login_success": "True",
+        "user_A_login_status": "200",
+        "user_A_login_http_status": "200",
+        "identity_id": "87e0d8dd-da5c-489a-baee-32f2341e1141",
+        "identity_name": "i4_case_victimB",
+        "display_name": "I4 Case Victim B",
+        "email": "i4_case_victimb@test.local",
+        "user_A_identity_name": "i4_case_victimA",
+        "user_A_display_name": "I4 Case Victim A",
+        "user_A_meta": "{'sub': '73e14b0a-a9c9-471c-b962-e6bc61801c64', 'iss': 'http://localhost:8000', 'aud': 'valence_f3bfb6e093934ac7', 'preferred_username': 'i4_case_victimA', 'name': 'I4 Case Victim A', 'email': 'i4_cas",
+        "user_A_identity_id": "73e14b0a-a9c9-471c-b962-e6bc61801c64",
+        "user_B_entity_id": "87e0d8dd-da5c-489a-baee-32f2341e1141",
+        "user_B_email": "i4_case_victimb@test.local",
+        "user_B_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6Imk0X2Nhc2VfdmljdGltQiIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDozNDo1M1oiLCJ1cGRhdGVkVGltZSI6IjIwM",
+        "user_B_metadata": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6Imk0X2Nhc2VfdmljdGltQiIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDozNDo1M1oiLCJ1cGRhdGVkVGltZSI6IjIwM",
+        "user_B_login_success": "True",
+        "user_B_login_status": "200",
+        "user_B_login_http_status": "200",
+        "user_B_identity_name": "i4_case_victimB",
+        "user_B_display_name": "I4 Case Victim B",
+        "user_B_meta": "{'sub': '87e0d8dd-da5c-489a-baee-32f2341e1141', 'iss': 'http://localhost:8000', 'aud': 'valence_f3bfb6e093934ac7', 'preferred_username': 'i4_case_victimB', 'name': 'I4 Case Victim B', 'email': 'i4_cas",
+        "user_B_identity_id": "87e0d8dd-da5c-489a-baee-32f2341e1141",
+        "user_attacker_case1_entity_id": "AttackerCase",
+        "user_attacker_case1_email": "i4_case_victimb@test.local",
+        "user_attacker_case1_session_token": "64b9f80749aa1bb1e921",
+        "user_attacker_case1_login_success": "True",
+        "user_attacker_case1_login_status": "200",
+        "user_attacker_case1_login_http_status": "200",
+        "user_attacker_case1_identity_name": "None",
+        "user_attacker_case1_display_name": "None",
+        "user_attacker_case1_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_attacker_case2_entity_id": "AttackerCase",
+        "user_attacker_case2_email": "i4_case_victimb@test.local",
+        "user_attacker_case2_session_token": "85d9f9d3ca94c0ddc0db",
+        "user_attacker_case2_login_success": "True",
+        "user_attacker_case2_login_status": "200",
+        "user_attacker_case2_login_http_status": "200",
+        "user_attacker_case2_identity_name": "None",
+        "user_attacker_case2_display_name": "None",
+        "user_attacker_case2_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "90b809c025b97272",
+      "sequence_id": "seq_casdoor_i5_saml_wrong_audience_restriction",
+      "sequence_description": "Control SAML login then attempt forged SAML login with an AudienceRestriction targeting a different SP (wrong audience) to test whether Casdoor enforces SAML audience scoping before granting an OAuth session.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attack_saml_wrong_aud_login_status >= 400\nEvaluation: user_attack_saml_wrong_aud_login_status=200 >= 400 \u2192 False\nImplication: Casdoor accepted a SAML assertion with wrong AudienceRestriction, granting a session beyond upstream intent (audience binding failure).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attack_saml_wrong_aud_login_status >= 400",
+        "evaluation": "user_attack_saml_wrong_aud_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attack_saml_wrong_aud_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_casdoor_i5_saml_wrong_audience_restriction",
+      "description": "Control SAML login then attempt forged SAML login with an AudienceRestriction targeting a different SP (wrong audience) to test whether Casdoor enforces SAML audience scoping before granting an OAuth session.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: A SAML assertion must be bound to the intended SP audience; an assertion with a wrong <Audience> must not yield an authenticated session for app-test.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 5,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "i5_saml_aud_user",
+            "display_name": "I5 SAML Audience User",
+            "email": "i5_saml_aud_user@test.local",
+            "password": "I5SamlAudPwd123456",
+            "type": "normal-user",
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "app-test",
+            "redirect_uri": "http://localhost:8000/callback",
+            "response_type": "code",
+            "scope": "openid profile email",
+            "state": "st_i5_saml_aud_control",
+            "code_challenge_method": "S256",
+            "code_challenge": "cc_i5_saml_aud_control",
+            "resource": "http://localhost:8000/resourceA"
+          },
+          "auth_as": "user_control_flow",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "type": "login",
+            "method": "saml",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "st_i5_saml_aud_control",
+            "redirect_uri": "http://localhost:8000/callback",
+            "saml_response": "AUTO"
+          },
+          "auth_as": "user_control_saml",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_control_saml_session_token}}"
+          },
+          "auth_as": "session_user_control_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_saml_entity_id": "sub",
+            "user_control_saml_identity_name": "preferred_username",
+            "user_control_saml_display_name": "name",
+            "user_control_saml_meta": "$",
+            "user_control_saml_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{user_control_saml_session_token}}",
+            "token_type_hint": "access_token",
+            "session_token": "{{user_control_saml_session_token}}"
+          },
+          "auth_as": "session_user_control_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "active": "user_control_saml_active",
+            "audience": "user_control_saml_audience",
+            "client_id": "user_control_saml_client_id",
+            "http_status": "user_control_saml_introspect_http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "app-test",
+            "redirect_uri": "http://localhost:8000/callback",
+            "response_type": "code",
+            "scope": "openid profile email",
+            "state": "st_i5_saml_aud_attack",
+            "code_challenge_method": "S256",
+            "code_challenge": "cc_i5_saml_aud_attack",
+            "resource": "http://localhost:8000/resourceA"
+          },
+          "auth_as": "user_attack_flow",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "type": "login",
+            "method": "saml",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "st_i5_saml_aud_attack",
+            "redirect_uri": "http://localhost:8000/callback",
+            "saml_response": "AUTO"
+          },
+          "auth_as": "user_attack_saml_wrong_aud",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attack_saml_wrong_aud_session_token}}"
+          },
+          "auth_as": "session_user_attack_saml_wrong_aud",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attack_saml_wrong_aud_entity_id": "sub",
+            "user_attack_saml_wrong_aud_identity_name": "preferred_username",
+            "user_attack_saml_wrong_aud_display_name": "name",
+            "user_attack_saml_wrong_aud_meta": "$",
+            "user_attack_saml_wrong_aud_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_control_saml_login_succeeds",
+          "invariant": "I5",
+          "assertion": "user_control_saml_login_status < 400 AND user_control_saml_http_status < 400",
+          "violation_description": "Control SAML login failed; cannot attribute attack outcome to audience enforcement.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_reject_wrong_audience_assertion",
+          "invariant": "I5",
+          "assertion": "user_attack_saml_wrong_aud_login_status >= 400",
+          "violation_description": "Casdoor accepted a SAML assertion with wrong AudienceRestriction, granting a session beyond upstream intent (audience binding failure).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "session_token": "93594b7ce02e692dae8f",
+        "user_control_saml_entity_id": "admin",
+        "user_control_saml_email": "admin",
+        "user_control_saml_session_token": "59101495052b29e29456",
+        "user_control_saml_login_success": "True",
+        "user_control_saml_login_status": "200",
+        "user_control_saml_login_http_status": "200",
+        "user_control_saml_identity_name": "None",
+        "user_control_saml_display_name": "None",
+        "user_control_saml_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "active": "None",
+        "audience": "None",
+        "client_id": "None",
+        "http_status": "None",
+        "user_attack_saml_wrong_aud_entity_id": "admin",
+        "user_attack_saml_wrong_aud_email": "admin",
+        "user_attack_saml_wrong_aud_session_token": "93594b7ce02e692dae8f",
+        "user_attack_saml_wrong_aud_login_success": "True",
+        "user_attack_saml_wrong_aud_login_status": "200",
+        "user_attack_saml_wrong_aud_login_http_status": "200",
+        "user_attack_saml_wrong_aud_identity_name": "None",
+        "user_attack_saml_wrong_aud_display_name": "None",
+        "user_attack_saml_wrong_aud_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "0884c8e35c4d99e4",
+      "sequence_id": "seq_casdoor_i5_cross_org_token_exchange_shared_app_clientid_confusion",
+      "sequence_description": "Create a second organization and a shared target application; login in org test-org to get a subject token, then attempt token exchange using the org-specific client_id suffix for the other org to test cross-tenant authorization binding.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_orgA_exchanged_to_orgB_login_status >= 400\nEvaluation: user_orgA_exchanged_to_orgB_login_status=200 >= 400 \u2192 False\nImplication: Token exchange accepted a subject token from orgA to mint a token for orgB shared-app client_id, violating tenant-bound authorization intent.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_orgA_exchanged_to_orgB_login_status >= 400",
+        "evaluation": "user_orgA_exchanged_to_orgB_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_orgA_exchanged_to_orgB_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_casdoor_i5_cross_org_token_exchange_shared_app_clientid_confusion",
+      "description": "Create a second organization and a shared target application; login in org test-org to get a subject token, then attempt token exchange using the org-specific client_id suffix for the other org to test cross-tenant authorization binding.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Token exchange must not allow a subject token minted under one tenant/org context to be exchanged into a token for a different tenant's shared-application client identifier.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 9,
+      "events_succeeded": 8,
+      "events_failed": 1,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_organization",
+          "params": {
+            "owner": "admin",
+            "name": "test-org-b",
+            "display_name": "Test Org B",
+            "website_url": "http://orgb.local",
+            "favicon": "",
+            "password_type": "plain",
+            "password_salt": "",
+            "phone_prefix": "1",
+            "default_avatar": "",
+            "tags": [],
+            "master_password": "",
+            "enable_soft_deletion": false,
+            "is_profile_public": false,
+            "account_items": [],
+            "dcr_policy": ""
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_application",
+          "params": {
+            "owner": "admin",
+            "name": "app-shared-i5-org",
+            "display_name": "I5 Shared Target App",
+            "organization": "test-org",
+            "client_id": "shared_i5_cid",
+            "client_secret": "shared_i5_sec",
+            "redirect_uris": [
+              "http://localhost:8000/callback"
+            ],
+            "grant_types": [
+              "password",
+              "authorization_code",
+              "urn:ietf:params:oauth:grant-type:token-exchange"
+            ],
+            "token_format": "JWT",
+            "expire_in_hours": 168,
+            "refresh_expire_in_hours": 0,
+            "enable_password": true,
+            "enable_sign_up": true,
+            "enable_signin_session": true,
+            "enable_code_signin": true,
+            "enable_exclusive_signin": false,
+            "enable_webauthn": false,
+            "enable_link_with_email": false,
+            "category": "application",
+            "type": "webapp",
+            "providers": [],
+            "signin_methods": [],
+            "signin_items": [],
+            "signup_items": [],
+            "tags": [],
+            "is_shared": true,
+            "saml_reply_url": "",
+            "enable_saml_compress": false,
+            "enable_saml_c14n10": false,
+            "enable_saml_post_binding": true,
+            "disable_saml_attributes": false,
+            "enable_saml_assertion_signature": true,
+            "use_email_as_saml_name_id": false,
+            "saml_attributes": [],
+            "saml_hash_algorithm": "sha256",
+            "code_resend_timeout": 60,
+            "cert": "cert-built-in"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "i5_orgA_user",
+            "display_name": "I5 OrgA User",
+            "email": "i5_orga_user@test.local",
+            "password": "I5OrgAPwd123456",
+            "type": "normal-user",
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org-b",
+            "name": "i5_orgB_user",
+            "display_name": "I5 OrgB User",
+            "email": "i5_orgb_user@test.local",
+            "password": "I5OrgBPwd123456",
+            "type": "normal-user",
+            "signup_application": "app-shared-i5-org"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "app-test",
+            "client_secret": "unused_by_executor",
+            "username": "i5_orgA_user",
+            "password": "I5OrgAPwd123456",
+            "scope": "openid email"
+          },
+          "auth_as": "user_orgA_source",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_orgA_source_session_token}}"
+          },
+          "auth_as": "session_user_orgA_source",
+          "expected_outcome": "any",
+          "captures": {
+            "user_orgA_source_entity_id": "sub",
+            "user_orgA_source_identity_name": "preferred_username",
+            "user_orgA_source_display_name": "name",
+            "user_orgA_source_meta": "$",
+            "user_orgA_source_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "client_id": "shared_i5_cid-org-test-org-b",
+            "client_secret": "shared_i5_sec",
+            "subject_token": "{{user_orgA_source_session_token}}",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "scope": "openid email",
+            "audience": "shared_i5_cid-org-test-org-b"
+          },
+          "auth_as": "user_orgA_exchanged_to_orgB",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_orgA_exchanged_to_orgB_session_token}}"
+          },
+          "auth_as": "session_user_orgA_exchanged_to_orgB",
+          "expected_outcome": "any",
+          "captures": {
+            "user_orgA_exchanged_to_orgB_entity_id": "sub",
+            "user_orgA_exchanged_to_orgB_identity_name": "preferred_username",
+            "user_orgA_exchanged_to_orgB_display_name": "name",
+            "user_orgA_exchanged_to_orgB_meta": "$",
+            "user_orgA_exchanged_to_orgB_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{user_orgA_exchanged_to_orgB_session_token}}",
+            "token_type_hint": "access_token",
+            "session_token": "{{user_orgA_exchanged_to_orgB_session_token}}"
+          },
+          "auth_as": "session_user_orgA_exchanged_to_orgB",
+          "expected_outcome": "any",
+          "captures": {
+            "active": "user_orgA_exchanged_to_orgB_active",
+            "audience": "user_orgA_exchanged_to_orgB_audience",
+            "client_id": "user_orgA_exchanged_to_orgB_client_id",
+            "http_status": "user_orgA_exchanged_to_orgB_introspect_http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_source_login_ok",
+          "invariant": "I5",
+          "assertion": "user_orgA_source_login_status < 400 AND user_orgA_source_http_status < 400",
+          "violation_description": "Source login failed; cannot test cross-org token exchange.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_cross_org_exchange_rejected",
+          "invariant": "I5",
+          "assertion": "user_orgA_exchanged_to_orgB_login_status >= 400",
+          "violation_description": "Token exchange accepted a subject token from orgA to mint a token for orgB shared-app client_id, violating tenant-bound authorization intent.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "{'sub': 'd45684c5-0807-4ee2-9a3c-6eff12080637', 'iss': 'http://localhost:8000', 'aud': 'shared_i5_cid', 'email': 'i5_orga_user@test.local', 'email_verified': True}",
+        "session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6Imk1X29yZ0FfdXNlciIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDozNToxMFoiLCJ1cGRhdGVkVGltZSI6IjIwMjYtM",
+        "user_orgA_source_entity_id": "d45684c5-0807-4ee2-9a3c-6eff12080637",
+        "user_orgA_source_email": "i5_orga_user@test.local",
+        "user_orgA_source_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6Imk1X29yZ0FfdXNlciIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDozNToxMFoiLCJ1cGRhdGVkVGltZSI6IjIwMjYtM",
+        "user_orgA_source_metadata": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6Imk1X29yZ0FfdXNlciIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDozNToxMFoiLCJ1cGRhdGVkVGltZSI6IjIwMjYtM",
+        "user_orgA_source_login_success": "True",
+        "user_orgA_source_login_status": "200",
+        "user_orgA_source_login_http_status": "200",
+        "identity_id": "d45684c5-0807-4ee2-9a3c-6eff12080637",
+        "email": "i5_orga_user@test.local",
+        "user_orgA_source_identity_name": "None",
+        "user_orgA_source_display_name": "None",
+        "user_orgA_source_meta": "{'sub': 'd45684c5-0807-4ee2-9a3c-6eff12080637', 'iss': 'http://localhost:8000', 'aud': 'valence_f3bfb6e093934ac7', 'email': 'i5_orga_user@test.local', 'email_verified': True}",
+        "user_orgA_source_identity_id": "d45684c5-0807-4ee2-9a3c-6eff12080637",
+        "granted_policies": "openid email",
+        "token_accessor": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6Imk1X29yZ0FfdXNlciIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDozNToxMFoiLCJ1cGRhdGVkVGltZSI6IjIwMjYtMDQtMDNUMjA6MzU6MTBaIiwiZGVsZXR",
+        "user_orgA_exchanged_to_orgB_entity_id": "d45684c5-0807-4ee2-9a3c-6eff12080637",
+        "user_orgA_exchanged_to_orgB_email": "i5_orga_user@test.local",
+        "user_orgA_exchanged_to_orgB_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6Imk1X29yZ0FfdXNlciIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDozNToxMFoiLCJ1cGRhdGVkVGltZSI6IjIwMjYtM",
+        "user_orgA_exchanged_to_orgB_granted_policies": "openid email",
+        "user_orgA_exchanged_to_orgB_metadata": "{'access_token': 'eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6Imk1X29yZ0FfdXNlciIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDozNToxMFoiLCJ1cGRhdGV",
+        "user_orgA_exchanged_to_orgB_token_accessor": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6Imk1X29yZ0FfdXNlciIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDozNToxMFoiLCJ1cGRhdGVkVGltZSI6IjIwMjYtMDQtMDNUMjA6MzU6MTBaIiwiZGVsZXR",
+        "user_orgA_exchanged_to_orgB_identity_id": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6Imk1X29yZ0FfdXNlciIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDozNToxMFoiLCJ1cGRhdGVkVGltZSI6IjIwMjYtM",
+        "user_orgA_exchanged_to_orgB_login_success": "True",
+        "user_orgA_exchanged_to_orgB_login_status": "200",
+        "user_orgA_exchanged_to_orgB_login_http_status": "200",
+        "user_orgA_exchanged_to_orgB_identity_name": "None",
+        "user_orgA_exchanged_to_orgB_display_name": "None",
+        "user_orgA_exchanged_to_orgB_meta": "{'sub': 'd45684c5-0807-4ee2-9a3c-6eff12080637', 'iss': 'http://localhost:8000', 'aud': 'shared_i5_cid', 'email': 'i5_orga_user@test.local', 'email_verified': True}",
+        "active": "None",
+        "audience": "None",
+        "client_id": "None",
+        "http_status": "None",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  }
+]

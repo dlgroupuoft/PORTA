@@ -1,0 +1,1529 @@
+[
+  {
+    "finding": {
+      "finding_id": "eeac3e4532957035",
+      "sequence_id": "seq_I2_saml_replay_after_logout",
+      "sequence_description": "Replay the exact same SAML Assertion/@ID after revoking the first session, to test whether assertion replay protection is independent of session state (should still reject second use).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attack_replay_login_status >= 400\nEvaluation: user_attack_replay_login_status=200 >= 400 \u2192 False\nImplication: SP accepted replayed SAML assertion ID after session revocation; assertion replay protection may be missing or tied incorrectly to session state.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attack_replay_login_status >= 400",
+        "evaluation": "user_attack_replay_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attack_replay_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_saml_replay_after_logout",
+      "description": "Replay the exact same SAML Assertion/@ID after revoking the first session, to test whether assertion replay protection is independent of session state (should still reject second use).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A SAML assertion (identified by Assertion/@ID) must be one-time use in practice; revoking the resulting session must not allow the same assertion to be accepted again.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 10,
+      "events_succeeded": 5,
+      "events_failed": 5,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "fuzz_saml_source_i2_replay_logout",
+            "slug": "fuzz-saml-i2-replay-logout",
+            "provider_type": "SAML",
+            "consumer_key": "dummy",
+            "consumer_secret": "dummy",
+            "authorization_url": "https://idp.invalid/sso",
+            "access_token_url": "https://idp.invalid/token",
+            "profile_url": "https://idp.invalid/profile",
+            "oidc_well_known_url": "https://idp.invalid/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://idp.invalid/jwks"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_slug": "slug",
+            "setup_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "victim_i2_replay_logout",
+            "email": "victim_i2_replay_logout@example.com",
+            "name": "Victim I2 Replay Logout",
+            "password": "VictimPassw0rd!",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_identity_id": "identity_id",
+            "victim_username": "username",
+            "victim_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "attacker_i2_replay_logout",
+            "email": "attacker_i2_replay_logout@example.com",
+            "name": "Attacker I2 Replay Logout",
+            "password": "AttackerPassw0rd!",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "attacker_identity_id": "identity_id",
+            "attacker_username": "username",
+            "attacker_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{source_slug}}",
+            "saml_response": "AUTO_GENERATE",
+            "relay_state": "AUTO",
+            "target_identity": "victim_i2_replay_logout",
+            "email": "victim_i2_replay_logout@example.com",
+            "provider": "authentik",
+            "realm": "default",
+            "fixed_assertion_id": "_i2_replay_after_logout_assertion"
+          },
+          "auth_as": "session_user_control_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_first_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_first_entity_id": "sub",
+            "user_control_first_display_name": "name",
+            "user_control_first_email": "email",
+            "user_control_first_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "authentik",
+            "username": "victim_i2_replay_logout",
+            "password": "VictimPassw0rd!",
+            "scope": "openid",
+            "client_secret": "authentik"
+          },
+          "auth_as": "session_user_control_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_pwd_session_token": "session_token",
+            "user_control_pwd_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_pwd_entity_id": "sub",
+            "user_control_pwd_display_name": "name",
+            "user_control_pwd_email": "email",
+            "user_control_pwd_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "session_token": "{{user_control_pwd_session_token}}",
+            "client_id": "authentik",
+            "client_secret": "authentik"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "revoke_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{source_slug}}",
+            "saml_response": "AUTO_GENERATE",
+            "relay_state": "AUTO",
+            "target_identity": "victim_i2_replay_logout",
+            "email": "victim_i2_replay_logout@example.com",
+            "provider": "authentik",
+            "realm": "default",
+            "fixed_assertion_id": "_i2_replay_after_logout_assertion"
+          },
+          "auth_as": "session_user_attack_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attack_replay_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attack_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attack_replay_entity_id": "sub",
+            "user_attack_replay_display_name": "name",
+            "user_attack_replay_email": "email",
+            "user_attack_replay_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_first_use_succeeds",
+          "invariant": "I2",
+          "assertion": "user_control_first_login_status < 400",
+          "violation_description": "Control SAML login failed; cannot evaluate replay behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_replay_after_logout_rejected",
+          "invariant": "I2",
+          "assertion": "user_attack_replay_login_status >= 400",
+          "violation_description": "SP accepted replayed SAML assertion ID after session revocation; assertion replay protection may be missing or tied incorrectly to session state.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "d762b207-e27a-4f96-9665-f1699be8572c",
+        "slug": "fuzz-saml-i2-replay-logout",
+        "source_slug": "fuzz-saml-i2-replay-logout",
+        "setup_http_status": "201",
+        "identity_id": "11",
+        "username": "attacker_i2_replay_logout",
+        "victim_identity_id": "10",
+        "victim_username": "victim_i2_replay_logout",
+        "victim_create_status": "201",
+        "attacker_identity_id": "11",
+        "attacker_username": "attacker_i2_replay_logout",
+        "attacker_create_status": "201",
+        "user_control_first_login_status": "200",
+        "session_user_control_first_login_success": "True",
+        "session_user_control_first_login_status": "200",
+        "session_user_control_first_login_http_status": "200",
+        "user_control_first_entity_id": "None",
+        "user_control_first_display_name": "None",
+        "user_control_first_email": "None",
+        "user_control_first_groups": "None",
+        "user_control_pwd_session_token": "None",
+        "user_control_pwd_login_status": "400",
+        "session_user_control_pwd_login_success": "False",
+        "session_user_control_pwd_login_status": "400",
+        "session_user_control_pwd_login_http_status": "400",
+        "user_control_pwd_entity_id": "None",
+        "user_control_pwd_display_name": "None",
+        "user_control_pwd_email": "None",
+        "user_control_pwd_groups": "None",
+        "revoke_http_status": "401",
+        "user_attack_replay_login_status": "200",
+        "session_user_attack_replay_login_success": "True",
+        "session_user_attack_replay_login_status": "200",
+        "session_user_attack_replay_login_http_status": "200",
+        "user_attack_replay_entity_id": "None",
+        "user_attack_replay_display_name": "None",
+        "user_attack_replay_email": "None",
+        "user_attack_replay_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "49c51eb4b85afc57",
+      "sequence_id": "seq_I2_saml_onetimeuse_replay_cross_principal",
+      "sequence_description": "Use <OneTimeUse/> assertion replay where the second submission changes principal attributes (target_identity/email) but keeps the same Assertion/@ID, probing whether replay detection is keyed only on subject or not enforced at all.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_onetimeuse_replay_login_status >= 400\nEvaluation: user_onetimeuse_replay_login_status=200 >= 400 \u2192 False\nImplication: SP accepted replay of a OneTimeUse assertion ID when subject attributes changed; OneTimeUse/replay detection may be missing or incorrectly keyed.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_onetimeuse_replay_login_status >= 400",
+        "evaluation": "user_onetimeuse_replay_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_onetimeuse_replay_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_saml_onetimeuse_replay_cross_principal",
+      "description": "Use <OneTimeUse/> assertion replay where the second submission changes principal attributes (target_identity/email) but keeps the same Assertion/@ID, probing whether replay detection is keyed only on subject or not enforced at all.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A SAML assertion with <OneTimeUse/> must not be accepted more than once, regardless of subject attributes presented on subsequent submissions with the same Assertion/@ID.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 5,
+      "events_failed": 2,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "fuzz_saml_source_i2_onetimeuse_cross_principal",
+            "slug": "fuzz-saml-i2-onetimeuse-xp",
+            "provider_type": "SAML",
+            "consumer_key": "dummy",
+            "consumer_secret": "dummy",
+            "authorization_url": "https://idp.invalid/sso",
+            "access_token_url": "https://idp.invalid/token",
+            "profile_url": "https://idp.invalid/profile",
+            "oidc_well_known_url": "https://idp.invalid/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://idp.invalid/jwks"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_slug": "slug",
+            "setup_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "victim_i2_onetimeuse_xp",
+            "email": "victim_i2_onetimeuse_xp@example.com",
+            "name": "Victim I2 OneTimeUse XP",
+            "password": "VictimPassw0rd!",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_identity_id": "identity_id",
+            "victim_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "attacker_i2_onetimeuse_xp",
+            "email": "attacker_i2_onetimeuse_xp@example.com",
+            "name": "Attacker I2 OneTimeUse XP",
+            "password": "AttackerPassw0rd!",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "attacker_identity_id": "identity_id",
+            "attacker_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{source_slug}}",
+            "saml_response": "AUTO_GENERATE",
+            "relay_state": "AUTO",
+            "target_identity": "victim_i2_onetimeuse_xp",
+            "email": "victim_i2_onetimeuse_xp@example.com",
+            "provider": "authentik",
+            "realm": "default",
+            "include_onetimeuse": true,
+            "fixed_assertion_id": "_i2_onetimeuse_xp_assertion"
+          },
+          "auth_as": "session_user_onetimeuse_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_onetimeuse_first_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_onetimeuse_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_onetimeuse_first_entity_id": "sub",
+            "user_onetimeuse_first_display_name": "name",
+            "user_onetimeuse_first_email": "email",
+            "user_onetimeuse_first_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{source_slug}}",
+            "saml_response": "AUTO_GENERATE",
+            "relay_state": "AUTO",
+            "target_identity": "attacker_i2_onetimeuse_xp",
+            "email": "attacker_i2_onetimeuse_xp@example.com",
+            "provider": "authentik",
+            "realm": "default",
+            "include_onetimeuse": true,
+            "fixed_assertion_id": "_i2_onetimeuse_xp_assertion"
+          },
+          "auth_as": "session_user_onetimeuse_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_onetimeuse_replay_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_onetimeuse_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_onetimeuse_replay_entity_id": "sub",
+            "user_onetimeuse_replay_display_name": "name",
+            "user_onetimeuse_replay_email": "email",
+            "user_onetimeuse_replay_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_onetimeuse_control_succeeds",
+          "invariant": "I2",
+          "assertion": "user_onetimeuse_first_login_status < 400",
+          "violation_description": "Control OneTimeUse SAML login failed; cannot evaluate replay behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_onetimeuse_replay_rejected_even_if_principal_changes",
+          "invariant": "I2",
+          "assertion": "user_onetimeuse_replay_login_status >= 400",
+          "violation_description": "SP accepted replay of a OneTimeUse assertion ID when subject attributes changed; OneTimeUse/replay detection may be missing or incorrectly keyed.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "1fddbc14-bb39-49a4-9d1f-3d1ebf701cb0",
+        "slug": "fuzz-saml-i2-onetimeuse-xp",
+        "source_slug": "fuzz-saml-i2-onetimeuse-xp",
+        "setup_http_status": "201",
+        "identity_id": "13",
+        "username": "attacker_i2_onetimeuse_xp",
+        "victim_identity_id": "12",
+        "victim_create_status": "201",
+        "attacker_identity_id": "13",
+        "attacker_create_status": "201",
+        "user_onetimeuse_first_login_status": "200",
+        "session_user_onetimeuse_first_login_success": "True",
+        "session_user_onetimeuse_first_login_status": "200",
+        "session_user_onetimeuse_first_login_http_status": "200",
+        "user_onetimeuse_first_entity_id": "None",
+        "user_onetimeuse_first_display_name": "None",
+        "user_onetimeuse_first_email": "None",
+        "user_onetimeuse_first_groups": "None",
+        "user_onetimeuse_replay_login_status": "200",
+        "session_user_onetimeuse_replay_login_success": "True",
+        "session_user_onetimeuse_replay_login_status": "200",
+        "session_user_onetimeuse_replay_login_http_status": "200",
+        "user_onetimeuse_replay_entity_id": "None",
+        "user_onetimeuse_replay_display_name": "None",
+        "user_onetimeuse_replay_email": "None",
+        "user_onetimeuse_replay_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "561f7f813ac4ed28",
+      "sequence_id": "seq_I2_saml_expired_then_replay_same_id",
+      "sequence_description": "Control login succeeds, then submit an expired assertion (should be rejected). Then replay the same expired Assertion/@ID again to see if any caching/clock-skew logic incorrectly accepts it on subsequent attempts.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_expired_first_login_status >= 400\nEvaluation: user_expired_first_login_status=200 >= 400 \u2192 False\nImplication: SP accepted an expired SAML assertion (NotOnOrAfter in the past); freshness enforcement may be missing.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_expired_first_login_status >= 400",
+        "evaluation": "user_expired_first_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_expired_first_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_saml_expired_then_replay_same_id",
+      "description": "Control login succeeds, then submit an expired assertion (should be rejected). Then replay the same expired Assertion/@ID again to see if any caching/clock-skew logic incorrectly accepts it on subsequent attempts.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: Expired SAML assertions must be rejected consistently; repeated submissions of the same expired assertion must not become accepted due to caching, skew windows, or inconsistent freshness checks.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 9,
+      "events_succeeded": 6,
+      "events_failed": 3,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "fuzz_saml_source_i2_expired_replay",
+            "slug": "fuzz-saml-i2-expired-replay",
+            "provider_type": "SAML",
+            "consumer_key": "dummy",
+            "consumer_secret": "dummy",
+            "authorization_url": "https://idp.invalid/sso",
+            "access_token_url": "https://idp.invalid/token",
+            "profile_url": "https://idp.invalid/profile",
+            "oidc_well_known_url": "https://idp.invalid/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://idp.invalid/jwks"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_slug": "slug",
+            "setup_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "victim_i2_expired_replay",
+            "email": "victim_i2_expired_replay@example.com",
+            "name": "Victim I2 Expired Replay",
+            "password": "VictimPassw0rd!",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_identity_id": "identity_id",
+            "victim_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "attacker_i2_expired_replay",
+            "email": "attacker_i2_expired_replay@example.com",
+            "name": "Attacker I2 Expired Replay",
+            "password": "AttackerPassw0rd!",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "attacker_identity_id": "identity_id",
+            "attacker_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{source_slug}}",
+            "saml_response": "AUTO_GENERATE",
+            "relay_state": "AUTO",
+            "target_identity": "victim_i2_expired_replay",
+            "email": "victim_i2_expired_replay@example.com",
+            "provider": "authentik",
+            "realm": "default"
+          },
+          "auth_as": "session_user_valid_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_valid_control_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_valid_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_valid_control_entity_id": "sub",
+            "user_valid_control_display_name": "name",
+            "user_valid_control_email": "email",
+            "user_valid_control_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{source_slug}}",
+            "saml_response": "AUTO_GENERATE",
+            "relay_state": "AUTO",
+            "target_identity": "victim_i2_expired_replay",
+            "email": "victim_i2_expired_replay@example.com",
+            "provider": "authentik",
+            "realm": "default",
+            "expired_assertion": true,
+            "fixed_assertion_id": "_i2_expired_replay_assertion"
+          },
+          "auth_as": "session_user_expired_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_first_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_expired_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_first_entity_id": "sub",
+            "user_expired_first_display_name": "name",
+            "user_expired_first_email": "email",
+            "user_expired_first_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{source_slug}}",
+            "saml_response": "AUTO_GENERATE",
+            "relay_state": "AUTO",
+            "target_identity": "victim_i2_expired_replay",
+            "email": "victim_i2_expired_replay@example.com",
+            "provider": "authentik",
+            "realm": "default",
+            "expired_assertion": true,
+            "fixed_assertion_id": "_i2_expired_replay_assertion"
+          },
+          "auth_as": "session_user_expired_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_replay_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_expired_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_replay_entity_id": "sub",
+            "user_expired_replay_display_name": "name",
+            "user_expired_replay_email": "email",
+            "user_expired_replay_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_valid_saml_works",
+          "invariant": "I2",
+          "assertion": "user_valid_control_login_status < 400",
+          "violation_description": "Control SAML login failed; cannot evaluate expired assertion handling.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_assertion_rejected_first_try",
+          "invariant": "I2",
+          "assertion": "user_expired_first_login_status >= 400",
+          "violation_description": "SP accepted an expired SAML assertion (NotOnOrAfter in the past); freshness enforcement may be missing.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_assertion_replay_rejected_second_try",
+          "invariant": "I2",
+          "assertion": "user_expired_replay_login_status >= 400",
+          "violation_description": "SP accepted replay of the same expired SAML assertion ID; freshness/replay checks may be inconsistent or bypassable.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "a343004f-2c7a-46f3-9aa1-0ff393975472",
+        "slug": "fuzz-saml-i2-expired-replay",
+        "source_slug": "fuzz-saml-i2-expired-replay",
+        "setup_http_status": "201",
+        "identity_id": "15",
+        "username": "attacker_i2_expired_replay",
+        "victim_identity_id": "14",
+        "victim_create_status": "201",
+        "attacker_identity_id": "15",
+        "attacker_create_status": "201",
+        "user_valid_control_login_status": "200",
+        "session_user_valid_control_login_success": "True",
+        "session_user_valid_control_login_status": "200",
+        "session_user_valid_control_login_http_status": "200",
+        "user_valid_control_entity_id": "None",
+        "user_valid_control_display_name": "None",
+        "user_valid_control_email": "None",
+        "user_valid_control_groups": "None",
+        "user_expired_first_login_status": "200",
+        "session_user_expired_first_login_success": "True",
+        "session_user_expired_first_login_status": "200",
+        "session_user_expired_first_login_http_status": "200",
+        "user_expired_first_entity_id": "None",
+        "user_expired_first_display_name": "None",
+        "user_expired_first_email": "None",
+        "user_expired_first_groups": "None",
+        "user_expired_replay_login_status": "200",
+        "session_user_expired_replay_login_success": "True",
+        "session_user_expired_replay_login_status": "200",
+        "session_user_expired_replay_login_http_status": "200",
+        "user_expired_replay_entity_id": "None",
+        "user_expired_replay_display_name": "None",
+        "user_expired_replay_email": "None",
+        "user_expired_replay_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "9653536261b4db19",
+      "sequence_id": "seq_I2_saml_expired_then_replay_same_id",
+      "sequence_description": "Control login succeeds, then submit an expired assertion (should be rejected). Then replay the same expired Assertion/@ID again to see if any caching/clock-skew logic incorrectly accepts it on subsequent attempts.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_expired_replay_login_status >= 400\nEvaluation: user_expired_replay_login_status=200 >= 400 \u2192 False\nImplication: SP accepted replay of the same expired SAML assertion ID; freshness/replay checks may be inconsistent or bypassable.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_expired_replay_login_status >= 400",
+        "evaluation": "user_expired_replay_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_expired_replay_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_saml_expired_then_replay_same_id",
+      "description": "Control login succeeds, then submit an expired assertion (should be rejected). Then replay the same expired Assertion/@ID again to see if any caching/clock-skew logic incorrectly accepts it on subsequent attempts.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: Expired SAML assertions must be rejected consistently; repeated submissions of the same expired assertion must not become accepted due to caching, skew windows, or inconsistent freshness checks.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 9,
+      "events_succeeded": 6,
+      "events_failed": 3,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "fuzz_saml_source_i2_expired_replay",
+            "slug": "fuzz-saml-i2-expired-replay",
+            "provider_type": "SAML",
+            "consumer_key": "dummy",
+            "consumer_secret": "dummy",
+            "authorization_url": "https://idp.invalid/sso",
+            "access_token_url": "https://idp.invalid/token",
+            "profile_url": "https://idp.invalid/profile",
+            "oidc_well_known_url": "https://idp.invalid/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://idp.invalid/jwks"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_slug": "slug",
+            "setup_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "victim_i2_expired_replay",
+            "email": "victim_i2_expired_replay@example.com",
+            "name": "Victim I2 Expired Replay",
+            "password": "VictimPassw0rd!",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_identity_id": "identity_id",
+            "victim_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "attacker_i2_expired_replay",
+            "email": "attacker_i2_expired_replay@example.com",
+            "name": "Attacker I2 Expired Replay",
+            "password": "AttackerPassw0rd!",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "attacker_identity_id": "identity_id",
+            "attacker_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{source_slug}}",
+            "saml_response": "AUTO_GENERATE",
+            "relay_state": "AUTO",
+            "target_identity": "victim_i2_expired_replay",
+            "email": "victim_i2_expired_replay@example.com",
+            "provider": "authentik",
+            "realm": "default"
+          },
+          "auth_as": "session_user_valid_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_valid_control_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_valid_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_valid_control_entity_id": "sub",
+            "user_valid_control_display_name": "name",
+            "user_valid_control_email": "email",
+            "user_valid_control_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{source_slug}}",
+            "saml_response": "AUTO_GENERATE",
+            "relay_state": "AUTO",
+            "target_identity": "victim_i2_expired_replay",
+            "email": "victim_i2_expired_replay@example.com",
+            "provider": "authentik",
+            "realm": "default",
+            "expired_assertion": true,
+            "fixed_assertion_id": "_i2_expired_replay_assertion"
+          },
+          "auth_as": "session_user_expired_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_first_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_expired_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_first_entity_id": "sub",
+            "user_expired_first_display_name": "name",
+            "user_expired_first_email": "email",
+            "user_expired_first_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{source_slug}}",
+            "saml_response": "AUTO_GENERATE",
+            "relay_state": "AUTO",
+            "target_identity": "victim_i2_expired_replay",
+            "email": "victim_i2_expired_replay@example.com",
+            "provider": "authentik",
+            "realm": "default",
+            "expired_assertion": true,
+            "fixed_assertion_id": "_i2_expired_replay_assertion"
+          },
+          "auth_as": "session_user_expired_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_replay_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_expired_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_replay_entity_id": "sub",
+            "user_expired_replay_display_name": "name",
+            "user_expired_replay_email": "email",
+            "user_expired_replay_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_valid_saml_works",
+          "invariant": "I2",
+          "assertion": "user_valid_control_login_status < 400",
+          "violation_description": "Control SAML login failed; cannot evaluate expired assertion handling.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_assertion_rejected_first_try",
+          "invariant": "I2",
+          "assertion": "user_expired_first_login_status >= 400",
+          "violation_description": "SP accepted an expired SAML assertion (NotOnOrAfter in the past); freshness enforcement may be missing.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_assertion_replay_rejected_second_try",
+          "invariant": "I2",
+          "assertion": "user_expired_replay_login_status >= 400",
+          "violation_description": "SP accepted replay of the same expired SAML assertion ID; freshness/replay checks may be inconsistent or bypassable.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "a343004f-2c7a-46f3-9aa1-0ff393975472",
+        "slug": "fuzz-saml-i2-expired-replay",
+        "source_slug": "fuzz-saml-i2-expired-replay",
+        "setup_http_status": "201",
+        "identity_id": "15",
+        "username": "attacker_i2_expired_replay",
+        "victim_identity_id": "14",
+        "victim_create_status": "201",
+        "attacker_identity_id": "15",
+        "attacker_create_status": "201",
+        "user_valid_control_login_status": "200",
+        "session_user_valid_control_login_success": "True",
+        "session_user_valid_control_login_status": "200",
+        "session_user_valid_control_login_http_status": "200",
+        "user_valid_control_entity_id": "None",
+        "user_valid_control_display_name": "None",
+        "user_valid_control_email": "None",
+        "user_valid_control_groups": "None",
+        "user_expired_first_login_status": "200",
+        "session_user_expired_first_login_success": "True",
+        "session_user_expired_first_login_status": "200",
+        "session_user_expired_first_login_http_status": "200",
+        "user_expired_first_entity_id": "None",
+        "user_expired_first_display_name": "None",
+        "user_expired_first_email": "None",
+        "user_expired_first_groups": "None",
+        "user_expired_replay_login_status": "200",
+        "session_user_expired_replay_login_success": "True",
+        "session_user_expired_replay_login_status": "200",
+        "session_user_expired_replay_login_http_status": "200",
+        "user_expired_replay_entity_id": "None",
+        "user_expired_replay_display_name": "None",
+        "user_expired_replay_email": "None",
+        "user_expired_replay_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "1872b4c2e5b2999a",
+      "sequence_id": "seq_I3_saml_source_cleanup_then_reauth_same_flow",
+      "sequence_description": "I3 stale-flow acceptance test: start an SP-initiated SAML flow, then remove the SAML source endpoint and attempt to complete authentication. Expect rejection (no acceptance of stale/suspended flow after config removal).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_after_cleanup_login_status >= 400\nEvaluation: user_after_cleanup_login_status=200 >= 400 \u2192 False\nImplication: Flow coherence broken: authentik accepted completion of a SAML flow after the SAML source endpoint was removed (stale flow acceptance).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_after_cleanup_login_status >= 400",
+        "evaluation": "user_after_cleanup_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_after_cleanup_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I3_saml_source_cleanup_then_reauth_same_flow",
+      "description": "I3 stale-flow acceptance test: start an SP-initiated SAML flow, then remove the SAML source endpoint and attempt to complete authentication. Expect rejection (no acceptance of stale/suspended flow after config removal).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: A suspended SP-initiated SAML flow must not remain completable after the underlying SAML source is removed; completion must be rejected to preserve atomicity and configuration coherence.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "fuzz_saml_source_i3_cleanup_race",
+            "slug": "fuzz-saml-i3-cleanup",
+            "provider_type": "saml",
+            "consumer_key": "dummy",
+            "consumer_secret": "dummy",
+            "authorization_url": "https://idp.invalid/auth",
+            "access_token_url": "https://idp.invalid/token",
+            "profile_url": "https://idp.invalid/profile",
+            "oidc_well_known_url": "https://idp.invalid/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://idp.invalid/jwks"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "slug": "slug",
+            "http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{slug}}",
+            "saml_response": "AUTO_GENERATE_FORGED_RESPONSE(target_identity=controlUser, email=control@example.com, provider=authentik, realm=default, initiate_saml_flow=true)",
+            "relay_state": "AUTO"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_entity_id": "sub",
+            "user_control_display_name": "name",
+            "user_control_email": "email",
+            "user_control_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{slug}}",
+            "saml_response": "AUTO_GENERATE_FORGED_RESPONSE(target_identity=pendingUser, email=pending@example.com, provider=authentik, realm=default, initiate_saml_flow=true, capture_relay_state=true)",
+            "relay_state": "CAPTURE"
+          },
+          "auth_as": "user_pending",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "http_status",
+            "relay_state": "relay_state"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "source_slug": "{{slug}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{slug}}",
+            "saml_response": "AUTO_GENERATE_FORGED_RESPONSE(target_identity=pendingUser, email=pending@example.com, provider=authentik, realm=default, initiate_saml_flow=true, in_response_to_from_flow=pending)",
+            "relay_state": "{{user_pending_relay_state}}"
+          },
+          "auth_as": "user_after_cleanup",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_after_cleanup",
+          "expected_outcome": "any",
+          "captures": {
+            "user_after_cleanup_entity_id": "sub",
+            "user_after_cleanup_display_name": "name",
+            "user_after_cleanup_email": "email",
+            "user_after_cleanup_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I3_saml_source_cleanup_then_reauth_same_flow_0",
+          "invariant": "I3",
+          "assertion": "user_control_login_status < 400",
+          "violation_description": "Test invalid: control SAML login failed; cannot attribute later rejection/acceptance to coherence behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I3_saml_source_cleanup_then_reauth_same_flow_1",
+          "invariant": "I3",
+          "assertion": "user_after_cleanup_login_status >= 400",
+          "violation_description": "Flow coherence broken: authentik accepted completion of a SAML flow after the SAML source endpoint was removed (stale flow acceptance).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "fa070341-b839-4b78-a58e-7957edacf22b",
+        "slug": "fuzz-saml-i3-cleanup",
+        "http_status": "200",
+        "user_control_login_success": "True",
+        "user_control_login_status": "200",
+        "user_control_login_http_status": "200",
+        "user_control_entity_id": "None",
+        "user_control_display_name": "None",
+        "user_control_email": "None",
+        "user_control_groups": "None",
+        "relay_state": "None",
+        "user_pending_login_success": "True",
+        "user_pending_login_status": "200",
+        "user_pending_login_http_status": "200",
+        "user_after_cleanup_login_success": "True",
+        "user_after_cleanup_login_status": "200",
+        "user_after_cleanup_login_http_status": "200",
+        "user_after_cleanup_entity_id": "None",
+        "user_after_cleanup_display_name": "None",
+        "user_after_cleanup_email": "None",
+        "user_after_cleanup_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "0bfa41f1f2dda816",
+      "sequence_id": "seq_I3_saml_cross_principal_flow_takeover_same_relaystate",
+      "sequence_description": "I3 flow takeover attempt: obtain a valid SP-initiated flow context (RelayState) for victim principal, then try to complete it with an assertion for a different principal using the same RelayState. Expect rejection (principal must be bound to the flow).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_takeover_login_status >= 400\nEvaluation: user_takeover_login_status=200 >= 400 \u2192 False\nImplication: Flow coherence broken: authentik accepted completing a victim flow context (RelayState/InResponseTo) with a different principal's assertion.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_takeover_login_status >= 400",
+        "evaluation": "user_takeover_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_takeover_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I3_saml_cross_principal_flow_takeover_same_relaystate",
+      "description": "I3 flow takeover attempt: obtain a valid SP-initiated flow context (RelayState) for victim principal, then try to complete it with an assertion for a different principal using the same RelayState. Expect rejection (principal must be bound to the flow).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: The SP-initiated SAML flow context must be bound to the initiating session and intended principal; completing the same flow with a different principal must be rejected (no cross-principal splicing).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 3,
+      "events_failed": 2,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "fuzz_saml_source_i3_principal_takeover",
+            "slug": "fuzz-saml-i3-takeover",
+            "provider_type": "saml",
+            "consumer_key": "dummy",
+            "consumer_secret": "dummy",
+            "authorization_url": "https://idp.invalid/auth",
+            "access_token_url": "https://idp.invalid/token",
+            "profile_url": "https://idp.invalid/profile",
+            "oidc_well_known_url": "https://idp.invalid/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://idp.invalid/jwks"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "slug": "slug",
+            "http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{slug}}",
+            "saml_response": "AUTO_GENERATE_FORGED_RESPONSE(target_identity=victimUser, email=victim@example.com, provider=authentik, realm=default, initiate_saml_flow=true, capture_relay_state=true)",
+            "relay_state": "CAPTURE"
+          },
+          "auth_as": "user_victim_flow",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "http_status",
+            "relay_state": "relay_state"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_victim_flow",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_flow_entity_id": "sub",
+            "user_victim_flow_display_name": "name",
+            "user_victim_flow_email": "email",
+            "user_victim_flow_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "{{slug}}",
+            "saml_response": "AUTO_GENERATE_FORGED_RESPONSE(target_identity=attackerUser, email=attacker@example.com, provider=authentik, realm=default, initiate_saml_flow=true, in_response_to_from_flow=victim_flow)",
+            "relay_state": "{{user_victim_flow_relay_state}}"
+          },
+          "auth_as": "user_takeover",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_takeover",
+          "expected_outcome": "any",
+          "captures": {
+            "user_takeover_entity_id": "sub",
+            "user_takeover_display_name": "name",
+            "user_takeover_email": "email",
+            "user_takeover_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I3_saml_cross_principal_flow_takeover_same_relaystate_0",
+          "invariant": "I3",
+          "assertion": "user_victim_flow_login_status < 400 AND user_victim_flow_http_status < 400",
+          "violation_description": "Test invalid: victim control flow did not complete; cannot assess cross-principal flow takeover.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I3_saml_cross_principal_flow_takeover_same_relaystate_1",
+          "invariant": "I3",
+          "assertion": "user_takeover_login_status >= 400",
+          "violation_description": "Flow coherence broken: authentik accepted completing a victim flow context (RelayState/InResponseTo) with a different principal's assertion.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I3_saml_cross_principal_flow_takeover_same_relaystate_2",
+          "invariant": "I3",
+          "assertion": "user_takeover_http_status >= 400 OR user_takeover_entity_id is None",
+          "violation_description": "Flow coherence broken: takeover attempt produced an authenticated session (userinfo succeeded) despite expected rejection.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "a91d64a4-6d71-40c7-a05a-1f12d8bd08bb",
+        "slug": "fuzz-saml-i3-takeover",
+        "http_status": "200",
+        "relay_state": "None",
+        "user_victim_flow_login_success": "True",
+        "user_victim_flow_login_status": "200",
+        "user_victim_flow_login_http_status": "200",
+        "user_victim_flow_entity_id": "None",
+        "user_victim_flow_display_name": "None",
+        "user_victim_flow_email": "None",
+        "user_victim_flow_groups": "None",
+        "user_takeover_login_success": "True",
+        "user_takeover_login_status": "200",
+        "user_takeover_login_http_status": "200",
+        "user_takeover_entity_id": "None",
+        "user_takeover_display_name": "None",
+        "user_takeover_email": "None",
+        "user_takeover_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "5d8995ca2a312795",
+      "sequence_id": "seq_I5_saml_no_conditions_acceptance",
+      "sequence_description": "Attack I5 by submitting a forged SAML assertion with the entire <Conditions> element removed (no time bounds, no audience restriction). Control login first to ensure the SAML source is functional; then attempt the no-conditions assertion and expect rejection.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_nocond_login_status >= 400\nEvaluation: user_attacker_nocond_login_status=200 >= 400 \u2192 False\nImplication: SP accepted SAML assertion without <Conditions> (no audience/time bounds), enabling authorization beyond upstream intent.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_nocond_login_status >= 400",
+        "evaluation": "user_attacker_nocond_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_nocond_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I5_saml_no_conditions_acceptance",
+      "description": "Attack I5 by submitting a forged SAML assertion with the entire <Conditions> element removed (no time bounds, no audience restriction). Control login first to ensure the SAML source is functional; then attempt the no-conditions assertion and expect rejection.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: authentik SP must reject SAML assertions that omit <Conditions> because upstream intent lacks audience/time constraints; accepting such an assertion would allow authorization beyond BrokerPolicy(config).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 3,
+      "events_failed": 2,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "victim_i5_saml",
+            "email": "victim_i5_saml@example.com",
+            "name": "Victim I5 SAML",
+            "password": "VictimPassw0rd!",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_identity_id": "identity_id",
+            "victim_username": "username",
+            "victim_create_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "saml-source-default",
+            "saml_response": {
+              "target_identity": "victim_i5_saml",
+              "email": "victim_i5_saml@example.com",
+              "provider": "saml",
+              "realm": "default"
+            },
+            "relay_state": "control"
+          },
+          "auth_as": "user_control_saml",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_saml_entity_id": "sub",
+            "user_control_saml_display_name": "name",
+            "user_control_saml_email": "email",
+            "user_control_saml_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "saml-source-default",
+            "saml_response": {
+              "target_identity": "victim_i5_saml",
+              "email": "victim_i5_saml@example.com",
+              "provider": "saml",
+              "realm": "default",
+              "remove_conditions": true
+            },
+            "relay_state": "attack_nocond"
+          },
+          "auth_as": "user_attacker_nocond",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_nocond",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_nocond_entity_id": "sub",
+            "user_attacker_nocond_display_name": "name",
+            "user_attacker_nocond_email": "email",
+            "user_attacker_nocond_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I5_saml_no_conditions_acceptance_0",
+          "invariant": "I5",
+          "assertion": "user_control_saml_login_status < 400",
+          "violation_description": "Control SAML login failed; cannot attribute subsequent rejection/acceptance to Conditions enforcement.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I5_saml_no_conditions_acceptance_1",
+          "invariant": "I5",
+          "assertion": "user_attacker_nocond_login_status >= 400",
+          "violation_description": "SP accepted SAML assertion without <Conditions> (no audience/time bounds), enabling authorization beyond upstream intent.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "identity_id": "32",
+        "username": "victim_i5_saml",
+        "victim_identity_id": "32",
+        "victim_username": "victim_i5_saml",
+        "victim_create_http_status": "201",
+        "user_control_saml_login_success": "True",
+        "user_control_saml_login_status": "200",
+        "user_control_saml_login_http_status": "200",
+        "user_control_saml_entity_id": "None",
+        "user_control_saml_display_name": "None",
+        "user_control_saml_email": "None",
+        "user_control_saml_groups": "None",
+        "user_attacker_nocond_login_success": "True",
+        "user_attacker_nocond_login_status": "200",
+        "user_attacker_nocond_login_http_status": "200",
+        "user_attacker_nocond_entity_id": "None",
+        "user_attacker_nocond_display_name": "None",
+        "user_attacker_nocond_email": "None",
+        "user_attacker_nocond_groups": "None"
+      }
+    }
+  }
+]

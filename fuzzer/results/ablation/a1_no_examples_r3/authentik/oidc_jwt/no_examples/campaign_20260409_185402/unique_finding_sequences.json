@@ -1,0 +1,250 @@
+[
+  {
+    "finding": {
+      "finding_id": "8a157ac1aede4dbd",
+      "sequence_id": "seq_I5_cross_provider_jwt_audience_confusion_001",
+      "sequence_description": "Cross-provider JWT audience confusion: present a JWT minted for provider-A (aud=clientA) to provider-B's JWT login endpoint (client_id=clientB). Expected: provider-B rejects or at least does not grant identity for provider-A intent.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "OIDC source login succeeded despite id_token issuer mismatch: the IdP returned an id_token with a different issuer than the source's configured OIDC well-known URL. This indicates the SP does not validate the iss claim per OIDC Core 3.1.3.7 Section 2.",
+      "cve_analog": "none",
+      "evidence": {
+        "oidc_source_issuer_mismatch": true,
+        "captures": {
+          "source_id": "38408be7-73d9-497e-9593-d743c3597d0f",
+          "source_shared_id": "38408be7-73d9-497e-9593-d743c3597d0f",
+          "source_shared_slug": "mock-oidc-source-shared",
+          "source_shared_http_status": "201",
+          "_oidc_source_issuer_mismatch": "true"
+        }
+      },
+      "detection_source": "L1_syntactic",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I5_cross_provider_jwt_audience_confusion_001",
+      "description": "Cross-provider JWT audience confusion: present a JWT minted for provider-A (aud=clientA) to provider-B's JWT login endpoint (client_id=clientB). Expected: provider-B rejects or at least does not grant identity for provider-A intent.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: A JWT's upstream intent (audience/client binding) must constrain effective permissions; a token intended for clientA must not authenticate to clientB.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 5,
+      "events_failed": 2,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "orgA-oauth2",
+            "authorization_flow": "default-authz-flow",
+            "client_type": "confidential",
+            "client_id": "clientA",
+            "client_secret": "secretA",
+            "redirect_uris": "https://appA.example/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": "https://mock-idp.example/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "providerA_id": "provider_id",
+            "providerA_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "orgB-oauth2",
+            "authorization_flow": "default-authz-flow",
+            "client_type": "confidential",
+            "client_id": "clientB",
+            "client_secret": "secretB",
+            "redirect_uris": "https://appB.example/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": "https://mock-idp.example/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "providerB_id": "provider_id",
+            "providerB_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "mock-oidc-source-shared",
+            "slug": "mock-oidc-source-shared",
+            "provider_type": "openidconnect",
+            "consumer_key": "mock-client",
+            "consumer_secret": "mock-secret",
+            "authorization_url": "https://mock-idp.example/authorize",
+            "access_token_url": "https://mock-idp.example/token",
+            "profile_url": "https://mock-idp.example/userinfo",
+            "oidc_well_known_url": "https://mock-idp.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://mock-idp.example/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_shared_id": "source_id",
+            "source_shared_slug": "slug",
+            "source_shared_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "token": "unused",
+            "client_id": "clientA",
+            "client_secret": "secretA",
+            "scope": "openid email",
+            "jwt": "external",
+            "jwt_claims": {
+              "iss": "https://mock-idp.example/",
+              "sub": "svc-a-123",
+              "aud": "clientA",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch}}",
+              "scope": "openid email"
+            }
+          },
+          "auth_as": "session_user_control_A",
+          "expected_outcome": "any",
+          "captures": {
+            "controlA_session_token": "session_token",
+            "controlA_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_A_entity_id": "sub",
+            "user_control_A_display_name": "name",
+            "user_control_A_email": "email",
+            "user_control_A_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "token": "unused",
+            "client_id": "clientB",
+            "client_secret": "secretB",
+            "scope": "openid email",
+            "jwt": "external",
+            "jwt_claims": {
+              "iss": "https://mock-idp.example/",
+              "sub": "svc-a-123",
+              "aud": "clientA",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch}}",
+              "scope": "openid email"
+            }
+          },
+          "auth_as": "session_user_attacker_cross_aud",
+          "expected_outcome": "any",
+          "captures": {
+            "attacker_cross_session_token": "session_token",
+            "attacker_cross_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_cross_aud",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_cross_aud_entity_id": "sub",
+            "user_attacker_cross_aud_display_name": "name",
+            "user_attacker_cross_aud_email": "email",
+            "user_attacker_cross_aud_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I5_cross_provider_jwt_audience_confusion_001_0",
+          "invariant": "I5",
+          "assertion": "user_control_A_login_status < 400",
+          "violation_description": "Control JWT login to clientA failed; cannot attribute cross-audience behavior to authorization binding.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I5_cross_provider_jwt_audience_confusion_001_1",
+          "invariant": "I5",
+          "assertion": "user_attacker_cross_aud_login_status >= 400",
+          "violation_description": "clientB accepted a JWT whose aud=clientA, indicating missing audience/client binding (I5).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "client_id": "clientB",
+        "client_secret": "secretB",
+        "provider_client_id": "clientB",
+        "provider_client_secret": "secretB",
+        "provider_id": "17",
+        "providerA_id": "16",
+        "providerA_http_status": "201",
+        "providerB_id": "17",
+        "providerB_http_status": "201",
+        "source_id": "38408be7-73d9-497e-9593-d743c3597d0f",
+        "slug": "mock-oidc-source-shared",
+        "source_shared_id": "38408be7-73d9-497e-9593-d743c3597d0f",
+        "source_shared_slug": "mock-oidc-source-shared",
+        "source_shared_http_status": "201",
+        "_oidc_source_issuer_mismatch": "true",
+        "controlA_session_token": "None",
+        "controlA_http_status": "200",
+        "session_user_control_A_login_success": "True",
+        "session_user_control_A_login_status": "200",
+        "session_user_control_A_login_http_status": "200",
+        "user_control_A_entity_id": "None",
+        "user_control_A_display_name": "None",
+        "user_control_A_email": "None",
+        "user_control_A_groups": "None",
+        "attacker_cross_session_token": "None",
+        "attacker_cross_http_status": "200",
+        "session_user_attacker_cross_aud_login_success": "True",
+        "session_user_attacker_cross_aud_login_status": "200",
+        "session_user_attacker_cross_aud_login_http_status": "200",
+        "user_attacker_cross_aud_entity_id": "None",
+        "user_attacker_cross_aud_display_name": "None",
+        "user_attacker_cross_aud_email": "None",
+        "user_attacker_cross_aud_groups": "None"
+      }
+    }
+  }
+]

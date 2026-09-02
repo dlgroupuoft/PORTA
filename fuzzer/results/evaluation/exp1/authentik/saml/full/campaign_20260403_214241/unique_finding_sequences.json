@@ -1,0 +1,472 @@
+[
+  {
+    "finding": {
+      "finding_id": "90c08097d9cdf6f2",
+      "sequence_id": "seq_i5_saml_missing_conditions_allows_login",
+      "sequence_description": "SAML assertion without <Conditions> (no audience/time bounds) should be rejected; if accepted, broker grants a session without upstream intent constraints.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_i5_saml_nocond_login_status >= 400\nEvaluation: user_i5_saml_nocond_login_status=200 >= 400 \u2192 False\nImplication: SP accepted SAML assertion without <Conditions>; session granted without upstream audience/time constraints (authorization binding violated).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_i5_saml_nocond_login_status >= 400",
+        "evaluation": "user_i5_saml_nocond_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_i5_saml_nocond_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_saml_missing_conditions_allows_login",
+      "description": "SAML assertion without <Conditions> (no audience/time bounds) should be rejected; if accepted, broker grants a session without upstream intent constraints.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: authentik (as SAML SP) must not grant an authenticated session when the upstream assertion omits Conditions (no AudienceRestriction/time bounds), because EffectivePerms would exceed UpstreamIntent \u2229 BrokerPolicy.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 3,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i5_saml_cond_control",
+            "email": "i5_saml_cond_control@example.com",
+            "name": "I5 SAML Conditions Control",
+            "password": "Password123!Password123!",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "control_identity_id": "identity_id",
+            "control_username": "username",
+            "control_user_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "saml-upstream",
+            "target_identity": "i5_saml_cond_control",
+            "email": "i5_saml_cond_control@example.com",
+            "provider": "saml",
+            "realm": "default",
+            "idp_entity_id": "https://trusted-idp.example.com/metadata"
+          },
+          "auth_as": "user_i5_saml_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_i5_saml_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_i5_saml_control_entity_id": "sub",
+            "user_i5_saml_control_display_name": "name",
+            "user_i5_saml_control_email": "email",
+            "user_i5_saml_control_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "saml-upstream",
+            "target_identity": "i5_saml_cond_control",
+            "email": "i5_saml_cond_control@example.com",
+            "provider": "saml",
+            "realm": "default",
+            "remove_conditions": true,
+            "idp_entity_id": "https://trusted-idp.example.com/metadata"
+          },
+          "auth_as": "user_i5_saml_nocond",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_i5_saml_nocond",
+          "expected_outcome": "any",
+          "captures": {
+            "user_i5_saml_nocond_entity_id": "sub",
+            "user_i5_saml_nocond_display_name": "name",
+            "user_i5_saml_nocond_email": "email",
+            "user_i5_saml_nocond_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_control_login_succeeds",
+          "invariant": "I5",
+          "assertion": "user_i5_saml_control_login_status < 400 AND user_i5_saml_control_http_status == 200",
+          "violation_description": "Control SAML login failed; cannot interpret missing-Conditions authorization-binding result.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_missing_conditions_rejected",
+          "invariant": "I5",
+          "assertion": "user_i5_saml_nocond_login_status >= 400",
+          "violation_description": "SP accepted SAML assertion without <Conditions>; session granted without upstream audience/time constraints (authorization binding violated).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "identity_id": "51",
+        "username": "i5_saml_cond_control",
+        "control_identity_id": "51",
+        "control_username": "i5_saml_cond_control",
+        "control_user_create_status": "201",
+        "user_i5_saml_control_login_success": "True",
+        "user_i5_saml_control_login_status": "200",
+        "user_i5_saml_control_login_http_status": "200",
+        "user_i5_saml_control_entity_id": "None",
+        "user_i5_saml_control_display_name": "None",
+        "user_i5_saml_control_email": "None",
+        "user_i5_saml_control_groups": "None",
+        "user_i5_saml_nocond_login_success": "True",
+        "user_i5_saml_nocond_login_status": "200",
+        "user_i5_saml_nocond_login_http_status": "200",
+        "user_i5_saml_nocond_entity_id": "None",
+        "user_i5_saml_nocond_display_name": "None",
+        "user_i5_saml_nocond_email": "None",
+        "user_i5_saml_nocond_groups": "None",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "8cd4befe307f4736",
+      "sequence_id": "seq_i5_saml_wrong_audience_accepted",
+      "sequence_description": "SAML assertion with mismatched AudienceRestriction should be rejected; if accepted, broker grants session beyond upstream intent (audience binding failure).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_wrong_aud_login_status >= 400\nEvaluation: user_attacker_wrong_aud_login_status=200 >= 400 \u2192 False\nImplication: authentik accepted a SAML assertion with an AudienceRestriction for a different SP audience, granting a session beyond upstream intent (audience binding failure).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_wrong_aud_login_status >= 400",
+        "evaluation": "user_attacker_wrong_aud_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_wrong_aud_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_saml_wrong_audience_accepted",
+      "description": "SAML assertion with mismatched AudienceRestriction should be rejected; if accepted, broker grants session beyond upstream intent (audience binding failure).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: authentik (as SAML SP) must enforce SAML AudienceRestriction so assertions minted for a different SP audience cannot authenticate to this SAML source.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 3,
+      "events_succeeded": 2,
+      "events_failed": 1,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "victim_i5_aud",
+            "email": "victim_i5_aud@example.com",
+            "name": "Victim I5 Audience",
+            "password": "VictimPassw0rd!",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_i5_aud_identity_id": "identity_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "saml-upstream-secure",
+            "saml_response": {
+              "target_identity": "victim_i5_aud",
+              "email": "victim_i5_aud@example.com",
+              "provider": "saml",
+              "realm": "default",
+              "idp_entity_id": "https://trusted-idp.example.com/entity",
+              "fixed_assertion_id": "ASSERT-I5-WRONG-AUD-001",
+              "audience": "https://some-other-sp.example.com/metadata"
+            },
+            "relay_state": "rs_i5_wrong_aud_1"
+          },
+          "auth_as": "user_attacker_wrong_aud",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_wrong_aud",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_wrong_aud_entity_id": "sub",
+            "user_attacker_wrong_aud_display_name": "name",
+            "user_attacker_wrong_aud_email": "email",
+            "user_attacker_wrong_aud_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_saml_wrong_audience_rejected",
+          "invariant": "I5",
+          "assertion": "user_attacker_wrong_aud_login_status >= 400",
+          "violation_description": "authentik accepted a SAML assertion with an AudienceRestriction for a different SP audience, granting a session beyond upstream intent (audience binding failure).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "identity_id": "53",
+        "username": "victim_i5_aud",
+        "victim_i5_aud_identity_id": "53",
+        "user_attacker_wrong_aud_login_success": "True",
+        "user_attacker_wrong_aud_login_status": "200",
+        "user_attacker_wrong_aud_login_http_status": "200",
+        "user_attacker_wrong_aud_entity_id": "None",
+        "user_attacker_wrong_aud_display_name": "None",
+        "user_attacker_wrong_aud_email": "None",
+        "user_attacker_wrong_aud_groups": "None",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "93c1f210dddc5e98",
+      "sequence_id": "seq_i5_saml_expired_assertion_should_not_grant_session",
+      "sequence_description": "Expired SAML assertion should be rejected; if accepted, broker grants a session beyond upstream intent time bounds (authorization binding failure). Includes control valid SAML login first.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_i5_saml_control_login_status < 400 AND user_i5_saml_expired_login_status >= 400\nEvaluation: (user_i5_saml_control_login_status=200 < 400 \u2192 True) AND (user_i5_saml_expired_login_status=200 >= 400 \u2192 False)\nImplication: SP accepted an expired SAML assertion (time-bound upstream intent not enforced), granting a session beyond allowed authorization context.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_i5_saml_control_login_status < 400 AND user_i5_saml_expired_login_status >= 400",
+        "evaluation": "(user_i5_saml_control_login_status=200 < 400 \u2192 True) AND (user_i5_saml_expired_login_status=200 >= 400 \u2192 False)",
+        "captured_values": {
+          "user_i5_saml_control_login_status": 200,
+          "user_i5_saml_expired_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_saml_expired_assertion_should_not_grant_session",
+      "description": "Expired SAML assertion should be rejected; if accepted, broker grants a session beyond upstream intent time bounds (authorization binding failure). Includes control valid SAML login first.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Effective session must not be granted when upstream SAML assertion is outside its validity window; accepting expired assertions violates upstream intent constraints.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 5,
+      "events_failed": 1,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i5_saml_time_user",
+            "email": "i5_saml_time_user@example.com",
+            "name": "I5 SAML Time User",
+            "password": "Password123!pass",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "i5_saml_time_user_identity_id": "identity_id",
+            "i5_saml_time_user_username": "username",
+            "i5_saml_time_user_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "clientA_i5_aud",
+            "redirect_uri": "https://example.com/callbackA",
+            "scope": "openid email",
+            "response_type": "code",
+            "state": "state_i5_saml_1",
+            "nonce": "nonce_i5_saml_1",
+            "code_challenge": "challenge_i5_saml_1",
+            "code_challenge_method": "S256",
+            "request": ""
+          },
+          "auth_as": "user_i5_saml_flow_init",
+          "expected_outcome": "any",
+          "captures": {
+            "user_i5_saml_flow_init_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "saml-upstream-source",
+            "saml_response": "AUTO_GENERATED",
+            "relay_state": "relay_i5_saml_control",
+            "target_identity": "i5_saml_time_user",
+            "email": "i5_saml_time_user@example.com",
+            "provider": "upstream-idp",
+            "realm": "default",
+            "idp_entity_id": "https://upstream-idp.example.com/entity"
+          },
+          "auth_as": "user_i5_saml_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_i5_saml_control_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_i5_saml_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_i5_saml_control_entity_id": "sub",
+            "user_i5_saml_control_display_name": "name",
+            "user_i5_saml_control_email": "email",
+            "user_i5_saml_control_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "clientA_i5_aud",
+            "redirect_uri": "https://example.com/callbackA",
+            "scope": "openid email",
+            "response_type": "code",
+            "state": "state_i5_saml_2",
+            "nonce": "nonce_i5_saml_2",
+            "code_challenge": "challenge_i5_saml_2",
+            "code_challenge_method": "S256",
+            "request": ""
+          },
+          "auth_as": "user_i5_saml_flow_init2",
+          "expected_outcome": "any",
+          "captures": {
+            "user_i5_saml_flow_init2_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "saml-upstream-source",
+            "saml_response": "AUTO_GENERATED",
+            "relay_state": "relay_i5_saml_expired",
+            "target_identity": "i5_saml_time_user",
+            "email": "i5_saml_time_user@example.com",
+            "provider": "upstream-idp",
+            "realm": "default",
+            "idp_entity_id": "https://upstream-idp.example.com/entity",
+            "expired_assertion": true
+          },
+          "auth_as": "user_i5_saml_expired",
+          "expected_outcome": "any",
+          "captures": {
+            "user_i5_saml_expired_http_status": "http_status"
+          },
+          "phase": "login"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_saml_expired_assertion_rejected",
+          "invariant": "I5",
+          "assertion": "user_i5_saml_control_login_status < 400 AND user_i5_saml_expired_login_status >= 400",
+          "violation_description": "SP accepted an expired SAML assertion (time-bound upstream intent not enforced), granting a session beyond allowed authorization context.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "identity_id": "55",
+        "username": "i5_saml_time_user",
+        "i5_saml_time_user_identity_id": "55",
+        "i5_saml_time_user_username": "i5_saml_time_user",
+        "i5_saml_time_user_http_status": "201",
+        "user_i5_saml_flow_init_http_status": "200",
+        "user_i5_saml_control_http_status": "200",
+        "user_i5_saml_control_login_success": "True",
+        "user_i5_saml_control_login_status": "200",
+        "user_i5_saml_control_login_http_status": "200",
+        "user_i5_saml_control_entity_id": "None",
+        "user_i5_saml_control_display_name": "None",
+        "user_i5_saml_control_email": "None",
+        "user_i5_saml_control_groups": "None",
+        "user_i5_saml_flow_init2_http_status": "200",
+        "user_i5_saml_expired_http_status": "200",
+        "user_i5_saml_expired_login_success": "True",
+        "user_i5_saml_expired_login_status": "200",
+        "user_i5_saml_expired_login_http_status": "200",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  }
+]

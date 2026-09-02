@@ -1,0 +1,368 @@
+{
+  "name": "authentik",
+  "base_url": "http://localhost:9000",
+  "admin_auth": {
+    "header": "Authorization",
+    "value": "Bearer {admin_token}"
+  },
+  "supported_protocols": [
+    "saml"
+  ],
+  "api_mapping": {
+    "saml": {
+      "saml_login": {
+        "method": "POST",
+        "path": "/source/saml/{source_slug}/acs/",
+        "body_map": {
+          "saml_response": "SAMLResponse",
+          "relay_state": "RelayState"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form"
+      },
+      "enable_auth_method": {
+        "method": "POST",
+        "path": "/source/saml/{source_slug}/acs/",
+        "body_map": {},
+        "response_map": {},
+        "auth": "none",
+        "content_type": "form",
+        "metadata": {
+          "documented_via": "ACS URL in SAML Source docs; no admin API for source creation is documented in provided material",
+          "protocol_object": "SAML Source",
+          "absence_reason": "documentation provides only UI workflow, no explicit HTTP API endpoint"
+        }
+      },
+      "cleanup_auth_method": {
+        "method": "GET",
+        "path": "/source/saml/{source_slug}/acs/",
+        "body_map": {},
+        "response_map": {},
+        "auth": "none",
+        "content_type": "query",
+        "metadata": {
+          "absent_admin_api": true,
+          "documented_via": "admin_ui_only",
+          "protocol_object": "SAML Source",
+          "absence_reason": "documentation provides only UI workflow, no explicit delete API endpoint"
+        }
+      }
+    }
+  },
+  "known_behaviors": {
+    "saml": [
+      {
+        "id": "authentik_i1_i3_d2336859",
+        "description": "A SAML source can allow IdP-initiated logins, and the docs warn that this request is not verified and may be a security risk.",
+        "invariants": [
+          "I1",
+          "I3"
+        ],
+        "conditions": {
+          "saml_source.allow_idp_initiated_logins": true
+        },
+        "source": "users-sources/sources/protocols/saml/index.md",
+        "note": "Do not flag acceptance of unsolicited IdP-initiated SAML as an implementation bug if this option was intentionally enabled."
+      },
+      {
+        "id": "authentik_i5_6cbdfb92",
+        "description": "Applications are accessible to all users when no policy/group/user bindings are defined.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "application.bindings_count": 0
+        },
+        "source": "add-secure-apps/applications/manage_apps.mdx",
+        "note": "Successful access without explicit grants is by design for unbound applications."
+      },
+      {
+        "id": "authentik_i4_b90625ba",
+        "description": "Different SAML NameID policies intentionally produce different identifier values such as hashed ID, session ID, UPN, or email.",
+        "invariants": [
+          "I4"
+        ],
+        "conditions": {
+          "provider.default_nameid_policy": "*"
+        },
+        "source": "add-secure-apps/providers/saml/index.md",
+        "note": "Identity differences across tests may be expected if NameID policy or mapping changed."
+      },
+      {
+        "id": "authentik_i4_ed20e64b",
+        "description": "Using email address as SAML NameID is discouraged because users can usually change email addresses.",
+        "invariants": [
+          "I4"
+        ],
+        "conditions": {
+          "saml_provider.default_nameid_policy": "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
+        },
+        "source": "add-secure-apps/providers/saml/index.md",
+        "note": "Identity instability under email-based NameID may reflect documented mutable identifier choice."
+      },
+      {
+        "id": "authentik_i3_7a81e106",
+        "description": "When a Source stage resume timeout is exceeded, the suspended flow restarts from the beginning upon return.",
+        "invariants": [
+          "I3"
+        ],
+        "conditions": {
+          "source_stage.resume_timeout_exceeded": true
+        },
+        "source": "add-secure-apps/flows-stages/stages/source/index.md",
+        "note": "A restarted flow after timeout is by design, not a session-mixup bug."
+      },
+      {
+        "id": "authentik_i3_f8ba1a88",
+        "description": "When no user fields are selected and only one source is selected, authentik automatically redirects the user to that source.",
+        "invariants": [
+          "I3"
+        ],
+        "conditions": {
+          "identification_stage.user_fields_selected": 0,
+          "identification_stage.sources_selected": 1
+        },
+        "source": "add-secure-apps/flows-stages/stages/identification/index.mdx",
+        "note": "Do not treat the missing source-selection UI step as flow skipping or session confusion."
+      }
+    ]
+  },
+  "verification_fields": {
+    "identity_field": "sub",
+    "identity_name_field": "preferred_username",
+    "policies_field": "groups",
+    "groups_field": "groups"
+  },
+  "api_constraints": {
+    "saml": [
+      {
+        "severity": "CRITICAL",
+        "constraint": "Allow IDP-Initiated Logins on a SAML source is explicitly documented as a security risk because the request is not verified. For I1 default-signature/issuer-hardening tests, the fuzzer MUST distinguish this by-design insecure option from a validation bug and SHOULD keep IDP-initiated logins disabled unless the test specifically targets that behavior.",
+        "invariants": [
+          "I1",
+          "I3"
+        ],
+        "source": "users-sources/sources/protocols/saml/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 saml_cert_substitution and related signature tests against authentik as SP, the fuzzer MUST use the SAML Source ACS endpoint /source/saml/{source_slug}/acs/ and submit a forged SAMLResponse there. The docs state authentik validates received SAML messages against a configured verification certificate; success without matching configured trust would indicate a real signature-validation flaw.",
+        "invariants": [
+          "I1"
+        ],
+        "source": "add-secure-apps/providers/saml/index.md; users-sources/sources/protocols/saml/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 saml_issuer_mismatch tests, the fuzzer MUST configure and vary the SAML source Issuer/Entity ID separately from the assertion Issuer. The docs define Issuer/Entity ID as the federation identifier used to identify the peer; if the source is configured to allow IDP-initiated logins, do not misclassify acceptance as a bug without confirming whether the insecure option was enabled.",
+        "invariants": [
+          "I1"
+        ],
+        "source": "users-sources/sources/protocols/saml/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 flow-coherence tests involving SAML source authentication, source flows can suspend and later resume via the Source stage, and Resume timeout controls how long the suspended flow is saved. A valid I3 test MUST keep the same flow instance alive within the resume timeout; if the timeout is exceeded, authentik restarts the suspended flow from the beginning by design.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "add-secure-apps/flows-stages/stages/source/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 policy/stage-binding tests, authentik can evaluate policies either when the flow is planned or when the stage is run. The fuzzer MUST account for this because changing user/context mid-flow may not affect already-planned stages. Do not report stale evaluation as a bug unless the same request is evaluated inconsistently contrary to the configured binding mode.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "add-secure-apps/bindings-overview/index.md; add-secure-apps/flows-stages/flow/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 SAML MFA-bypass-via-binding-rule tests, authentik supports alternate authentication through SAML sources shown in the Identification stage. The fuzzer MUST compare equivalent flows carefully: if MFA is skipped because a different flow or stage-binding policy legitimately applies to the SAML source path, that is configuration-dependent behavior, not automatically a broker flaw.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "add-secure-apps/flows-stages/stages/identification/index.mdx; add-secure-apps/bindings-overview/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 identity-binding tests, NameID format materially changes the identifier value. Persistent NameID maps to a hashed ID, transient maps to session ID, emailAddress maps to email, and x509/Windows may fall back to persistent identifiers. The fuzzer MUST hold NameID policy constant across compared logins; otherwise different downstream identities are expected by design.",
+        "invariants": [
+          "I4"
+        ],
+        "source": "add-secure-apps/providers/saml/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 email-binding collision tests, using email as SAML NameID is explicitly discouraged because users may change email addresses. The fuzzer SHOULD test both NameID and mapped email attributes separately and MUST NOT assume email-based identity merge is always a bug without confirming the configured NameID/property mapping strategy.",
+        "invariants": [
+          "I4"
+        ],
+        "source": "add-secure-apps/providers/saml/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 multi-identity tests through SAML source property mappings, LDAP/other source-derived attributes may be arrays unless flattened. The docs note source property mappings can preserve LDAP array types. The fuzzer SHOULD test type-confusion scenarios where equivalent-looking attributes arrive as string vs list, but MUST not assume normalization/coercion behavior unless the mapping explicitly flattens values.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "source": "users-sources/sources/protocols/ldap/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 authorization-binding tests on application access, authentik applications are allow-all by default when no bindings are defined. The fuzzer MUST bind a policy/group/user to the application when testing denial or scope restriction; otherwise successful access may simply reflect the documented default-open application behavior.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "add-secure-apps/applications/manage_apps.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 SAML attribute/entitlement tests, SAML property mappings are arbitrary Python expressions and can emit provider-specific values. The fuzzer MUST treat authorization outcomes as dependent on configured property mappings and not infer a protocol-level escalation unless the same upstream identity yields permissions beyond the configured mappings and application bindings.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "add-secure-apps/providers/saml/index.md; add-secure-apps/providers/property-mappings/expression.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I1 saml_cert_substitution and related signature-integrity tests, target authentik as a SAML Source (SP) at POST /source/saml/{source_slug}/acs/. The docs state authentik validates received SAML messages against a configured verification certificate. A valid negative test MUST configure the source with the legitimate IdP verification certificate first; otherwise any failure is ambiguous and any success may just reflect insecure setup outside the documented path."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I1 saml_issuer_mismatch tests, the SAML Source configuration includes an explicit Issuer/Entity ID field for the IdP metadata/configuration. The fuzzer MUST run a control login with the configured issuer and then an attack login with idp_entity_id set to a different issuer. Without a control, rejection cannot be distinguished from a broken source configuration."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I1 signature tests involving POST binding, use the ACS endpoint /source/saml/{source_slug}/acs/ with form-encoded SAMLResponse. The docs explicitly describe ACS as consuming assertions delivered via POST/Redirect binding; do NOT model SAML login as GET."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I2 replay tests, SAML is stateful/spec-bound unlike stateless JWT bearer validation. The fuzzer SHOULD test both saml_assertion_id_replay and saml_one_time_use_replay against the same ACS endpoint because authentik documents SAML assertions as consumed at the ACS URL and warns that allowing IdP-initiated logins may be a security risk if requests are not verified."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I2 freshness tests on SAML assertions, include a CONTROL login using a valid assertion alongside expired/future-condition attacks. The provided docs do not enumerate exact clock-skew/leeway behavior, so a failing attack without a successful control is not evidence of correct freshness enforcement."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I3 flow-coherence tests involving SAML source authentication inside flows, account for authentik's flow suspension/resume behavior. The Source stage suspends the current flow, redirects to the configured SAML source, then resumes the original flow. A valid I3 test must show inconsistent handling of the SAME suspended flow/session, not merely that a newly started flow used updated configuration."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I3 source-stage tests, do NOT bind a User Login stage inside the source's authentication or enrollment flow. The docs state this prevents resuming the original flow and directly authenticates the pending user instead, which would invalidate any session-binding or atomicity conclusions."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I3 timeout-related source-stage tests, the Source stage has a Resume timeout. If this timeout is exceeded, the suspended flow restarts from the beginning on return from the source. The fuzzer MUST keep the SAML round-trip within the configured resume timeout or treat a restarted flow as by-design behavior, not a coherence bug."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 principal-binding tests, NameID format materially changes the identifier authentik receives from the IdP. The docs state NameID Policy may be Persistent, X509SubjectName, WindowsDomainQualifiedName, Transient, or EmailAddress. The fuzzer MUST hold NameID policy constant across compared logins; otherwise identity changes may be caused by format selection rather than a collision bug."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 collision tests, avoid using email-address NameID as the sole identifier unless the test explicitly targets email-binding behavior. The docs warn that email-based NameID is mutable by default and therefore not recommended as a stable identifier. Apparent merges/splits under changing email are not necessarily broker bugs."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 tests involving IdP-initiated login, note that the SAML Source option 'Allow IDP-Initiated Logins' is documented as a security risk because the request is not verified and could be used to authenticate a user without interaction. The fuzzer MUST distinguish this documented insecure mode from default SP-initiated behavior; do not report acceptance of unsolicited assertions as a generic bug unless this mode is disabled or unexpectedly defaulted on."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 cross-protocol or cross-source merge tests, authentik Identification stages can expose SAML sources as alternate login methods and may auto-redirect when only one source is configured. The fuzzer MUST ensure it is exercising the intended source and not an automatic redirect path that changes the tested principal-binding context."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 audience/conditions tests, send assertions to /source/saml/{source_slug}/acs/ and vary Conditions/AudienceRestriction explicitly. The docs define ACS as the SP endpoint that consumes assertions and the glossary states the SP should validate issuer, audience, and time conditions before creating a session. Missing Conditions or wrong Audience should therefore be treated as security-relevant outcomes."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 tests using SAML attributes such as groups or email, remember authentik SAML source property mappings carry source data types through unless flattened by mapping logic. The fuzzer SHOULD test type-confusion cases such as single string vs list-valued attributes because mapping behavior may preserve arrays rather than coerce them."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I3 MFA-bypass-via-binding-rule tests, compare a baseline authentik-native login flow that requires MFA with a SAML-source path for the same user attributes. The docs state flows and stage bindings can differ by context, and Source-stage execution resumes the original flow. A valid bypass finding requires showing the SAML path skips MFA where the password path for the same principal does not."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 saml_cert_substitution and related signature-validation tests against authentik as SP, the fuzzer MUST verify whether signed requests/assertions are actually configured on the SAML source. The docs state the SAML source supports signed requests, but do not document default enforcement values. A successful forged login is only meaningful if signature verification was expected by configuration; otherwise it may reflect insecure or permissive setup rather than proof-integrity failure.",
+        "source": "users-sources/sources/protocols/saml/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 saml_issuer_mismatch tests, the fuzzer MUST configure the SAML source's Issuer/Entity ID and upstream IdP metadata consistently before testing. The docs identify Issuer/Entity ID as the federation identifier and recommend extracting values from metadata. Without a configured expected IdP/metadata relationship, issuer-mismatch results may be ambiguous.",
+        "source": "users-sources/sources/protocols/saml/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 replay tests (saml_one_time_use_replay, saml_assertion_id_replay), include a CONTROL login using a valid fresh SAMLResponse against the same source configuration. If both control and attack fail, the result indicates broken setup rather than replay protection. This is especially important because the docs do not expose replay-cache settings or explicit replay API behavior.",
+        "source": "users-sources/sources/protocols/saml/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 flow-coherence tests involving SAML source authentication, remember that authentik flows are stateful and can be suspended/resumed. The Source stage documentation says suspended flows restart from the beginning if Resume timeout is exceeded. Therefore, any multi-step test that changes configuration mid-flow MUST keep the same flow execution within the resume timeout, or else a restart is by design and not an atomicity bug.",
+        "source": "add-secure-apps/flows-stages/stages/source/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 tests involving policy or stage-binding changes during authentication, note that authentik can evaluate policies either when the flow is planned or when the stage is run. A valid inconsistency test MUST control this setting; otherwise different outcomes after a config change may be by design due to re-evaluation timing rather than a coherence flaw.",
+        "source": "add-secure-apps/bindings-overview/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 saml_mfa_bypass_via_binding_rule tests, the fuzzer MUST compare the same user through two paths: a baseline authentik login flow that includes MFA and a SAML-source path. The docs state some sources are exposed through the Identification stage and that source authentication/enrollment flows must be configured carefully. A bypass is only meaningful if the baseline path demonstrably requires MFA for that same principal.",
+        "source": "add-secure-apps/flows-stages/stages/identification/index.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 principal-binding tests, NameID format selection materially changes the identifier authentik receives from the upstream IdP. The docs state Persistent may be a hashed/random identifier, EmailAddress uses email, Windows uses UPN, and x509 Subject uses distinguishedName. The fuzzer MUST pin the NameID policy/format during a test campaign; otherwise identity merges or splits across runs may be caused by format changes rather than a broker bug.",
+        "source": "users-sources/sources/protocols/saml/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 saml_email_binding_collision and cross_protocol_identity_merge tests, email-based identifiers are especially risky. The docs warn that email-based NameID is mutable by default and recommend avoiding it or preventing email changes. Therefore, if the source/provider is configured to rely on email-like identifiers, collisions or account takeover may reflect this documented unsafe identifier choice. The fuzzer MUST record whether email-based NameID was configured before flagging a violation.",
+        "source": "add-secure-apps/providers/saml/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 tests using the Identification stage with sources, authentik may auto-redirect when no user fields are selected and only one source is configured. The fuzzer MUST account for this by not interpreting the absence of an intermediate chooser step as flow confusion or session mix-up.",
+        "source": "add-secure-apps/flows-stages/stages/identification/index.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 authorization-binding tests involving application access after SAML login, remember that authentik applications are open to all users when no bindings are defined. The fuzzer MUST bind a policy, group, or user to the application under test; otherwise successful access may simply reflect the documented default-open application behavior, not over-granting by the SAML broker.",
+        "source": "add-secure-apps/applications/manage_apps.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 tests involving SAML attributes/groups, property mappings determine what attributes are emitted or consumed. The docs do not define wildcard, glob, or regex matching semantics for SAML attribute names or values in source/provider mappings. Therefore the fuzzer MUST assume exact configuration semantics only and SHOULD test type/collision behavior empirically rather than using wildcard assumptions.",
+        "source": "add-secure-apps/providers/saml/index.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 tests that depend on group or role inheritance after SAML login, note that authentik group roles are inherited through group hierarchy and application bindings can be ANY or ALL. The fuzzer MUST keep hierarchy and policy-engine mode fixed during a test; otherwise extra permissions may be inherited by design rather than granted incorrectly by the SAML path.",
+        "source": "users-sources/groups/manage_groups.mdx"
+      }
+    ]
+  }
+}

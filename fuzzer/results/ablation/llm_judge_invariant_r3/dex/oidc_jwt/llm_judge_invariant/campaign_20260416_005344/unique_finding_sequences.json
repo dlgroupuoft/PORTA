@@ -1,0 +1,1013 @@
+[
+  {
+    "finding": {
+      "finding_id": "f4f6a1f26298a0b5",
+      "sequence_id": "seq_i1_connector_config_change_insecure_skip_signature_validation",
+      "sequence_description": "Config-change + re-auth attack: enable an OIDC connector with insecure_skip_signature_validation=true and verify that forged/untrusted proofs are not accepted. If accepted, proof verification policy is not applied to consumed identity claims.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I1",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "LOW",
+      "description": "[LLM-Judge] Token exchange succeeded for an allegedly forged/untrusted upstream ID token, but the test did not actually enable the insecure connector (admin enable/cleanup endpoints 404), so acceptance cannot be attributed to skipped signature validation.",
+      "cve_analog": "none",
+      "evidence": {
+        "connector_id": "mock",
+        "user_attacker_forged_idtoken_http_status": 200,
+        "user_attacker_forged_idtoken_metadata": {
+          "iss": "http://localhost:5556/dex",
+          "sub": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+          "aud": "valence-test-client",
+          "exp": 1776387725,
+          "iat": 1776301325,
+          "email": "kilgore@kilgore.trout",
+          "email_verified": true,
+          "name": "Kilgore Trout"
+        },
+        "llm_judge_description": "Token exchange succeeded for an allegedly forged/untrusted upstream ID token, but the test did not actually enable the insecure connector (admin enable/cleanup endpoints 404), so acceptance cannot be attributed to skipped signature validation."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_connector_config_change_insecure_skip_signature_validation",
+      "description": "Config-change + re-auth attack: enable an OIDC connector with insecure_skip_signature_validation=true and verify that forged/untrusted proofs are not accepted. If accepted, proof verification policy is not applied to consumed identity claims.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: Even if a connector is (mis)configured to skip signature validation, the system should not accept attacker-controlled semantic identity proofs as authentic; otherwise Verify(proof) is not equivalent to Consume(proof) under the intended policy.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 4,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_type": "oidc",
+            "connector_id": "mock",
+            "connector_name": "mock-oidc-insecure",
+            "sso_url": "https://mock.invalid",
+            "redirect_uri": "http://localhost:8080/callback",
+            "insecure_skip_signature_validation": true
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "admin_issuer": "issuer",
+            "admin_authorization_endpoint": "authorization_endpoint",
+            "admin_token_endpoint": "token_endpoint",
+            "admin_jwks_uri": "jwks_uri"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-insecure-1",
+            "nonce": "nonce-insecure-1",
+            "connector_id": "mock",
+            "prompt": "login"
+          },
+          "auth_as": "user_victim_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_control_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_victim_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_control_entity_id": "sub",
+            "user_victim_control_display_name": "name",
+            "user_victim_control_policies": "groups",
+            "user_victim_control_identity_policies": "federated_claims",
+            "user_victim_control_email": "email",
+            "user_victim_control_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "connector_id": "mock",
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "scope": "openid email profile",
+            "requested_token_type": "urn:ietf:params:oauth:token-type:id_token",
+            "subject_token": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwczovL2F0dGFja2VyLmludmFsaWQiLCJzdWIiOiJhdHRhY2tlciIsImF1ZCI6InZhbGVuY2UtdGVzdC1jbGllbnQiLCJleHAiOjQ3NDA5OTUyMDB9.",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
+            "audience": "valence-test-client",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret"
+          },
+          "auth_as": "user_attacker_forged_idtoken",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_forged_idtoken_http_status": "http_status",
+            "user_attacker_forged_idtoken_identity_id": "identity_id",
+            "user_attacker_forged_idtoken_session_token": "session_token"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_forged_idtoken",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_forged_idtoken_entity_id": "sub",
+            "user_attacker_forged_idtoken_display_name": "name",
+            "user_attacker_forged_idtoken_policies": "groups",
+            "user_attacker_forged_idtoken_identity_policies": "federated_claims",
+            "user_attacker_forged_idtoken_email": "email",
+            "user_attacker_forged_idtoken_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "mock"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "admin_cleanup_http_status": "http_status"
+          },
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_forged_alg_none_id_token_must_be_rejected",
+          "invariant": "I1",
+          "assertion": "user_attacker_forged_idtoken_http_status >= 400",
+          "violation_description": "Dex accepted a forged/unsigned (alg=none) upstream ID token during token exchange, indicating consumed identity claims were not bound to an authenticated proof.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_control_auth_request_succeeds",
+          "invariant": "I1",
+          "assertion": "user_victim_control_http_status >= 200 AND user_victim_control_http_status < 400",
+          "violation_description": "Control OIDC authorization request did not succeed; token-exchange rejection/acceptance may be inconclusive due to connector/client setup issues.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "admin_issuer": "None",
+        "admin_authorization_endpoint": "None",
+        "admin_token_endpoint": "None",
+        "admin_jwks_uri": "None",
+        "user_victim_control_http_status": "200",
+        "user_victim_control_entity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_victim_control_email": "kilgore@kilgore.trout",
+        "identity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "display_name": "Kilgore Trout",
+        "email": "kilgore@kilgore.trout",
+        "metadata": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387725, 'iat': 1776301325, 'email': 'kilgore@kilgore.trout', 'email_verified': True",
+        "ttl": "1776387725",
+        "creation_ttl": "1776301325",
+        "expire_time": "1776387725",
+        "num_uses": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387725, 'iat': 1776301325, 'email': 'kilgore@kilgore.trout', 'email_verified': True",
+        "email_verified": "True",
+        "user_victim_control_display_name": "Kilgore Trout",
+        "user_victim_control_policies": "None",
+        "user_victim_control_identity_policies": "None",
+        "user_victim_control_groups": "None",
+        "user_victim_control_identity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_victim_control_metadata": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387725, 'iat': 1776301325, 'nonce': 'nonce-insecure-1', 'at_hash': 'NF9jFBQPLAo-QQ4",
+        "user_victim_control_ttl": "1776387725",
+        "user_victim_control_creation_ttl": "1776301325",
+        "user_victim_control_expire_time": "1776387725",
+        "user_victim_control_num_uses": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387725, 'iat': 1776301325, 'nonce': 'nonce-insecure-1', 'at_hash': 'NF9jFBQPLAo-QQ4",
+        "user_victim_control_email_verified": "True",
+        "session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjYwNTQwYjU5MzdmZmU2ZmM1YTFiMjI4ZGYwMjY3NTQzMzZhNGZhMjcifQ.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjU1NTYvZGV4Iiwic3ViIjoiQ2cwd0xUTTROUzB5T0RBNE9TMHdFZ1J0YjJOciIsImF1ZCI6InZhbGVuY",
+        "issued_token_type": "urn:ietf:params:oauth:token-type:id_token",
+        "token_type": "bearer",
+        "expires_in": "86399",
+        "user_attacker_forged_idtoken_http_status": "200",
+        "user_attacker_forged_idtoken_identity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_attacker_forged_idtoken_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjYwNTQwYjU5MzdmZmU2ZmM1YTFiMjI4ZGYwMjY3NTQzMzZhNGZhMjcifQ.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjU1NTYvZGV4Iiwic3ViIjoiQ2cwd0xUTTROUzB5T0RBNE9TMHdFZ1J0YjJOciIsImF1ZCI6InZhbGVuY",
+        "user_attacker_forged_idtoken_entity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_attacker_forged_idtoken_email": "kilgore@kilgore.trout",
+        "user_attacker_forged_idtoken_issued_token_type": "urn:ietf:params:oauth:token-type:id_token",
+        "user_attacker_forged_idtoken_token_type": "bearer",
+        "user_attacker_forged_idtoken_expires_in": "86399",
+        "user_attacker_forged_idtoken_login_success": "True",
+        "user_attacker_forged_idtoken_login_status": "200",
+        "user_attacker_forged_idtoken_login_http_status": "200",
+        "user_attacker_forged_idtoken_display_name": "Kilgore Trout",
+        "user_attacker_forged_idtoken_policies": "None",
+        "user_attacker_forged_idtoken_identity_policies": "None",
+        "user_attacker_forged_idtoken_groups": "None",
+        "user_attacker_forged_idtoken_metadata": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387725, 'iat': 1776301325, 'email': 'kilgore@kilgore.trout', 'email_verified': True",
+        "user_attacker_forged_idtoken_ttl": "1776387725",
+        "user_attacker_forged_idtoken_creation_ttl": "1776301325",
+        "user_attacker_forged_idtoken_expire_time": "1776387725",
+        "user_attacker_forged_idtoken_num_uses": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387725, 'iat': 1776301325, 'email': 'kilgore@kilgore.trout', 'email_verified': True",
+        "user_attacker_forged_idtoken_email_verified": "True",
+        "admin_cleanup_http_status": "404"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "2e278bb8a8e54865",
+      "sequence_id": "seq_i3_code_injection_cross_client_redeem",
+      "sequence_description": "Cross-client code injection: obtain an auth code under client_id=valence-test-client, then attempt to redeem it while authenticating as a different client_id to ensure code is bound to the initiating client.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I3",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Control authorization-code redemption failed (invalid/expired code), so the cross-client code-injection binding invariant (I3) was not actually exercised; this looks like a test/flow coherence issue rather than a proven security property.",
+      "cve_analog": "CVE-2020-26877",
+      "evidence": {
+        "victim_auth_http_status": 200,
+        "victim_control_exchange_http_status": 400,
+        "victim_control_session_token": null,
+        "victim_control_id_token": null,
+        "llm_judge_description": "Control authorization-code redemption failed (invalid/expired code), so the cross-client code-injection binding invariant (I3) was not actually exercised; this looks like a test/flow coherence issue rather than a proven security property."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i3_code_injection_cross_client_redeem",
+      "description": "Cross-client code injection: obtain an auth code under client_id=valence-test-client, then attempt to redeem it while authenticating as a different client_id to ensure code is bound to the initiating client.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: Authorization codes must be bound to the client that initiated the authorization request; redeeming a code under a different client context must be rejected.",
+      "cve_analog": "CVE-2020-26877",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 1,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state_victim_1",
+            "nonce": "nonce_victim_1",
+            "connector_id": "mock",
+            "prompt": "login"
+          },
+          "auth_as": "user_victim_browser",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "exchange_code_for_token",
+          "params": {
+            "grant_type": "authorization_code",
+            "code": "{{victim_auth_code}}",
+            "redirect_uri": "http://localhost:8080/callback",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret"
+          },
+          "auth_as": "user_victim_redeem_control",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_control_exchange_http_status": "http_status",
+            "victim_control_identity_id": "identity_id",
+            "victim_control_session_token": "session_token",
+            "victim_control_id_token": "id_token"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "exchange_code_for_token",
+          "params": {
+            "grant_type": "authorization_code",
+            "code": "{{victim_auth_code}}",
+            "redirect_uri": "http://localhost:8080/callback",
+            "client_id": "valence-test-client-alt",
+            "client_secret": "valence-test-secret"
+          },
+          "auth_as": "user_attacker_cross_client",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_cross_client_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_victim_redeem_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_redeem_control_entity_id": "sub",
+            "user_victim_redeem_control_display_name": "name",
+            "user_victim_redeem_control_policies": "groups",
+            "user_victim_redeem_control_identity_policies": "federated_claims",
+            "user_victim_redeem_control_email": "email",
+            "user_victim_redeem_control_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_cross_client",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_cross_client_entity_id": "sub",
+            "user_attacker_cross_client_display_name": "name",
+            "user_attacker_cross_client_policies": "groups",
+            "user_attacker_cross_client_identity_policies": "federated_claims",
+            "user_attacker_cross_client_email": "email",
+            "user_attacker_cross_client_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i3_control_code_redeem_succeeds",
+          "invariant": "I3",
+          "assertion": "victim_control_exchange_http_status == 200",
+          "violation_description": "Control failed: could not redeem authorization code with the initiating client; cannot attribute attack outcome to flow coherence.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i3_cross_client_code_redeem_rejected",
+          "invariant": "I3",
+          "assertion": "user_attacker_cross_client_login_status >= 400",
+          "violation_description": "Authorization code was redeemable under a different client_id context (cross-client code injection), violating flow coherence.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "victim_auth_http_status": "200",
+        "user_victim_browser_entity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_victim_browser_email": "kilgore@kilgore.trout",
+        "victim_control_exchange_http_status": "400",
+        "victim_control_identity_id": "None",
+        "victim_control_session_token": "None",
+        "victim_control_id_token": "None",
+        "user_attacker_cross_client_login_status": "401",
+        "user_victim_redeem_control_entity_id": "None",
+        "user_victim_redeem_control_display_name": "None",
+        "user_victim_redeem_control_policies": "None",
+        "user_victim_redeem_control_identity_policies": "None",
+        "user_victim_redeem_control_email": "None",
+        "user_victim_redeem_control_groups": "None",
+        "user_attacker_cross_client_entity_id": "None",
+        "user_attacker_cross_client_display_name": "None",
+        "user_attacker_cross_client_policies": "None",
+        "user_attacker_cross_client_identity_policies": "None",
+        "user_attacker_cross_client_email": "None",
+        "user_attacker_cross_client_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "11ebd0f3f3c05b99",
+      "sequence_id": "seq_i3_code_redeem_wrong_redirect_uri_then_correct",
+      "sequence_description": "Attempt to redeem an authorization code first with a wrong redirect_uri (should fail) and then with the correct redirect_uri (should still succeed). Tests that a failed redemption attempt does not invalidate or desynchronize the auth code/session state machine.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I3",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Authorization code appears to be invalidated after a single failed redemption attempt with the wrong redirect_uri, preventing subsequent redemption with the correct redirect_uri (potential flow desynchronization/DoS against the login flow).",
+      "cve_analog": "none",
+      "evidence": {
+        "victim_wrong_redirect_exchange_http_status": 400,
+        "victim_correct_redirect_exchange_http_status": 400,
+        "redirect_uri": "http://localhost:8080/callback",
+        "victim_session_token": null,
+        "victim_id_token": null,
+        "client_id": "valence-test-client",
+        "llm_judge_description": "Authorization code appears to be invalidated after a single failed redemption attempt with the wrong redirect_uri, preventing subsequent redemption with the correct redirect_uri (potential flow desynchronization/DoS against the login flow)."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i3_code_redeem_wrong_redirect_uri_then_correct",
+      "description": "Attempt to redeem an authorization code first with a wrong redirect_uri (should fail) and then with the correct redirect_uri (should still succeed). Tests that a failed redemption attempt does not invalidate or desynchronize the auth code/session state machine.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: Authorization code redemption must be order-preserving and bound to the correct flow context; a failed redemption with mismatched redirect_uri must not allow step-skipping or permanently desynchronize the code such that later correct redemption fails (or vice versa).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 1,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-victim-1",
+            "nonce": "nonce-victim-1",
+            "connector_id": "mock",
+            "prompt": "login"
+          },
+          "auth_as": "user_victim_browser",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_auth_start_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "exchange_code_for_token",
+          "params": {
+            "grant_type": "authorization_code",
+            "code": "{{victim_auth_code}}",
+            "redirect_uri": "http://localhost:8080/callback/WRONG",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret"
+          },
+          "auth_as": "user_victim_redeem_wrong_redirect",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_wrong_redirect_exchange_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "exchange_code_for_token",
+          "params": {
+            "grant_type": "authorization_code",
+            "code": "{{victim_auth_code}}",
+            "redirect_uri": "http://localhost:8080/callback",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret"
+          },
+          "auth_as": "user_victim_redeem_correct_redirect",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_correct_redirect_exchange_http_status": "http_status",
+            "victim_session_token": "session_token",
+            "victim_id_token": "id_token",
+            "victim_identity_id": "identity_id"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_victim",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_entity_id": "sub",
+            "user_victim_display_name": "name",
+            "user_victim_policies": "groups",
+            "user_victim_identity_policies": "federated_claims",
+            "user_victim_email": "email",
+            "user_victim_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {},
+          "auth_as": "session_user_victim",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_read_http_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i3_wrong_redirect_rejected",
+          "invariant": "I3",
+          "assertion": "victim_wrong_redirect_exchange_http_status >= 400",
+          "violation_description": "Token endpoint accepted an auth code redemption with a mismatched redirect_uri, indicating flow context is not coherently bound.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i3_failed_attempt_does_not_break_flow",
+          "invariant": "I3",
+          "assertion": "victim_correct_redirect_exchange_http_status == 200",
+          "violation_description": "After a failed redemption attempt (wrong redirect_uri), the same code could not be redeemed with the correct redirect_uri, suggesting non-atomic or desynchronized flow handling.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i3_post_login_identity_available",
+          "invariant": "I3",
+          "assertion": "user_victim_http_status == 200 AND user_victim_entity_id is not None",
+          "violation_description": "After successful code exchange, /userinfo did not return a coherent logged-in identity for the session.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "victim_auth_start_http_status": "200",
+        "user_victim_browser_entity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_victim_browser_email": "kilgore@kilgore.trout",
+        "victim_wrong_redirect_exchange_http_status": "400",
+        "victim_correct_redirect_exchange_http_status": "400",
+        "victim_session_token": "None",
+        "victim_id_token": "None",
+        "victim_identity_id": "None",
+        "user_victim_entity_id": "None",
+        "user_victim_display_name": "None",
+        "user_victim_policies": "None",
+        "user_victim_identity_policies": "None",
+        "user_victim_email": "None",
+        "user_victim_groups": "None",
+        "user_victim_read_http_status": "0"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "6eb85c95b3277321",
+      "sequence_id": "seq_i4_cross_protocol_identity_merge_password_vs_oidc_code_flow",
+      "sequence_description": "Cross-protocol identity merge attempt: login via password grant, then login via OIDC authorization-code flow with a potentially overlapping identifier (login_hint) and ensure identities do not collapse unexpectedly.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I4",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] UserInfo succeeded for user_B even though the authorization-code token exchange failed, suggesting a session/token was obtained via an untracked path or flow coherence issue.",
+      "cve_analog": "none",
+      "evidence": {
+        "user_B_login_http_status_2": 400,
+        "user_B_entity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_B_metadata": {
+          "iss": "http://localhost:5556/dex",
+          "sub": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+          "aud": "valence-test-client",
+          "exp": 1776387744,
+          "iat": 1776301344,
+          "nonce": "nonce-merge-1",
+          "at_hash": "FushIvVjPC7vCGgXqWwhVw",
+          "email": "kilgore@kilgore.trout",
+          "email_verified": true,
+          "name": "Kilgore Trout"
+        },
+        "client_id": "valence-test-client",
+        "redirect_uri": "http://localhost:8080/callback",
+        "llm_judge_description": "UserInfo succeeded for user_B even though the authorization-code token exchange failed, suggesting a session/token was obtained via an untracked path or flow coherence issue."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i4_cross_protocol_identity_merge_password_vs_oidc_code_flow",
+      "description": "Cross-protocol identity merge attempt: login via password grant, then login via OIDC authorization-code flow with a potentially overlapping identifier (login_hint) and ensure identities do not collapse unexpectedly.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "I4: A principal authenticated via password grant must not be silently merged with a different upstream OIDC principal based only on overlapping hints/attributes; distinct upstream principals must map to distinct downstream identities.",
+      "cve_analog": "none",
+      "status": "LOGIN_FAILED",
+      "events_total": 5,
+      "events_succeeded": 2,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "scope": "openid email profile",
+            "username": "merge-target@example.com",
+            "password": "password",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret"
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_entity_id": "sub",
+            "user_A_display_name": "name",
+            "user_A_policies": "groups",
+            "user_A_identity_policies": "federated_claims",
+            "user_A_email": "email",
+            "user_A_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-merge-1",
+            "nonce": "nonce-merge-1",
+            "connector_id": "mock",
+            "login_hint": "merge-target@example.com",
+            "prompt": "login"
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "exchange_code_for_token",
+          "params": {
+            "grant_type": "authorization_code",
+            "code": "{{oidc_code_user_B}}",
+            "redirect_uri": "http://localhost:8080/callback",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret",
+            "code_verifier": "{{pkce_verifier_user_B}}"
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_login_http_status_2": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_entity_id": "sub",
+            "user_B_display_name": "name",
+            "user_B_policies": "groups",
+            "user_B_identity_policies": "federated_claims",
+            "user_B_email": "email",
+            "user_B_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i4_diversity_baseline",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Baseline failed: mechanism cannot distinguish principals",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_cross_protocol_merge_collision",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Password principal and OIDC principal collapsed into the same downstream identity (unexpected cross-protocol identity merge)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I4"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_A_login_http_status": "400",
+        "user_A_login_success": "False",
+        "user_A_login_status": "400",
+        "user_A_entity_id": "None",
+        "user_A_display_name": "None",
+        "user_A_policies": "None",
+        "user_A_identity_policies": "None",
+        "user_A_email": "None",
+        "user_A_groups": "None",
+        "user_B_login_http_status": "200",
+        "user_B_entity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_B_email": "kilgore@kilgore.trout",
+        "user_B_login_http_status_2": "400",
+        "identity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "display_name": "Kilgore Trout",
+        "email": "kilgore@kilgore.trout",
+        "metadata": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387744, 'iat': 1776301344, 'nonce': 'nonce-merge-1', 'at_hash': 'FushIvVjPC7vCGgXqW",
+        "ttl": "1776387744",
+        "creation_ttl": "1776301344",
+        "expire_time": "1776387744",
+        "num_uses": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387744, 'iat': 1776301344, 'nonce': 'nonce-merge-1', 'at_hash': 'FushIvVjPC7vCGgXqW",
+        "email_verified": "True",
+        "user_B_display_name": "Kilgore Trout",
+        "user_B_policies": "None",
+        "user_B_identity_policies": "None",
+        "user_B_groups": "None",
+        "user_B_identity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_B_metadata": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387744, 'iat': 1776301344, 'nonce': 'nonce-merge-1', 'at_hash': 'FushIvVjPC7vCGgXqW",
+        "user_B_ttl": "1776387744",
+        "user_B_creation_ttl": "1776301344",
+        "user_B_expire_time": "1776387744",
+        "user_B_num_uses": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387744, 'iat': 1776301344, 'nonce': 'nonce-merge-1', 'at_hash': 'FushIvVjPC7vCGgXqW",
+        "user_B_email_verified": "True"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "e01520020cc3c06d",
+      "sequence_id": "seq_i4_empty_sub_vs_named_principal_token_exchange",
+      "sequence_description": "I4: Token-exchange principal binding \u2014 ensure an empty/whitespace subject_token cannot collapse into the same downstream identity as a valid upstream principal.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I4",
+      "identified_invariant": "",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "[LLM-Judge] Principal binding failure: two security-distinct upstream principals (user_A vs user_B) were mapped to the same downstream subject/entity, indicating identity collapse.",
+      "cve_analog": "none",
+      "evidence": {
+        "user_A_entity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_B_entity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_A_email": "kilgore@kilgore.trout",
+        "user_B_email": "kilgore@kilgore.trout",
+        "user_A_display_name": "Kilgore Trout",
+        "user_B_display_name": "Kilgore Trout",
+        "user_A_metadata": {
+          "iss": "http://localhost:5556/dex",
+          "sub": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+          "aud": "valence-test-client",
+          "exp": 1776387747,
+          "iat": 1776301347,
+          "at_hash": "rfeh6-mNU_5Uw18lOjHv7g",
+          "email": "kilgore@kilgore.trout",
+          "email_verified": true,
+          "name": "Kilgore Trout"
+        },
+        "user_B_metadata": {
+          "iss": "http://localhost:5556/dex",
+          "sub": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+          "aud": "valence-test-client",
+          "exp": 1776387747,
+          "iat": 1776301347,
+          "at_hash": "463frWx2sKu4dHNUD-72Fw",
+          "email": "kilgore@kilgore.trout",
+          "email_verified": true,
+          "name": "Kilgore Trout"
+        },
+        "connector_id": "mock",
+        "client_id": "valence-test-client",
+        "llm_judge_description": "Principal binding failure: two security-distinct upstream principals (user_A vs user_B) were mapped to the same downstream subject/entity, indicating identity collapse."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i4_empty_sub_vs_named_principal_token_exchange",
+      "description": "I4: Token-exchange principal binding \u2014 ensure an empty/whitespace subject_token cannot collapse into the same downstream identity as a valid upstream principal.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "I4: A malformed/empty upstream subject_token must not map to the same downstream subject as a valid upstream principal token (no default/anonymous identity collision).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 4,
+      "events_succeeded": 4,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "connector_id": "mock",
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "scope": "openid email profile",
+            "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "subject_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL3VwLXN0cmVhbS1tb2NrLmlzc3Vlci5leGFtcGxlIiwic3ViIjoidXNlci1hLXZhbGlkIiwgImF1ZCI6InZhbGVuY2UtdGVzdC1jbGllbnQiLCJleHAiOjk5OTk5OTk5OTl9.signature",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
+            "audience": "valence-test-client",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret"
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_login_status": "http_status",
+            "user_A_session_token": "session_token"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_entity_id": "sub",
+            "user_A_display_name": "name",
+            "user_A_policies": "groups",
+            "user_A_identity_policies": "federated_claims",
+            "user_A_email": "email",
+            "user_A_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "connector_id": "mock",
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "scope": "openid email profile",
+            "requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "subject_token": "   ",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:id_token",
+            "audience": "valence-test-client",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret"
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_login_status": "http_status",
+            "user_B_session_token": "session_token"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_entity_id": "sub",
+            "user_B_display_name": "name",
+            "user_B_policies": "groups",
+            "user_B_identity_policies": "federated_claims",
+            "user_B_email": "email",
+            "user_B_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i4_diversity_baseline",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Baseline failed: mechanism cannot distinguish principals",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_empty_subject_token_rejected_or_distinct",
+          "invariant": "I4",
+          "assertion": "user_B_login_status >= 400 OR user_B_entity_id != user_A_entity_id",
+          "violation_description": "Empty/whitespace subject_token was accepted and collapsed into the same downstream identity as a valid principal",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I4"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjYwNTQwYjU5MzdmZmU2ZmM1YTFiMjI4ZGYwMjY3NTQzMzZhNGZhMjcifQ.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjU1NTYvZGV4Iiwic3ViIjoiQ2cwd0xUTTROUzB5T0RBNE9TMHdFZ1J0YjJOciIsImF1ZCI6InZhbGVuY",
+        "issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
+        "token_type": "bearer",
+        "expires_in": "86399",
+        "user_A_login_status": "200",
+        "user_A_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjYwNTQwYjU5MzdmZmU2ZmM1YTFiMjI4ZGYwMjY3NTQzMzZhNGZhMjcifQ.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjU1NTYvZGV4Iiwic3ViIjoiQ2cwd0xUTTROUzB5T0RBNE9TMHdFZ1J0YjJOciIsImF1ZCI6InZhbGVuY",
+        "user_A_entity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_A_email": "kilgore@kilgore.trout",
+        "user_A_issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
+        "user_A_token_type": "bearer",
+        "user_A_expires_in": "86399",
+        "user_A_login_success": "True",
+        "user_A_login_http_status": "200",
+        "identity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "display_name": "Kilgore Trout",
+        "email": "kilgore@kilgore.trout",
+        "metadata": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387747, 'iat': 1776301347, 'at_hash': '463frWx2sKu4dHNUD-72Fw', 'email': 'kilgore@k",
+        "ttl": "1776387747",
+        "creation_ttl": "1776301347",
+        "expire_time": "1776387747",
+        "num_uses": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387747, 'iat': 1776301347, 'at_hash': '463frWx2sKu4dHNUD-72Fw', 'email': 'kilgore@k",
+        "email_verified": "True",
+        "user_A_display_name": "Kilgore Trout",
+        "user_A_policies": "None",
+        "user_A_identity_policies": "None",
+        "user_A_groups": "None",
+        "user_A_identity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_A_metadata": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387747, 'iat': 1776301347, 'at_hash': 'rfeh6-mNU_5Uw18lOjHv7g', 'email': 'kilgore@k",
+        "user_A_ttl": "1776387747",
+        "user_A_creation_ttl": "1776301347",
+        "user_A_expire_time": "1776387747",
+        "user_A_num_uses": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387747, 'iat': 1776301347, 'at_hash': 'rfeh6-mNU_5Uw18lOjHv7g', 'email': 'kilgore@k",
+        "user_A_email_verified": "True",
+        "user_B_login_status": "200",
+        "user_B_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjYwNTQwYjU5MzdmZmU2ZmM1YTFiMjI4ZGYwMjY3NTQzMzZhNGZhMjcifQ.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjU1NTYvZGV4Iiwic3ViIjoiQ2cwd0xUTTROUzB5T0RBNE9TMHdFZ1J0YjJOciIsImF1ZCI6InZhbGVuY",
+        "user_B_entity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_B_email": "kilgore@kilgore.trout",
+        "user_B_issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
+        "user_B_token_type": "bearer",
+        "user_B_expires_in": "86399",
+        "user_B_login_success": "True",
+        "user_B_login_http_status": "200",
+        "user_B_display_name": "Kilgore Trout",
+        "user_B_policies": "None",
+        "user_B_identity_policies": "None",
+        "user_B_groups": "None",
+        "user_B_identity_id": "Cg0wLTM4NS0yODA4OS0wEgRtb2Nr",
+        "user_B_metadata": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387747, 'iat': 1776301347, 'at_hash': '463frWx2sKu4dHNUD-72Fw', 'email': 'kilgore@k",
+        "user_B_ttl": "1776387747",
+        "user_B_creation_ttl": "1776301347",
+        "user_B_expire_time": "1776387747",
+        "user_B_num_uses": "{'iss': 'http://localhost:5556/dex', 'sub': 'Cg0wLTM4NS0yODA4OS0wEgRtb2Nr', 'aud': 'valence-test-client', 'exp': 1776387747, 'iat': 1776301347, 'at_hash': '463frWx2sKu4dHNUD-72Fw', 'email': 'kilgore@k",
+        "user_B_email_verified": "True"
+      }
+    }
+  }
+]

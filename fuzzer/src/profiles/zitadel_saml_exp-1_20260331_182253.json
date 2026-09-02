@@ -1,0 +1,964 @@
+{
+  "name": "zitadel",
+  "base_url": "http://localhost:8085",
+  "admin_auth": {
+    "header": "Authorization",
+    "value": "Bearer {admin_token}"
+  },
+  "supported_protocols": [
+    "saml"
+  ],
+  "api_mapping": {
+    "saml": {
+      "create_provider": {
+        "method": "POST",
+        "path": "/management/v1/idps/saml",
+        "body_map": {
+          "name": "name",
+          "metadata_url": "metadataUrl",
+          "metadata_xml_base64": "metadataXml",
+          "binding": "binding",
+          "with_signed_request": "withSignedRequest",
+          "auto_linking": "providerOptions.autoLinking",
+          "is_linking_allowed": "providerOptions.isLinkingAllowed",
+          "is_auto_creation": "providerOptions.isAutoCreation"
+        },
+        "response_map": {
+          "provider_id": "id",
+          "http_status": "_http_status"
+        },
+        "auth": "admin",
+        "note": "metadataXml is a proto bytes field \u2014 value MUST be base64-encoded. Use metadataUrl as simpler alternative. For mock-idp: metadataUrl MUST be 'http://mock-idp:9090/saml/metadata' (NOT /metadata)."
+      },
+      "enable_auth_method": {
+        "method": "POST",
+        "path": "/management/v1/policies/login/idps",
+        "body_map": {
+          "idp_id": "idpId",
+          "owner_type": "ownerType"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "admin",
+        "note": "ownerType MUST be exactly 'IDP_OWNER_TYPE_ORG' (protobuf enum). NOT 'ORG', 'OWNER_TYPE_ORG', or 'org'. Requires org-level login policy to exist first."
+      },
+      "saml_login": {
+        "method": "GET",
+        "path": "/saml/v2/SSO",
+        "body_map": {
+          "client_id": "client_id",
+          "redirect_uri": "redirect_uri",
+          "response_type": "response_type",
+          "scope": "scope",
+          "state": "state",
+          "nonce": "nonce",
+          "organization_scope": "scope",
+          "idp_id_scope": "scope",
+          "relay_state": "RelayState",
+          "saml_request": "SAMLRequest",
+          "sig_alg": "SigAlg",
+          "signature": "Signature"
+        },
+        "response_map": {
+          "http_status": "_http_status",
+          "relay_state": "RelayState",
+          "saml_response": "SAMLResponse",
+          "sig_alg": "SigAlg",
+          "signature": "Signature"
+        },
+        "auth": "none",
+        "content_type": "query",
+        "metadata": {
+          "follow_redirects": false,
+          "saml_upstream_via_oidc_authorize": true,
+          "initiate_saml_flow": true
+        }
+      },
+      "exchange_code_for_token": {
+        "method": "POST",
+        "path": "/oauth/v2/token",
+        "body_map": {
+          "grant_type": "grant_type",
+          "code": "code",
+          "redirect_uri": "redirect_uri",
+          "client_id": "client_id",
+          "code_verifier": "code_verifier",
+          "client_assertion": "client_assertion",
+          "client_assertion_type": "client_assertion_type",
+          "client_secret": "client_secret"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "identity_id": "id_token.sub",
+          "granted_policies": "scope",
+          "metadata": "id_token",
+          "refresh_token": "refresh_token",
+          "token_type": "token_type",
+          "http_status": "_http_status",
+          "id_token": "id_token",
+          "expires_in": "expires_in",
+          "granted_scopes": "scope",
+          "scope": "scope"
+        },
+        "auth": "none",
+        "content_type": "form"
+      },
+      "token_exchange": {
+        "method": "POST",
+        "path": "/oauth/v2/token",
+        "body_map": {
+          "grant_type": "grant_type",
+          "subject_token": "subject_token",
+          "subject_token_type": "subject_token_type",
+          "actor_token": "actor_token",
+          "actor_token_type": "actor_token_type",
+          "requested_token_type": "requested_token_type",
+          "scope": "scope",
+          "audience": "audience",
+          "resource": "resource",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "client_assertion": "client_assertion",
+          "client_assertion_type": "client_assertion_type"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "identity_id": "id_token.sub",
+          "granted_policies": "scope",
+          "metadata": "id_token",
+          "refresh_token": "refresh_token",
+          "token_type": "token_type",
+          "http_status": "_http_status",
+          "id_token": "id_token",
+          "issued_token_type": "issued_token_type",
+          "expires_in": "expires_in",
+          "granted_scopes": "scope",
+          "scope": "scope"
+        },
+        "auth": "none",
+        "content_type": "form"
+      },
+      "verify_granted_identity": {
+        "method": "GET",
+        "path": "/oidc/v1/userinfo",
+        "body_map": {},
+        "response_map": {
+          "identity_id": "sub",
+          "metadata": "$",
+          "http_status": "_http_status"
+        },
+        "auth": "session",
+        "content_type": "query"
+      },
+      "introspect_token": {
+        "method": "POST",
+        "path": "/oauth/v2/introspect",
+        "body_map": {
+          "session_token": "token",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "client_assertion": "client_assertion",
+          "client_assertion_type": "client_assertion_type"
+        },
+        "response_map": {
+          "active": "active",
+          "audience": "aud",
+          "identity_id": "sub",
+          "client_id": "client_id",
+          "exp": "exp",
+          "iat": "iat",
+          "iss": "iss",
+          "jti": "jti",
+          "nbf": "nbf",
+          "granted_policies": "scope",
+          "token_type": "token_type",
+          "username": "username",
+          "metadata": "$",
+          "http_status": "_http_status",
+          "issuer": "iss",
+          "granted_scopes": "scope",
+          "display_name": "username",
+          "scope": "scope"
+        },
+        "auth": "none",
+        "content_type": "form"
+      },
+      "revoke_session": {
+        "method": "POST",
+        "path": "/oauth/v2/revoke",
+        "body_map": {
+          "session_token": "token",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "client_assertion": "client_assertion",
+          "client_assertion_type": "client_assertion_type"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form"
+      },
+      "start_oidc_auth": {
+        "method": "GET",
+        "path": "/oauth/v2/authorize",
+        "body_map": {
+          "client_id": "client_id",
+          "redirect_uri": "redirect_uri",
+          "response_type": "response_type",
+          "scope": "scope",
+          "id_token_hint": "id_token_hint",
+          "login_hint": "login_hint",
+          "max_age": "max_age",
+          "nonce": "nonce",
+          "prompt": "prompt",
+          "state": "state",
+          "ui_locales": "ui_locales",
+          "response_mode": "response_mode"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "query",
+        "metadata": {
+          "follow_redirects": false
+        }
+      },
+      "login_with_jwt": {
+        "method": "POST",
+        "path": "/oauth/v2/token",
+        "body_map": {
+          "grant_type": "grant_type",
+          "assertion": "assertion",
+          "scope": "scope",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "client_assertion": "client_assertion",
+          "client_assertion_type": "client_assertion_type"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "id_token": "id_token",
+          "token_type": "token_type",
+          "expires_in": "expires_in",
+          "granted_scopes": "scope",
+          "http_status": "_http_status",
+          "scope": "scope"
+        },
+        "auth": "none",
+        "content_type": "form"
+      },
+      "create_application": {
+        "method": "POST",
+        "path": "/management/v1/projects/{project_id}/apps/saml",
+        "body_map": {
+          "name": "name",
+          "metadata_url": "metadataUrl"
+        },
+        "response_map": {
+          "app_id": "appId",
+          "http_status": "_http_status"
+        },
+        "auth": "admin"
+      },
+      "cleanup_auth_method": {
+        "method": "DELETE",
+        "path": "/management/v1/idps/{idp_id}",
+        "body_map": {},
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "admin"
+      },
+      "create_user": {
+        "method": "POST",
+        "path": "/v2/users/human",
+        "body_map": {
+          "username": "username",
+          "email": "profile.email.email",
+          "first_name": "profile.givenName",
+          "last_name": "profile.familyName",
+          "display_name": "profile.displayName",
+          "password": "password.password"
+        },
+        "response_map": {
+          "identity_id": "userId",
+          "http_status": "_http_status"
+        },
+        "auth": "admin"
+      },
+      "create_organization": {
+        "method": "POST",
+        "path": "/v2/organizations",
+        "body_map": {
+          "name": "name"
+        },
+        "response_map": {
+          "organization_id": "organizationId",
+          "http_status": "_http_status"
+        },
+        "auth": "admin"
+      },
+      "configure_jwt_validation": {
+        "method": "POST",
+        "path": "/management/v1/idps/generic_jwt",
+        "body_map": {
+          "name": "name",
+          "issuer": "issuer",
+          "jwt_endpoint": "jwtEndpoint",
+          "keys_endpoint": "keysEndpoint",
+          "header_name": "headerName",
+          "auto_linking": "providerOptions.autoLinking",
+          "is_linking_allowed": "providerOptions.isLinkingAllowed",
+          "is_auto_creation": "providerOptions.isAutoCreation"
+        },
+        "response_map": {
+          "provider_id": "id",
+          "http_status": "_http_status"
+        },
+        "auth": "admin"
+      },
+      "update_application": {
+        "method": "PUT",
+        "path": "/management/v1/policies/login",
+        "body_map": {
+          "allow_external_idp": "allowExternalIdp",
+          "allow_register": "allowRegister",
+          "allow_username_password": "allowUsernamePassword"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "admin",
+        "note": "Updates the org-level login policy. Use this to enable external IdP login (allowExternalIdp=true)."
+      },
+      "saml_get_request": {
+        "method": "GET",
+        "path": "/v2/saml/saml_requests/{saml_request_id}",
+        "body_map": {},
+        "response_map": {
+          "request_id": "samlRequest.id",
+          "issuer": "samlRequest.issuer",
+          "assertion_consumer_service": "samlRequest.assertionConsumerService",
+          "relay_state": "samlRequest.relayState",
+          "binding": "samlRequest.binding"
+        },
+        "auth": "admin",
+        "content_type": "query"
+      },
+      "get_saml_request": {
+        "method": "GET",
+        "path": "/v2/saml/saml_requests/{saml_request_id}",
+        "body_map": {},
+        "response_map": {
+          "request_id": "samlRequest.id",
+          "issuer": "samlRequest.issuer",
+          "acs_url": "samlRequest.assertionConsumerService",
+          "relay_state": "samlRequest.relayState",
+          "binding": "samlRequest.binding"
+        },
+        "auth": "admin",
+        "content_type": "query"
+      }
+    }
+  },
+  "known_behaviors": {
+    "saml": [
+      {
+        "id": "zitadel_i5_0b8e89ea",
+        "description": "Token introspection reports active only when the requesting client is part of the token audience.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "active": false
+        },
+        "source": "apis/openidoauth/endpoints.mdx",
+        "note": "A false active result can be by design due to audience mismatch, not because the token is expired, revoked, or malformed."
+      },
+      {
+        "id": "zitadel_i5_6f77b7a2",
+        "description": "When requested_token_type is id_token during token exchange, the returned ID token is placed in the access_token field and token_type is N_A.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "issued_token_type": "urn:ietf:params:oauth:token-type:id_token",
+          "token_type": "N_A"
+        },
+        "source": "guides/integrate/token-exchange.mdx",
+        "note": "Do not treat this as an access token usable for Bearer-authenticated API calls."
+      },
+      {
+        "id": "zitadel_i5_aabc8d0f",
+        "description": "ZITADEL tokens include all client IDs and the project ID in the audience by default.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {},
+        "source": "apis/openidoauth/claims.mdx",
+        "note": "Extra audience values may be expected defaults rather than an authorization-binding flaw."
+      },
+      {
+        "id": "zitadel_i5_2954be3d",
+        "description": "If token exchange omits scope, ZITADEL derives it from the subject_token, or from the actor_token if the subject token type carries no scope.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "path": "/oauth/v2/token",
+          "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange"
+        },
+        "source": "guides/integrate/token-exchange.mdx",
+        "note": "Unexpected returned scopes may be inherited by design when the request omits scope."
+      },
+      {
+        "id": "zitadel_i1_i3_efc4b748",
+        "description": "The SAML /saml/v2/SSO endpoint returns HTTP 200 even when the SAML response contains an error status.",
+        "invariants": [
+          "I1",
+          "I3"
+        ],
+        "conditions": {
+          "http_status": 200
+        },
+        "source": "apis/saml/endpoints.mdx",
+        "note": "For SAML protocol-level failures, the oracle must inspect SAML StatusCode/content rather than relying on HTTP status alone."
+      },
+      {
+        "id": "zitadel_i3_24d5c023",
+        "description": "External IdP logins are unavailable until the login policy allows external login and the provider is linked to that policy.",
+        "invariants": [
+          "I3"
+        ],
+        "conditions": {},
+        "source": "guides/integrate/identity-providers/_custom_login_policy.mdx and _activate.mdx",
+        "note": "A failed external login before policy enablement or provider activation is expected setup behavior, not a security rejection."
+      },
+      {
+        "id": "zitadel_i3_2a43d61d",
+        "description": "ZITADEL supports only SP-initiated SAML flows.",
+        "invariants": [
+          "I3"
+        ],
+        "conditions": {
+          "protocol": "saml",
+          "flow_type": "idp_initiated"
+        },
+        "source": "guides/integrate/login/saml.mdx",
+        "note": "IdP-initiated attempts failing are by design and not a flow-coherence bug."
+      },
+      {
+        "id": "zitadel_i1_i2_i5_304f6558",
+        "description": "The SAML SSO endpoint returns HTTP 200 even when the SAML operation failed; the actual error is encoded in the SAML response StatusCode/message.",
+        "invariants": [
+          "I1",
+          "I2",
+          "I5"
+        ],
+        "conditions": {
+          "path": "/saml/v2/SSO",
+          "http_status": "200"
+        },
+        "source": "apis/saml/endpoints.mdx",
+        "note": "Do not treat HTTP 200 from the SAML endpoint as proof of successful authentication."
+      },
+      {
+        "id": "zitadel_i2_i5_07bb0900",
+        "description": "Refreshing a token obtained via token exchange can return an opaque access token again, depending on the application's configured auth token type.",
+        "invariants": [
+          "I2",
+          "I5"
+        ],
+        "conditions": {
+          "path": "/oauth/v2/token",
+          "grant_type": "refresh_token"
+        },
+        "source": "guides/integrate/token-exchange.mdx",
+        "note": "A token type change after refresh is documented behavior, not a coherence bug."
+      },
+      {
+        "id": "zitadel_i2_i5_e6ff4dd6",
+        "description": "Access tokens are opaque by default and require introspection or userinfo rather than local JWT parsing.",
+        "invariants": [
+          "I2",
+          "I5"
+        ],
+        "conditions": {
+          "token_format": "opaque"
+        },
+        "source": "concepts/knowledge/opaque-tokens.mdx",
+        "note": "A non-JWT access token is expected and should not be flagged as malformed or missing claims."
+      },
+      {
+        "id": "zitadel_i1_i2_i3_i5_9d718eb4",
+        "description": "SAML SSO errors are returned with HTTP 200 and encoded in the SAML response StatusCode rather than via HTTP error status.",
+        "invariants": [
+          "I1",
+          "I2",
+          "I3",
+          "I5"
+        ],
+        "conditions": {
+          "operation_name": "saml_login",
+          "http_status": 200
+        },
+        "source": "apis/saml/endpoints.mdx",
+        "note": "Tests must inspect SAML status content, not just HTTP status, to avoid false positives."
+      }
+    ]
+  },
+  "verification_fields": {
+    "identity_field": "sub",
+    "identity_name_field": "preferred_username",
+    "policies_field": "urn:zitadel:iam:org:project:roles",
+    "groups_field": "urn:zitadel:iam:org:project:roles"
+  },
+  "api_constraints": {
+    "saml": [
+      {
+        "severity": "CRITICAL",
+        "constraint": "ZITADEL does NOT support direct SAML 2.0 Profile as an OAuth grant type. For SAML broker testing, the fuzzer MUST drive the browser-based OIDC authorization flow at /oauth/v2/authorize and then exchange the returned code at /oauth/v2/token. Do NOT attempt a direct SAML bearer grant login; the docs explicitly mark 'Security Assertion Markup Language (SAML) 2.0 Profile' as unsupported.",
+        "invariants": [
+          "I1",
+          "I2",
+          "I3",
+          "I4",
+          "I5"
+        ],
+        "source": "grant-types.mdx + endpoints.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For SAML upstream login in ZITADEL, the effective login entrypoint is the OIDC authorization endpoint, not a documented ACS callback that accepts forged SAMLResponse directly. The fuzzer MUST initiate login with GET /oauth/v2/authorize and use reserved scopes such as urn:zitadel:iam:org:id:{id} and urn:zitadel:iam:org:idp:id:{idp_id} to select organization and external IdP. Without the correct org scope, ZITADEL may not identify the intended external IdP and test results are invalid.",
+        "invariants": [
+          "I3",
+          "I4",
+          "I5"
+        ],
+        "source": "scopes.mdx, authrequest.mdx, _test_setup.mdx, jwt_idp.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 nonce/freshness-sensitive browser flows, include a nonce in the authorization request even for code flow. ZITADEL documents nonce as mandatory for implicit flow and as the claim used to bind the client session to the ID token for replay mitigation. A valid control login should use a fresh nonce and state; do not reuse them across attack/control runs.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "endpoints.mdx, claims.mdx, authmethods/_pkce.mdx, authmethods/_basic.mdx, authmethods/_jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 expired/future token tests against JWT-based client authentication or JWT profile grants, JWT iat MUST NOT be older than 1 hour and aud MUST include ZITADEL's issuing domain. Use template times such as iat={{now_epoch}} and exp={{now_epoch_plus_3600}} for controls. A failure without satisfying these preconditions is a broken test setup, not evidence of the target invariant.",
+        "invariants": [
+          "I1",
+          "I2"
+        ],
+        "source": "authn-methods.mdx, grant-types.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Token introspection returns active=true only if the requesting client is part of the token audience. For verification and I5 audience tests, the fuzzer MUST introspect with a client that is in the token's audience; otherwise active=false is by design and must not be treated as token invalidity or revocation.",
+        "invariants": [
+          "I2",
+          "I5"
+        ],
+        "source": "endpoints.mdx, _introspection-response.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For token exchange audience-binding tests, audience in the request MUST be a subset of the combined audiences from subject_token and actor_token. If the requested audience is outside that combined set, rejection is by design. A valid I5 test must first mint subject/actor tokens whose audiences include the target audience, then verify whether ZITADEL improperly exceeds that bound.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "_token_exchange_request.mdx, token-exchange.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For token exchange scope tests, ZITADEL allows scope to differ from the supplied token and can extend or decrease scope, but invalid or excessive scope yields invalid_scope. The oracle for I5 must inspect the returned scope and claims, not assume the requested scope was granted. In particular, requesting openid can cause an id_token to be returned in addition to the exchanged access token.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "token-exchange.mdx, _token_exchange_response.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "The token exchange response reuses the access_token field for the requested token type. If requested_token_type=urn:ietf:params:oauth:token-type:id_token, the returned value in access_token is actually an ID token and token_type is N_A. The fuzzer MUST NOT use that value as a Bearer session token for subsequent API calls.",
+        "invariants": [
+          "I2",
+          "I5"
+        ],
+        "source": "token-exchange.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "ZITADEL rejects refresh tokens as subject_token or actor_token in token exchange. Do NOT use refresh tokens for replay or audience-binding token-exchange tests; use access_token, id_token, jwt, or user_id types as documented.",
+        "invariants": [
+          "I2",
+          "I5"
+        ],
+        "source": "_token_exchange_types.mdx, token-exchange.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "The resource parameter in token exchange is currently unsupported and supplying it results in invalid_target. The fuzzer MUST NOT use resource to model audience tests on ZITADEL; use the audience parameter instead.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "token-exchange.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For SAML broker account creation in Login V2, user creation can fail unless required fields are mapped from SAML attributes via Actions V2 on /zitadel.user.v2.UserService/RetrieveIdentityProviderIntent. If the provider does not supply or map required attributes such as email, first name, and last name, login failure is expected and must not be misclassified as a security rejection.",
+        "invariants": [
+          "I3",
+          "I4"
+        ],
+        "source": "pingfederate-saml.mdx, onelogin-saml.mdx, mocksaml.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "When testing cross-org or per-tenant SAML behavior, remember that ZITADEL shows default settings unless an organization-specific configuration is selected via the reserved scope urn:zitadel:iam:org:id:{id}. The fuzzer MUST include the organization scope when targeting org-specific IdP/login-policy behavior; otherwise it may hit instance defaults and produce false positives.",
+        "invariants": [
+          "I3",
+          "I4",
+          "I5"
+        ],
+        "source": "_test_setup.mdx, scopes.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "The SAML IdP selection scope urn:zitadel:iam:org:idp:id:{idp_id} is exact by construction; it names a specific provider ID, not a pattern. For multi-identity or multi-provider I4 tests, the fuzzer MUST vary the concrete provider ID or omit this scope entirely; it cannot use wildcard semantics.",
+        "invariants": [
+          "I4"
+        ],
+        "source": "scopes.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "The organization selection scopes urn:zitadel:iam:org:id:{id}, urn:zitadel:iam:org:domain:primary:{domainname}, and project audience scopes urn:zitadel:iam:org:project:id:{projectid}:aud are exact literal scopes, not wildcard patterns. For multi-tenant or multi-audience tests, the fuzzer MUST send concrete values or omit the scope; '*' would be treated as a literal scope string, not a wildcard.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "source": "scopes.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 audience tests on ordinary OIDC tokens, ZITADEL includes by default all client IDs and the project ID in aud, and additional project audiences can be requested with reserved scopes. The fuzzer MUST inspect actual aud values from introspection or JWT claims before asserting over-broad audience, because some apparently extra audiences are documented defaults.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "claims.mdx, scopes.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "The SAML IdP metadata XML field is represented as proto bytes in ZITADEL's JSON APIs. If the create/update provider API body uses metadataXml in JSON, the value MUST be base64-encoded; raw XML strings will be rejected as invalid bytes.",
+        "invariants": [
+          "I1",
+          "I3"
+        ],
+        "source": "migration_v1_to_v2.mdx + generic proto/REST gateway rule inferred from ZITADEL v2 APIs and docs mentioning proto-backed APIs"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For revocation tests, revocation and introspection endpoints require client authentication by Basic auth, body client_id/client_secret, or private_key_jwt depending on the client. A 401 invalid_client from /oauth/v2/revoke or /oauth/v2/introspect indicates client auth failure, not token state. The fuzzer MUST authenticate the client correctly before drawing I2 conclusions.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "endpoints.mdx, authn-methods.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "ZITADEL supports only SP-initiated SAML flow in its SAML implementation. Any test assumption based on IdP-initiated SAML into ZITADEL is invalid. For SAML-broker tests, the sequence must begin from the SP/OIDC side and let ZITADEL orchestrate the external IdP redirect.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/login/saml.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "ZITADEL supports only SP-initiated SAML flow. For saml_login tests, the fuzzer MUST first initiate the flow at /saml/v2/SSO and preserve the resulting request state/ID; IdP-initiated forged responses are not a valid test of ZITADEL's documented SAML behavior.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/login/saml.mdx; guides/integrate/login-ui/saml-standard.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "The documented /saml/v2/SSO endpoint is ZITADEL acting as a SAML IdP, not an ACS endpoint consuming upstream SAMLResponse. For target protocol saml brokering tests against ZITADEL as broker, the fuzzer MUST model login as OIDC authorization through ZITADEL with an external SAML IdP configured out-of-band; do NOT POST forged SAMLResponse directly to /saml/v2/SSO expecting broker consumption.",
+        "invariants": [
+          "I1",
+          "I3",
+          "I4",
+          "I5"
+        ],
+        "source": "apis/saml/endpoints.mdx; guides/integrate/identity-providers/introduction.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "SAML errors at /saml/v2/SSO are returned with HTTP 200 and encoded inside the SAML StatusCode/message. The fuzzer MUST NOT treat HTTP 200 from the SAML endpoint as successful authentication; success/failure must be determined from the returned SAMLResponse content or the downstream OIDC completion, otherwise false positives occur.",
+        "invariants": [
+          "I1",
+          "I2",
+          "I5"
+        ],
+        "source": "apis/saml/endpoints.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For SAML brokering tests that end in OIDC tokens, the fuzzer MUST include a control authorization flow using a valid login path before interpreting attack failures. Without a control start_oidc_auth -> exchange_code_for_token sequence, a failed attack could be caused by broken client/app setup rather than SAML validation.",
+        "invariants": [
+          "I2",
+          "I3"
+        ],
+        "source": "apis/openidoauth/endpoints.mdx; guides/integrate/identity-providers/introduction.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "When testing OIDC callback/token completion after upstream SAML login, session_token MUST be the access_token, not the id_token. ZITADEL's /oidc/v1/userinfo requires the user access token as Bearer; using id_token for verify_granted_identity will fail for the wrong reason.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "source": "apis/openidoauth/endpoints.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For token_exchange audience-binding tests, audience MUST be a subset of the combined audiences from subject_token and actor_token. Requesting a new audience outside that set is documented to fail by design; do not flag such rejection as a vulnerability.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "apis/openidoauth/_token_exchange_request.mdx; guides/integrate/token-exchange.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For token_exchange scope tests, ZITADEL documents that requested scope can differ from the supplied token scope and may be extended or decreased, subject to validation. The oracle MUST inspect the returned scope/claims rather than assuming any scope increase is automatically a violation.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "guides/integrate/token-exchange.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "The token exchange resource parameter is currently not supported and always results in invalid_target. The fuzzer MUST NOT use resource in token_exchange attack sequences, or failures will be false positives unrelated to authorization binding.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "guides/integrate/token-exchange.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "When requested_token_type is urn:ietf:params:oauth:token-type:id_token in token_exchange, ZITADEL returns the ID token in the access_token field and sets token_type to N_A. The fuzzer MUST NOT use that returned access_token as a bearer session token for API calls; this is by design.",
+        "invariants": [
+          "I2",
+          "I5"
+        ],
+        "source": "guides/integrate/token-exchange.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For JWT profile and private_key_jwt assertions used against /oauth/v2/token or /oauth/v2/introspect, aud MUST include ZITADEL's issuing domain and iat MUST NOT be older than 1 hour. Attack tests that violate these documented requirements will fail by design and cannot be used to infer other validation behavior.",
+        "invariants": [
+          "I1",
+          "I2"
+        ],
+        "source": "apis/openidoauth/authn-methods.mdx; apis/openidoauth/grant-types.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "There is a documented numeric sentinel for LDAP provider timeout: value 0s means use the default timeout of 60s, not literal zero and not disabled timeout. Never assume 0 disables timeout enforcement.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/identity-providers/ldap.mdx; guides/integrate/identity-providers/openldap.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For OIDC authorization requests, nonce is mandatory for implicit flow and recommended for code flow to bind the client session to the ID token and mitigate replay. For any SAML-brokered login that completes via OIDC and returns an id_token, the fuzzer SHOULD send nonce and verify it in the returned id_token to avoid replay-related false positives.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "apis/openidoauth/endpoints.mdx; guides/integrate/login/oidc/authmethods/_implicit.mdx; guides/integrate/login/oidc/authmethods/_pkce.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "If organization-specific login settings override defaults, the authorization request MUST include the reserved scope urn:zitadel:iam:org:id:{id} to select the intended organization and its external IdP configuration. Omitting this scope can route the user through default settings and invalidate multi-tenant SAML tests.",
+        "invariants": [
+          "I3",
+          "I4",
+          "I5"
+        ],
+        "source": "apis/openidoauth/scopes.mdx; guides/integrate/identity-providers/_test_setup.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For SAML external IdP onboarding in Login V2, user creation fails unless required fields are mapped from SAML attributes, typically via an Actions V2 response manipulation on /zitadel.user.v2.UserService/RetrieveIdentityProviderIntent. The fuzzer MUST ensure required attributes such as email/given_name/family_name are available or mapped, otherwise login failure is expected and not a security signal.",
+        "invariants": [
+          "I3",
+          "I4"
+        ],
+        "source": "guides/integrate/identity-providers/pingfederate-saml.mdx; guides/integrate/identity-providers/onelogin-saml.mdx; guides/integrate/identity-providers/mocksaml.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For SAML IdP configuration in ZITADEL, provider activation and login-policy linkage are separate documented steps. A created provider that is not activated or not allowed by login policy will not be offered for login. The fuzzer MUST ensure the provider is activated and external login is allowed before running SAML broker tests.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/identity-providers/_activate.mdx; guides/integrate/identity-providers/_custom_login_policy.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "ZITADEL supports only SP-initiated SAML flow. Do NOT test IdP-initiated SAML against ZITADEL as service provider/broker; valid SAML tests MUST begin with the SP flow at /saml/v2/SSO so request/response correlation (including InResponseTo) exists.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/login/saml.mdx; apis/saml/endpoints.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "The documented SAML SSO endpoint is /saml/v2/SSO and supports HTTP-Redirect or HTTP-POST bindings for the SAMLRequest sent to ZITADEL. The fuzzer MUST initiate the flow there first and preserve RelayState and request context; sending a standalone forged SAMLResponse directly to ZITADEL without first establishing the SP-initiated request context will not represent a valid documented flow.",
+        "invariants": [
+          "I1",
+          "I3"
+        ],
+        "source": "apis/saml/endpoints.mdx; guides/integrate/login-ui/saml-standard.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For SAML error handling, the SSO endpoint may still return HTTP 200 even when authentication failed; the actual failure is conveyed inside the SAML StatusCode/message. Do NOT treat HTTP 200 from /saml/v2/SSO as success for SAML security oracles.",
+        "invariants": [
+          "I1",
+          "I2",
+          "I3",
+          "I5"
+        ],
+        "source": "apis/saml/endpoints.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "When testing SAML brokering into ZITADEL's OIDC layer, the control flow MUST include the downstream OIDC code exchange and/or userinfo verification. A successful upstream SAML step alone does not yield the bearer token used by subsequent API calls; use /oauth/v2/authorize then /oauth/v2/token and treat access_token, not id_token, as session_token.",
+        "invariants": [
+          "I3",
+          "I4",
+          "I5"
+        ],
+        "source": "apis/openidoauth/endpoints.mdx; concepts/features/identity-brokering.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 expired/future token controls on JWT-based token endpoint usage, JWT profile assertions used at /oauth/v2/token MUST include aud containing ZITADEL's issuing domain and iat MUST NOT be older than 1 hour. A failing attack case without a valid control case is ambiguous because malformed aud/iat setup also causes rejection.",
+        "invariants": [
+          "I1",
+          "I2"
+        ],
+        "source": "apis/openidoauth/grant-types.mdx; apis/openidoauth/authn-methods.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Token exchange audience narrowing is enforced: audience in /oauth/v2/token token-exchange requests MUST be a subset of the combined audiences from subject_token and actor_token. Cross-project or cross-organization audience escalation tests must use a control token that already carries the target audience; otherwise rejection is by design, not evidence of a bug.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "apis/openidoauth/_token_exchange_request.mdx; guides/integrate/token-exchange.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Token exchange scope behavior is permissive by design: requested scope may differ from the supplied token and can be extended or decreased, but invalid or excessive scope can still be rejected. For I5 scope-escalation tests, compare the exchanged token's actual returned scope/claims against upstream authorization and audience context rather than assuming any scope change is a vulnerability.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "guides/integrate/token-exchange.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "The token exchange resource parameter is not supported by ZITADEL and supplying it results in invalid_target. Do NOT use resource-based token-exchange tests against this platform; use audience instead.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "guides/integrate/token-exchange.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "When requested_token_type is urn:ietf:params:oauth:token-type:id_token in token exchange, ZITADEL returns the ID token in the access_token field and token_type is N_A. The fuzzer MUST NOT use that returned access_token as a bearer session token for verify calls; request an access token or JWT token type plus openid scope if both bearer token and ID token are needed.",
+        "invariants": [
+          "I2",
+          "I5"
+        ],
+        "source": "guides/integrate/token-exchange.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Introspection returns active=true only if the token is active AND the requesting client is part of the token audience. For I5 audience-binding tests, a false/401 introspection result can be caused by the introspecting client not being in audience rather than token invalidity; use the correct client credentials for the target audience when interpreting results.",
+        "invariants": [
+          "I1",
+          "I5"
+        ],
+        "source": "apis/openidoauth/endpoints.mdx; guides/integrate/token-introspection/_introspection-response.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "ZITADEL uses opaque access tokens by default. The fuzzer MUST NOT assume access_token is always a JWT or locally inspectable; use /oidc/v1/userinfo or /oauth/v2/introspect for verification unless the application/token-exchange explicitly requested JWT access tokens.",
+        "invariants": [
+          "I2",
+          "I4",
+          "I5"
+        ],
+        "source": "concepts/knowledge/opaque-tokens.mdx; guides/integrate/token-exchange.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For OIDC authorization requests that complete SAML-brokered login, nonce is mandatory for implicit flow and recommended for code flow. I2 replay-oriented tests should include nonce in authorization requests and verify downstream id_token handling accordingly; omitting nonce in implicit-flow tests is invalid setup.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "apis/openidoauth/endpoints.mdx; apis/openidoauth/claims.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "If organization-specific login settings override default settings, the authorization request MUST include the reserved organization scope urn:zitadel:iam:org:id:{id} to select the intended organization and its external IdP configuration. Otherwise tests may hit default instance settings and misattribute behavior.",
+        "invariants": [
+          "I3",
+          "I4",
+          "I5"
+        ],
+        "source": "apis/openidoauth/scopes.mdx; guides/integrate/identity-providers/_test_setup.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "ZITADEL user creation during external SAML login can fail unless required fields are mapped from IdP attributes via Actions V2 on /zitadel.user.v2.UserService/RetrieveIdentityProviderIntent. For SAML login tests that expect just-in-time user creation, ensure the upstream assertion provides required attributes and the instance is configured to map them; otherwise login failure is expected setup failure, not a security rejection.",
+        "invariants": [
+          "I3",
+          "I4"
+        ],
+        "source": "guides/integrate/identity-providers/pingfederate-saml.mdx; guides/integrate/identity-providers/onelogin-saml.mdx; guides/integrate/identity-providers/mocksaml.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "External IdP login must be enabled in the login policy before SAML provider tests. If allow external login is disabled at instance/org login settings, SAML authentication paths will be unavailable by design.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/identity-providers/_custom_login_policy.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For token freshness tests using introspection or userinfo after login, remember that revocation state is checked by introspection and invalid/expired tokens return 401 on userinfo. Use a valid control token in the same client/application context before concluding freshness enforcement failures.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "apis/openidoauth/endpoints.mdx"
+      }
+    ]
+  },
+  "environment_defaults": {
+    "project_id": "valence-project",
+    "client_id": "valence-test-client",
+    "redirect_uri": "http://localhost:8085/callback",
+    "saml_metadata_url": "http://mock-idp:9090/saml/metadata",
+    "mock_idp_entity_id": "http://mock-idp:9090",
+    "isolation_strategy": "Zitadel management API uses REST gateway paths under /management/v1/ (org-scoped). Do NOT use gRPC Connect paths. For IdP setup: create_provider creates the IdP, enable_auth_method adds it to the login policy with ownerType='IDP_OWNER_TYPE_ORG' (NOT 'ORG' or 'OWNER_TYPE_ORG'). Both are needed before IdP login works. SAML login is brokered \u2014 saml_login is NOT directly callable as a standalone POST. It is handled internally by the executor's ZITADEL-LOGIN flow triggered via start_oidc_auth with scope containing urn:zitadel:iam:org:idp:id:{idp_id}."
+  }
+}

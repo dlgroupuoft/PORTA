@@ -1,0 +1,4054 @@
+[
+  {
+    "finding": {
+      "finding_id": "420367f0f0b0e472",
+      "sequence_id": "seq_i1_jwt_issuer_confusion_no_policy",
+      "sequence_description": "Direct JWT M2M login: demonstrate issuer confusion risk by logging in with two JWTs that differ only in iss (control vs attacker). Without an explicit issuer-binding policy, acceptance of attacker iss indicates proof-policy mismatch (semantic proof not bound to intended issuer).",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I1",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] JWT M2M login accepted a token with an issuer mismatch (wrong iss) without any issuer-binding policy, indicating potential issuer confusion if multiple issuers/keys are trusted.",
+      "cve_analog": "CVE-2020-5410",
+      "evidence": {
+        "_oidc_source_issuer_mismatch": "true",
+        "user_attack_wrong_issuer_login_success": true,
+        "user_attack_wrong_issuer_login_http_status": 200,
+        "attack_wrong_issuer_http_status": 200,
+        "provider_id_i1_issuer": 5,
+        "issuer_source_id": "78eda750-b085-4207-8939-e22599462e64",
+        "llm_judge_description": "JWT M2M login accepted a token with an issuer mismatch (wrong iss) without any issuer-binding policy, indicating potential issuer confusion if multiple issuers/keys are trusted."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_jwt_issuer_confusion_no_policy",
+      "description": "Direct JWT M2M login: demonstrate issuer confusion risk by logging in with two JWTs that differ only in iss (control vs attacker). Without an explicit issuer-binding policy, acceptance of attacker iss indicates proof-policy mismatch (semantic proof not bound to intended issuer).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: The verifier must apply the intended verification policy to the exact semantic proof; if issuer binding is intended, a token with a forged iss must be rejected. This sequence detects acceptance of wrong-issuer semantics (configuration-sensitive).",
+      "cve_analog": "CVE-2020-5410",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 4,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "src_i1_jwt_issuer",
+            "slug": "src-i1-jwt-issuer",
+            "provider_type": "oidc",
+            "consumer_key": "upstream_client",
+            "consumer_secret": "upstream_secret",
+            "authorization_url": "https://upstream.example/authorize",
+            "access_token_url": "https://upstream.example/token",
+            "profile_url": "https://upstream.example/userinfo",
+            "oidc_well_known_url": "https://upstream.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://upstream.example/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "issuer_source_id": "source_id",
+            "issuer_source_slug": "slug",
+            "issuer_source_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "org_i1_jwt_issuer",
+            "authorization_flow": "default-authentication-flow",
+            "client_type": "confidential",
+            "client_id": "client_i1_issuer",
+            "client_secret": "secret_i1_issuer",
+            "redirect_uris": "https://rp.example/callback",
+            "signing_key": "default",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "global",
+            "jwks_sources": "[\"src-i1-jwt-issuer\"]"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "provider_id_i1_issuer": "provider_id",
+            "provider_i1_issuer_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "token": "",
+            "client_id": "client_i1_issuer",
+            "client_secret": "secret_i1_issuer",
+            "scope": "openid email",
+            "jwt": "",
+            "jwt_claims": {
+              "sub": "svc-issuer-test",
+              "iss": "https://upstream.example/",
+              "aud": "client_i1_issuer",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch_plus_60}}"
+            }
+          },
+          "auth_as": "user_control_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "control_issuer_session_token": "session_token",
+            "control_issuer_metadata": "metadata",
+            "control_issuer_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_issuer_entity_id": "sub",
+            "user_control_issuer_display_name": "name",
+            "user_control_issuer_email": "email",
+            "user_control_issuer_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "token": "",
+            "client_id": "client_i1_issuer",
+            "client_secret": "secret_i1_issuer",
+            "scope": "openid email",
+            "jwt": "",
+            "jwt_claims": {
+              "sub": "svc-issuer-test",
+              "iss": "https://attacker-issuer.example/",
+              "aud": "client_i1_issuer",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch_plus_60}}"
+            }
+          },
+          "auth_as": "user_attack_wrong_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "attack_wrong_issuer_session_token": "session_token",
+            "attack_wrong_issuer_metadata": "metadata",
+            "attack_wrong_issuer_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attack_wrong_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attack_wrong_issuer_entity_id": "sub",
+            "user_attack_wrong_issuer_display_name": "name",
+            "user_attack_wrong_issuer_email": "email",
+            "user_attack_wrong_issuer_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_login_succeeds",
+          "invariant": "I1",
+          "assertion": "user_control_issuer_http_status == 200",
+          "violation_description": "Control JWT login did not succeed; cannot attribute attack results to issuer-binding behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_wrong_issuer_rejected",
+          "invariant": "I1",
+          "assertion": "user_attack_wrong_issuer_http_status >= 400",
+          "violation_description": "JWT with forged iss was accepted, indicating proof semantics (issuer) were not bound to the intended verification policy (issuer confusion).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "78eda750-b085-4207-8939-e22599462e64",
+        "slug": "src-i1-jwt-issuer",
+        "issuer_source_id": "78eda750-b085-4207-8939-e22599462e64",
+        "issuer_source_slug": "src-i1-jwt-issuer",
+        "issuer_source_http_status": "201",
+        "client_id": "client_i1_issuer",
+        "client_secret": "secret_i1_issuer",
+        "provider_client_id": "client_i1_issuer",
+        "provider_client_secret": "secret_i1_issuer",
+        "provider_id": "5",
+        "provider_id_i1_issuer": "5",
+        "provider_i1_issuer_http_status": "201",
+        "_oidc_source_issuer_mismatch": "true",
+        "control_issuer_session_token": "None",
+        "control_issuer_metadata": "None",
+        "control_issuer_http_status": "200",
+        "user_control_issuer_login_success": "True",
+        "user_control_issuer_login_status": "200",
+        "user_control_issuer_login_http_status": "200",
+        "user_control_issuer_entity_id": "None",
+        "user_control_issuer_display_name": "None",
+        "user_control_issuer_email": "None",
+        "user_control_issuer_groups": "None",
+        "attack_wrong_issuer_session_token": "None",
+        "attack_wrong_issuer_metadata": "None",
+        "attack_wrong_issuer_http_status": "200",
+        "user_attack_wrong_issuer_login_success": "True",
+        "user_attack_wrong_issuer_login_status": "200",
+        "user_attack_wrong_issuer_login_http_status": "200",
+        "user_attack_wrong_issuer_entity_id": "None",
+        "user_attack_wrong_issuer_display_name": "None",
+        "user_attack_wrong_issuer_email": "None",
+        "user_attack_wrong_issuer_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "2d3d65db075591eb",
+      "sequence_id": "seq_i1_jwt_issuer_confusion_no_policy",
+      "sequence_description": "Direct JWT M2M login: demonstrate issuer confusion risk by logging in with two JWTs that differ only in iss (control vs attacker). Without an explicit issuer-binding policy, acceptance of attacker iss indicates proof-policy mismatch (semantic proof not bound to intended issuer).",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I1",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "HIGH",
+      "description": "[LLM-Judge] Token endpoint returned HTTP 200 for JWT logins but no access/session token was captured, preventing identity verification and making the security conclusion non-actionable (possible test harness/content-type/response parsing issue).",
+      "cve_analog": "CVE-2020-5410",
+      "evidence": {
+        "control_issuer_http_status": 200,
+        "control_issuer_session_token": null,
+        "attack_wrong_issuer_http_status": 200,
+        "attack_wrong_issuer_session_token": null,
+        "llm_judge_description": "Token endpoint returned HTTP 200 for JWT logins but no access/session token was captured, preventing identity verification and making the security conclusion non-actionable (possible test harness/content-type/response parsing issue)."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_jwt_issuer_confusion_no_policy",
+      "description": "Direct JWT M2M login: demonstrate issuer confusion risk by logging in with two JWTs that differ only in iss (control vs attacker). Without an explicit issuer-binding policy, acceptance of attacker iss indicates proof-policy mismatch (semantic proof not bound to intended issuer).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: The verifier must apply the intended verification policy to the exact semantic proof; if issuer binding is intended, a token with a forged iss must be rejected. This sequence detects acceptance of wrong-issuer semantics (configuration-sensitive).",
+      "cve_analog": "CVE-2020-5410",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 4,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "src_i1_jwt_issuer",
+            "slug": "src-i1-jwt-issuer",
+            "provider_type": "oidc",
+            "consumer_key": "upstream_client",
+            "consumer_secret": "upstream_secret",
+            "authorization_url": "https://upstream.example/authorize",
+            "access_token_url": "https://upstream.example/token",
+            "profile_url": "https://upstream.example/userinfo",
+            "oidc_well_known_url": "https://upstream.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://upstream.example/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "issuer_source_id": "source_id",
+            "issuer_source_slug": "slug",
+            "issuer_source_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "org_i1_jwt_issuer",
+            "authorization_flow": "default-authentication-flow",
+            "client_type": "confidential",
+            "client_id": "client_i1_issuer",
+            "client_secret": "secret_i1_issuer",
+            "redirect_uris": "https://rp.example/callback",
+            "signing_key": "default",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "global",
+            "jwks_sources": "[\"src-i1-jwt-issuer\"]"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "provider_id_i1_issuer": "provider_id",
+            "provider_i1_issuer_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "token": "",
+            "client_id": "client_i1_issuer",
+            "client_secret": "secret_i1_issuer",
+            "scope": "openid email",
+            "jwt": "",
+            "jwt_claims": {
+              "sub": "svc-issuer-test",
+              "iss": "https://upstream.example/",
+              "aud": "client_i1_issuer",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch_plus_60}}"
+            }
+          },
+          "auth_as": "user_control_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "control_issuer_session_token": "session_token",
+            "control_issuer_metadata": "metadata",
+            "control_issuer_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_issuer_entity_id": "sub",
+            "user_control_issuer_display_name": "name",
+            "user_control_issuer_email": "email",
+            "user_control_issuer_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "token": "",
+            "client_id": "client_i1_issuer",
+            "client_secret": "secret_i1_issuer",
+            "scope": "openid email",
+            "jwt": "",
+            "jwt_claims": {
+              "sub": "svc-issuer-test",
+              "iss": "https://attacker-issuer.example/",
+              "aud": "client_i1_issuer",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch_plus_60}}"
+            }
+          },
+          "auth_as": "user_attack_wrong_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "attack_wrong_issuer_session_token": "session_token",
+            "attack_wrong_issuer_metadata": "metadata",
+            "attack_wrong_issuer_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attack_wrong_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attack_wrong_issuer_entity_id": "sub",
+            "user_attack_wrong_issuer_display_name": "name",
+            "user_attack_wrong_issuer_email": "email",
+            "user_attack_wrong_issuer_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_login_succeeds",
+          "invariant": "I1",
+          "assertion": "user_control_issuer_http_status == 200",
+          "violation_description": "Control JWT login did not succeed; cannot attribute attack results to issuer-binding behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_wrong_issuer_rejected",
+          "invariant": "I1",
+          "assertion": "user_attack_wrong_issuer_http_status >= 400",
+          "violation_description": "JWT with forged iss was accepted, indicating proof semantics (issuer) were not bound to the intended verification policy (issuer confusion).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "78eda750-b085-4207-8939-e22599462e64",
+        "slug": "src-i1-jwt-issuer",
+        "issuer_source_id": "78eda750-b085-4207-8939-e22599462e64",
+        "issuer_source_slug": "src-i1-jwt-issuer",
+        "issuer_source_http_status": "201",
+        "client_id": "client_i1_issuer",
+        "client_secret": "secret_i1_issuer",
+        "provider_client_id": "client_i1_issuer",
+        "provider_client_secret": "secret_i1_issuer",
+        "provider_id": "5",
+        "provider_id_i1_issuer": "5",
+        "provider_i1_issuer_http_status": "201",
+        "_oidc_source_issuer_mismatch": "true",
+        "control_issuer_session_token": "None",
+        "control_issuer_metadata": "None",
+        "control_issuer_http_status": "200",
+        "user_control_issuer_login_success": "True",
+        "user_control_issuer_login_status": "200",
+        "user_control_issuer_login_http_status": "200",
+        "user_control_issuer_entity_id": "None",
+        "user_control_issuer_display_name": "None",
+        "user_control_issuer_email": "None",
+        "user_control_issuer_groups": "None",
+        "attack_wrong_issuer_session_token": "None",
+        "attack_wrong_issuer_metadata": "None",
+        "attack_wrong_issuer_http_status": "200",
+        "user_attack_wrong_issuer_login_success": "True",
+        "user_attack_wrong_issuer_login_status": "200",
+        "user_attack_wrong_issuer_login_http_status": "200",
+        "user_attack_wrong_issuer_entity_id": "None",
+        "user_attack_wrong_issuer_display_name": "None",
+        "user_attack_wrong_issuer_email": "None",
+        "user_attack_wrong_issuer_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "9bc70dd789b512e0",
+      "sequence_id": "seq_i2_introspection_after_revocation",
+      "sequence_description": "Introspect an access token before and after revocation; metadata should change to reflect invalidation (or introspection should fail).",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I2",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Token introspection succeeded (HTTP 200) even though no access token was obtained (login failed and introspect_access_token is None), suggesting the introspection endpoint may be returning a success response for invalid/empty token input.",
+      "cve_analog": "none",
+      "evidence": {
+        "session_user_introspect_pwd_login_success": false,
+        "session_user_introspect_pwd_login_http_status": 400,
+        "session_user_introspect_pwd_metadata": {
+          "error": "invalid_grant",
+          "error_description": "The provided authorization grant or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, or was issued to another client",
+          "request_id": "0fae3b7935834bf98575a102889bff49"
+        },
+        "introspect_access_token": null,
+        "user_introspect_pwd_http_status": 200,
+        "user_introspect_pwd_metadata": null,
+        "user_introspect_pwd_postrevoke_http_status": 200,
+        "user_introspect_pwd_postrevoke_metadata": null,
+        "llm_judge_description": "Token introspection succeeded (HTTP 200) even though no access token was obtained (login failed and introspect_access_token is None), suggesting the introspection endpoint may be returning a success response for invalid/empty token input."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_introspection_after_revocation",
+      "description": "Introspect an access token before and after revocation; metadata should change to reflect invalidation (or introspection should fail).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A revoked token must not remain active according to introspection; post-revocation introspection should not indicate an active/valid token.",
+      "cve_analog": "none",
+      "status": "LOGIN_FAILED",
+      "events_total": 6,
+      "events_succeeded": 5,
+      "events_failed": 1,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "org-i2-introspect-revoke",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "i2_introspect_client",
+            "client_secret": "i2_introspect_secret",
+            "redirect_uris": "https://example.com/callback2",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "global",
+            "jwks_sources": "[]"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "provider_id_introspect": "provider_id",
+            "provider_introspect_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i2_introspect_user",
+            "email": "i2_introspect_user@example.com",
+            "name": "I2 Introspect User",
+            "password": "Passw0rd!Intro",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "introspect_user_id": "identity_id",
+            "introspect_user_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "i2_introspect_client",
+            "client_secret": "i2_introspect_secret",
+            "username": "i2_introspect_user",
+            "password": "Passw0rd!Intro",
+            "scope": "openid email profile"
+          },
+          "auth_as": "session_user_introspect_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "introspect_access_token": "session_token",
+            "introspect_login_http_status": "http_status",
+            "introspect_login_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{introspect_access_token}}",
+            "client_id": "i2_introspect_client",
+            "client_secret": "i2_introspect_secret"
+          },
+          "auth_as": "session_user_introspect_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_introspect_pwd_metadata": "metadata",
+            "user_introspect_pwd_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "session_token": "{{introspect_access_token}}",
+            "client_id": "i2_introspect_client",
+            "client_secret": "i2_introspect_secret",
+            "token": "{{introspect_access_token}}",
+            "token_type_hint": "access_token"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "introspect_revoke_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{introspect_access_token}}",
+            "client_id": "i2_introspect_client",
+            "client_secret": "i2_introspect_secret"
+          },
+          "auth_as": "session_user_introspect_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_introspect_pwd_postrevoke_metadata": "metadata",
+            "user_introspect_pwd_postrevoke_http_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_postrevoke_introspection_not_active",
+          "invariant": "I2",
+          "assertion": "user_introspect_pwd_postrevoke_http_status >= 400 OR user_introspect_pwd_postrevoke_metadata contains \"active\": false",
+          "violation_description": "Introspection indicates revoked token is still active/valid (revocation not reflected; replay beyond intended lifetime).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "client_id": "i2_introspect_client",
+        "client_secret": "i2_introspect_secret",
+        "provider_client_id": "i2_introspect_client",
+        "provider_client_secret": "i2_introspect_secret",
+        "provider_id": "12",
+        "provider_id_introspect": "12",
+        "provider_introspect_http_status": "201",
+        "identity_id": "9",
+        "username": "i2_introspect_user",
+        "introspect_user_id": "9",
+        "introspect_user_create_status": "201",
+        "introspect_access_token": "None",
+        "introspect_login_http_status": "400",
+        "introspect_login_metadata": "None",
+        "session_user_introspect_pwd_metadata": "{'error': 'invalid_grant', 'error_description': 'The provided authorization grant or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, o",
+        "session_user_introspect_pwd_login_success": "False",
+        "session_user_introspect_pwd_login_status": "400",
+        "session_user_introspect_pwd_login_http_status": "400",
+        "user_introspect_pwd_metadata": "None",
+        "user_introspect_pwd_http_status": "200",
+        "introspect_revoke_http_status": "200",
+        "user_introspect_pwd_postrevoke_metadata": "None",
+        "user_introspect_pwd_postrevoke_http_status": "200"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "64f2f687e156f8d1",
+      "sequence_id": "seq_i2_client_assertion_replay_same_jwt",
+      "sequence_description": "Replay the exact same JWT client assertion twice against the token endpoint; client_assertion should be one-time or otherwise replay-protected (jti/nonce) to prevent reuse.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I2",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Replay of the exact same JWT client assertion appears to be accepted twice (both token requests returned HTTP 200), suggesting missing one-time-use/replay protection (e.g., jti/nonce tracking) for client assertions.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion_login_1_http_status": 200,
+        "assertion_login_2_http_status": 200,
+        "session_user_assert_control_login_success": true,
+        "session_user_assert_replay_login_success": true,
+        "llm_judge_description": "Replay of the exact same JWT client assertion appears to be accepted twice (both token requests returned HTTP 200), suggesting missing one-time-use/replay protection (e.g., jti/nonce tracking) for client assertions."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_client_assertion_replay_same_jwt",
+      "description": "Replay the exact same JWT client assertion twice against the token endpoint; client_assertion should be one-time or otherwise replay-protected (jti/nonce) to prevent reuse.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A JWT used as a client assertion (RFC 7523-style) should not be reusable; replaying the same assertion should be rejected even if exp is still valid.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 4,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "org-i2-client-assertion-replay",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "i2_assert_client",
+            "client_secret": "i2_assert_secret",
+            "redirect_uris": "https://example.com/callback3",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "global",
+            "jwks_sources": "[]"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "provider_id_assert": "provider_id",
+            "provider_assert_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "i2-assertion-source",
+            "slug": "i2-assertion-source",
+            "provider_type": "oidc",
+            "consumer_key": "assertion-consumer-key",
+            "consumer_secret": "assertion-consumer-secret",
+            "authorization_url": "https://issuer.example/authorize",
+            "access_token_url": "https://issuer.example/token",
+            "profile_url": "https://issuer.example/userinfo",
+            "oidc_well_known_url": "https://issuer.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://issuer.example/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "assert_source_id": "source_id",
+            "assert_source_slug": "slug",
+            "assert_source_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_id": "i2_assert_client",
+            "client_secret": "i2_assert_secret",
+            "scope": "openid",
+            "jwt": "client_assertion",
+            "token": "client_assertion",
+            "jwt_claims": {
+              "iss": "i2_assert_client",
+              "sub": "i2_assert_client",
+              "aud": "https://authentik.example/application/o/token/",
+              "jti": "fixed-jti-replay-1",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch_plus_60}}"
+            }
+          },
+          "auth_as": "session_user_assert_control",
+          "expected_outcome": "any",
+          "captures": {
+            "assertion_access_token_1": "session_token",
+            "assertion_login_1_http_status": "http_status",
+            "assertion_login_1_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_assert_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_assert_control_entity_id": "sub",
+            "user_assert_control_display_name": "name",
+            "user_assert_control_email": "email",
+            "user_assert_control_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_id": "i2_assert_client",
+            "client_secret": "i2_assert_secret",
+            "scope": "openid",
+            "jwt": "client_assertion",
+            "token": "client_assertion",
+            "jwt_claims": {
+              "iss": "i2_assert_client",
+              "sub": "i2_assert_client",
+              "aud": "https://authentik.example/application/o/token/",
+              "jti": "fixed-jti-replay-1",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch_plus_60}}"
+            }
+          },
+          "auth_as": "session_user_assert_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "assertion_access_token_2": "session_token",
+            "assertion_login_2_http_status": "http_status",
+            "assertion_login_2_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_assert_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_assert_replay_entity_id": "sub",
+            "user_assert_replay_display_name": "name",
+            "user_assert_replay_email": "email",
+            "user_assert_replay_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_assertion_succeeds",
+          "invariant": "I2",
+          "assertion": "user_assert_control_http_status == 200 AND user_assert_control_entity_id is not None",
+          "violation_description": "Control client assertion login did not succeed; cannot attribute replay outcome to freshness enforcement.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_client_assertion_replay_rejected",
+          "invariant": "I2",
+          "assertion": "assertion_login_2_http_status >= 400",
+          "violation_description": "Token endpoint accepted replay of the exact same client assertion JWT (replay not prevented for client_assertion).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "client_id": "i2_assert_client",
+        "client_secret": "i2_assert_secret",
+        "provider_client_id": "i2_assert_client",
+        "provider_client_secret": "i2_assert_secret",
+        "provider_id": "13",
+        "provider_id_assert": "13",
+        "provider_assert_http_status": "201",
+        "source_id": "d0cc4977-0460-412d-a059-d37736230693",
+        "slug": "i2-assertion-source",
+        "assert_source_id": "d0cc4977-0460-412d-a059-d37736230693",
+        "assert_source_slug": "i2-assertion-source",
+        "assert_source_http_status": "201",
+        "_oidc_source_issuer_mismatch": "true",
+        "assertion_access_token_1": "None",
+        "assertion_login_1_http_status": "200",
+        "assertion_login_1_metadata": "None",
+        "session_user_assert_control_login_success": "True",
+        "session_user_assert_control_login_status": "200",
+        "session_user_assert_control_login_http_status": "200",
+        "user_assert_control_entity_id": "None",
+        "user_assert_control_display_name": "None",
+        "user_assert_control_email": "None",
+        "user_assert_control_groups": "None",
+        "assertion_access_token_2": "None",
+        "assertion_login_2_http_status": "200",
+        "assertion_login_2_metadata": "None",
+        "session_user_assert_replay_login_success": "True",
+        "session_user_assert_replay_login_status": "200",
+        "session_user_assert_replay_login_http_status": "200",
+        "user_assert_replay_entity_id": "None",
+        "user_assert_replay_display_name": "None",
+        "user_assert_replay_email": "None",
+        "user_assert_replay_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "a913cb7139d9f5cd",
+      "sequence_id": "seq_i2_client_assertion_replay_same_jwt",
+      "sequence_description": "Replay the exact same JWT client assertion twice against the token endpoint; client_assertion should be one-time or otherwise replay-protected (jti/nonce) to prevent reuse.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I2",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "LOW",
+      "description": "[LLM-Judge] Token endpoint responses show HTTP 200 but no access_token was captured, and subsequent UserInfo calls failed due to missing session token; this makes it unclear whether a real OAuth token was issued and weakens the replay conclusion.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion_access_token_1": null,
+        "assertion_access_token_2": null,
+        "assertion_login_1_metadata": null,
+        "assertion_login_2_metadata": null,
+        "llm_judge_description": "Token endpoint responses show HTTP 200 but no access_token was captured, and subsequent UserInfo calls failed due to missing session token; this makes it unclear whether a real OAuth token was issued and weakens the replay conclusion."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_client_assertion_replay_same_jwt",
+      "description": "Replay the exact same JWT client assertion twice against the token endpoint; client_assertion should be one-time or otherwise replay-protected (jti/nonce) to prevent reuse.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A JWT used as a client assertion (RFC 7523-style) should not be reusable; replaying the same assertion should be rejected even if exp is still valid.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 4,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "org-i2-client-assertion-replay",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "i2_assert_client",
+            "client_secret": "i2_assert_secret",
+            "redirect_uris": "https://example.com/callback3",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "global",
+            "jwks_sources": "[]"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "provider_id_assert": "provider_id",
+            "provider_assert_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "i2-assertion-source",
+            "slug": "i2-assertion-source",
+            "provider_type": "oidc",
+            "consumer_key": "assertion-consumer-key",
+            "consumer_secret": "assertion-consumer-secret",
+            "authorization_url": "https://issuer.example/authorize",
+            "access_token_url": "https://issuer.example/token",
+            "profile_url": "https://issuer.example/userinfo",
+            "oidc_well_known_url": "https://issuer.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://issuer.example/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "assert_source_id": "source_id",
+            "assert_source_slug": "slug",
+            "assert_source_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_id": "i2_assert_client",
+            "client_secret": "i2_assert_secret",
+            "scope": "openid",
+            "jwt": "client_assertion",
+            "token": "client_assertion",
+            "jwt_claims": {
+              "iss": "i2_assert_client",
+              "sub": "i2_assert_client",
+              "aud": "https://authentik.example/application/o/token/",
+              "jti": "fixed-jti-replay-1",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch_plus_60}}"
+            }
+          },
+          "auth_as": "session_user_assert_control",
+          "expected_outcome": "any",
+          "captures": {
+            "assertion_access_token_1": "session_token",
+            "assertion_login_1_http_status": "http_status",
+            "assertion_login_1_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_assert_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_assert_control_entity_id": "sub",
+            "user_assert_control_display_name": "name",
+            "user_assert_control_email": "email",
+            "user_assert_control_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_id": "i2_assert_client",
+            "client_secret": "i2_assert_secret",
+            "scope": "openid",
+            "jwt": "client_assertion",
+            "token": "client_assertion",
+            "jwt_claims": {
+              "iss": "i2_assert_client",
+              "sub": "i2_assert_client",
+              "aud": "https://authentik.example/application/o/token/",
+              "jti": "fixed-jti-replay-1",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch_plus_60}}"
+            }
+          },
+          "auth_as": "session_user_assert_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "assertion_access_token_2": "session_token",
+            "assertion_login_2_http_status": "http_status",
+            "assertion_login_2_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_assert_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_assert_replay_entity_id": "sub",
+            "user_assert_replay_display_name": "name",
+            "user_assert_replay_email": "email",
+            "user_assert_replay_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_assertion_succeeds",
+          "invariant": "I2",
+          "assertion": "user_assert_control_http_status == 200 AND user_assert_control_entity_id is not None",
+          "violation_description": "Control client assertion login did not succeed; cannot attribute replay outcome to freshness enforcement.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_client_assertion_replay_rejected",
+          "invariant": "I2",
+          "assertion": "assertion_login_2_http_status >= 400",
+          "violation_description": "Token endpoint accepted replay of the exact same client assertion JWT (replay not prevented for client_assertion).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "client_id": "i2_assert_client",
+        "client_secret": "i2_assert_secret",
+        "provider_client_id": "i2_assert_client",
+        "provider_client_secret": "i2_assert_secret",
+        "provider_id": "13",
+        "provider_id_assert": "13",
+        "provider_assert_http_status": "201",
+        "source_id": "d0cc4977-0460-412d-a059-d37736230693",
+        "slug": "i2-assertion-source",
+        "assert_source_id": "d0cc4977-0460-412d-a059-d37736230693",
+        "assert_source_slug": "i2-assertion-source",
+        "assert_source_http_status": "201",
+        "_oidc_source_issuer_mismatch": "true",
+        "assertion_access_token_1": "None",
+        "assertion_login_1_http_status": "200",
+        "assertion_login_1_metadata": "None",
+        "session_user_assert_control_login_success": "True",
+        "session_user_assert_control_login_status": "200",
+        "session_user_assert_control_login_http_status": "200",
+        "user_assert_control_entity_id": "None",
+        "user_assert_control_display_name": "None",
+        "user_assert_control_email": "None",
+        "user_assert_control_groups": "None",
+        "assertion_access_token_2": "None",
+        "assertion_login_2_http_status": "200",
+        "assertion_login_2_metadata": "None",
+        "session_user_assert_replay_login_success": "True",
+        "session_user_assert_replay_login_status": "200",
+        "session_user_assert_replay_login_http_status": "200",
+        "user_assert_replay_entity_id": "None",
+        "user_assert_replay_display_name": "None",
+        "user_assert_replay_email": "None",
+        "user_assert_replay_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "6776d32653dbe160",
+      "sequence_id": "seq_i2_revoked_token_cannot_be_introspected_or_used",
+      "sequence_description": "Revoke an access token, then attempt to introspect and use it again; both should fail/indicate invalidation (freshness via revocation). Includes a second identity to ensure revocation is token-specific and does not break other sessions.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I2",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Token introspection and revocation endpoints returned HTTP 200 even though no access token/session was obtained (password grant failed), suggesting the endpoints may accept empty/invalid token inputs or are not enforcing authentication/parameter validation.",
+      "cve_analog": "none",
+      "evidence": {
+        "alice_access_token": null,
+        "session_user_alice_pwd_login_http_status": 400,
+        "session_user_alice_pwd_login_success": false,
+        "user_alice_pwd_introspect_before_http_status": 200,
+        "user_alice_pwd_introspect_before_metadata": null,
+        "user_alice_pwd_revoke_http_status": 200,
+        "user_alice_pwd_introspect_after_http_status": 200,
+        "user_alice_pwd_introspect_after_metadata": null,
+        "llm_judge_description": "Token introspection and revocation endpoints returned HTTP 200 even though no access token/session was obtained (password grant failed), suggesting the endpoints may accept empty/invalid token inputs or are not enforcing authentication/parameter validation."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_revoked_token_cannot_be_introspected_or_used",
+      "description": "Revoke an access token, then attempt to introspect and use it again; both should fail/indicate invalidation (freshness via revocation). Includes a second identity to ensure revocation is token-specific and does not break other sessions.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: After revocation, the same access token must not remain usable for UserInfo or appear active via introspection; revocation must take effect immediately and prevent replay.",
+      "cve_analog": "none",
+      "status": "LOGIN_FAILED",
+      "events_total": 11,
+      "events_succeeded": 6,
+      "events_failed": 5,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "org_i2_revocation",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "i2_revocation_client",
+            "client_secret": "i2_revocation_secret",
+            "redirect_uris": "https://example.com/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": "local"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "provider_id": "provider_id",
+            "http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i2_alice_rev",
+            "email": "i2_alice_rev@example.com",
+            "name": "I2 Alice Revocation",
+            "password": "Password123!alice",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "alice_identity_id": "identity_id",
+            "alice_username": "username",
+            "http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i2_bob_rev",
+            "email": "i2_bob_rev@example.com",
+            "name": "I2 Bob Revocation",
+            "password": "Password123!bob",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "bob_identity_id": "identity_id",
+            "bob_username": "username",
+            "http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "i2_revocation_client",
+            "client_secret": "i2_revocation_secret",
+            "username": "i2_alice_rev",
+            "password": "Password123!alice",
+            "scope": "openid email profile"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "alice_access_token": "session_token",
+            "alice_login_http_status": "http_status",
+            "alice_login_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_entity_id": "sub",
+            "user_alice_pwd_display_name": "name",
+            "user_alice_pwd_email": "email",
+            "user_alice_pwd_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{alice_access_token}}",
+            "client_id": "i2_revocation_client",
+            "client_secret": "i2_revocation_secret"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_introspect_before_http_status": "http_status",
+            "user_alice_pwd_introspect_before_metadata": "metadata"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "session_token": "{{alice_access_token}}",
+            "client_id": "i2_revocation_client",
+            "client_secret": "i2_revocation_secret",
+            "token": "{{alice_access_token}}",
+            "token_type_hint": "access_token"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_revoke_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{alice_access_token}}",
+            "client_id": "i2_revocation_client",
+            "client_secret": "i2_revocation_secret"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_introspect_after_http_status": "http_status",
+            "user_alice_pwd_introspect_after_metadata": "metadata"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_entity_id": "sub",
+            "user_alice_pwd_display_name": "name",
+            "user_alice_pwd_email": "email",
+            "user_alice_pwd_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "i2_revocation_client",
+            "client_secret": "i2_revocation_secret",
+            "username": "i2_bob_rev",
+            "password": "Password123!bob",
+            "scope": "openid email profile"
+          },
+          "auth_as": "session_user_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "bob_access_token": "session_token",
+            "bob_login_http_status": "http_status",
+            "bob_login_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_bob_pwd_entity_id": "sub",
+            "user_bob_pwd_display_name": "name",
+            "user_bob_pwd_email": "email",
+            "user_bob_pwd_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_revocation_userinfo_replay_blocked",
+          "invariant": "I2",
+          "assertion": "user_alice_pwd_userinfo_after_revoke_http_status >= 400",
+          "violation_description": "Revoked access token was still accepted at UserInfo (token replay after revocation)",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_revocation_introspection_reflects_invalidation",
+          "invariant": "I2",
+          "assertion": "user_alice_pwd_introspect_after_http_status >= 400 OR user_alice_pwd_introspect_after_metadata != user_alice_pwd_introspect_before_metadata",
+          "violation_description": "Introspection did not fail or change after revocation; token may remain active/replayable",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_revocation_does_not_break_other_sessions",
+          "invariant": "I2",
+          "assertion": "user_bob_pwd_http_status == 200",
+          "violation_description": "Revocation of Alice token unexpectedly impacted Bob session (revocation scope/coherence bug)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "client_id": "i2_revocation_client",
+        "client_secret": "i2_revocation_secret",
+        "provider_client_id": "i2_revocation_client",
+        "provider_client_secret": "i2_revocation_secret",
+        "provider_id": "14",
+        "http_status": "201",
+        "identity_id": "11",
+        "username": "i2_bob_rev",
+        "alice_identity_id": "10",
+        "alice_username": "i2_alice_rev",
+        "bob_identity_id": "11",
+        "bob_username": "i2_bob_rev",
+        "alice_access_token": "None",
+        "alice_login_http_status": "400",
+        "alice_login_metadata": "None",
+        "session_user_alice_pwd_metadata": "{'error': 'invalid_grant', 'error_description': 'The provided authorization grant or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, o",
+        "session_user_alice_pwd_login_success": "False",
+        "session_user_alice_pwd_login_status": "400",
+        "session_user_alice_pwd_login_http_status": "400",
+        "user_alice_pwd_entity_id": "None",
+        "user_alice_pwd_display_name": "None",
+        "user_alice_pwd_email": "None",
+        "user_alice_pwd_groups": "None",
+        "user_alice_pwd_introspect_before_http_status": "200",
+        "user_alice_pwd_introspect_before_metadata": "None",
+        "user_alice_pwd_revoke_http_status": "200",
+        "user_alice_pwd_introspect_after_http_status": "200",
+        "user_alice_pwd_introspect_after_metadata": "None",
+        "bob_access_token": "None",
+        "bob_login_http_status": "400",
+        "bob_login_metadata": "None",
+        "session_user_bob_pwd_metadata": "{'error': 'invalid_grant', 'error_description': 'The provided authorization grant or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, o",
+        "session_user_bob_pwd_login_success": "False",
+        "session_user_bob_pwd_login_status": "400",
+        "session_user_bob_pwd_login_http_status": "400",
+        "user_bob_pwd_entity_id": "None",
+        "user_bob_pwd_display_name": "None",
+        "user_bob_pwd_email": "None",
+        "user_bob_pwd_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "b2f8d2d530c15f50",
+      "sequence_id": "seq_i2_expired_authentik_issued_token_rejected_at_introspection",
+      "sequence_description": "Obtain a short-lived token (via password grant), revoke it to simulate end-of-life, then attempt to exchange it via token_exchange and introspect it; should not be accepted as a valid subject_token after invalidation. Includes a control token from a second identity.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I2",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Password-grant token acquisition failed for both control and test identities (invalid_grant), so the sequence cannot validate revocation/expiry behavior and indicates likely misconfiguration or incorrect grant usage.",
+      "cve_analog": "none",
+      "evidence": {
+        "exch_alice_login_http_status": 400,
+        "session_user_exch_alice_pwd_metadata": {
+          "error": "invalid_grant",
+          "error_description": "The provided authorization grant or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, or was issued to another client",
+          "request_id": "8c718276c936425c8c0b60f1a43aeca8"
+        },
+        "exch_bob_login_http_status": 400,
+        "session_user_exch_bob_pwd_metadata": {
+          "error": "invalid_grant",
+          "error_description": "The provided authorization grant or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, or was issued to another client",
+          "request_id": "3f792455cde84912854635b31d3e309b"
+        },
+        "client_id": "i2_exchange_client",
+        "provider_client_id": "i2_exchange_client",
+        "llm_judge_description": "Password-grant token acquisition failed for both control and test identities (invalid_grant), so the sequence cannot validate revocation/expiry behavior and indicates likely misconfiguration or incorrect grant usage."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_expired_authentik_issued_token_rejected_at_introspection",
+      "description": "Obtain a short-lived token (via password grant), revoke it to simulate end-of-life, then attempt to exchange it via token_exchange and introspect it; should not be accepted as a valid subject_token after invalidation. Includes a control token from a second identity.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A token that is no longer valid (revoked/end-of-life) must not be accepted as a subject_token for token exchange nor appear active via introspection.",
+      "cve_analog": "none",
+      "status": "LOGIN_FAILED",
+      "events_total": 10,
+      "events_succeeded": 5,
+      "events_failed": 5,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "org_i2_token_exchange_replay",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "i2_exchange_client",
+            "client_secret": "i2_exchange_secret",
+            "redirect_uris": "https://exchange.example.com/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": "local"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "exchange_provider_id": "provider_id",
+            "exchange_provider_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i2_exch_alice",
+            "email": "i2_exch_alice@example.com",
+            "name": "I2 Exchange Alice",
+            "password": "Password123!exA",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "exch_alice_id": "identity_id",
+            "exch_alice_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i2_exch_bob",
+            "email": "i2_exch_bob@example.com",
+            "name": "I2 Exchange Bob",
+            "password": "Password123!exB",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "exch_bob_id": "identity_id",
+            "exch_bob_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "i2_exchange_client",
+            "client_secret": "i2_exchange_secret",
+            "username": "i2_exch_alice",
+            "password": "Password123!exA",
+            "scope": "openid email profile"
+          },
+          "auth_as": "session_user_exch_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "exch_alice_access_token": "session_token",
+            "exch_alice_login_http_status": "http_status",
+            "exch_alice_login_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_exch_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exch_alice_pwd_entity_id": "sub",
+            "user_exch_alice_pwd_display_name": "name",
+            "user_exch_alice_pwd_email": "email",
+            "user_exch_alice_pwd_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "session_token": "{{exch_alice_access_token}}",
+            "client_id": "i2_exchange_client",
+            "client_secret": "i2_exchange_secret",
+            "token": "{{exch_alice_access_token}}",
+            "token_type_hint": "access_token"
+          },
+          "auth_as": "session_user_exch_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exch_alice_pwd_revoke_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "subject_token": "{{exch_alice_access_token}}",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "client_id": "i2_exchange_client",
+            "client_secret": "i2_exchange_secret",
+            "audience": "i2_exchange_client",
+            "scope": "openid email profile"
+          },
+          "auth_as": "session_user_exch_alice_exchanged",
+          "expected_outcome": "any",
+          "captures": {
+            "exchanged_session_token": "session_token",
+            "exchanged_http_status": "http_status",
+            "exchanged_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{exch_alice_access_token}}",
+            "client_id": "i2_exchange_client",
+            "client_secret": "i2_exchange_secret"
+          },
+          "auth_as": "session_user_exch_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exch_alice_pwd_introspect_after_revoke_http_status": "http_status",
+            "user_exch_alice_pwd_introspect_after_revoke_metadata": "metadata"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "i2_exchange_client",
+            "client_secret": "i2_exchange_secret",
+            "username": "i2_exch_bob",
+            "password": "Password123!exB",
+            "scope": "openid email profile"
+          },
+          "auth_as": "session_user_exch_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "exch_bob_access_token": "session_token",
+            "exch_bob_login_http_status": "http_status",
+            "exch_bob_login_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_exch_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exch_bob_pwd_entity_id": "sub",
+            "user_exch_bob_pwd_display_name": "name",
+            "user_exch_bob_pwd_email": "email",
+            "user_exch_bob_pwd_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_revoked_subject_token_not_exchangeable",
+          "invariant": "I2",
+          "assertion": "user_exch_alice_exchanged_login_status >= 400",
+          "violation_description": "Revoked access token was accepted as subject_token for token exchange (replay after invalidation)",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_revoked_token_not_introspectable_or_active",
+          "invariant": "I2",
+          "assertion": "user_exch_alice_pwd_introspect_after_revoke_http_status >= 400",
+          "violation_description": "Revoked token still introspected successfully; may remain active/replayable",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_control_other_user_still_works",
+          "invariant": "I2",
+          "assertion": "user_exch_bob_pwd_http_status == 200",
+          "violation_description": "Control login failed; cannot attribute exchange/introspection behavior to freshness enforcement",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "client_id": "i2_exchange_client",
+        "client_secret": "i2_exchange_secret",
+        "provider_client_id": "i2_exchange_client",
+        "provider_client_secret": "i2_exchange_secret",
+        "provider_id": "17",
+        "exchange_provider_id": "17",
+        "exchange_provider_http_status": "201",
+        "identity_id": "14",
+        "username": "i2_exch_bob",
+        "exch_alice_id": "13",
+        "exch_alice_http_status": "201",
+        "exch_bob_id": "14",
+        "exch_bob_http_status": "201",
+        "exch_alice_access_token": "None",
+        "exch_alice_login_http_status": "400",
+        "exch_alice_login_metadata": "None",
+        "session_user_exch_alice_pwd_metadata": "{'error': 'invalid_grant', 'error_description': 'The provided authorization grant or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, o",
+        "session_user_exch_alice_pwd_login_success": "False",
+        "session_user_exch_alice_pwd_login_status": "400",
+        "session_user_exch_alice_pwd_login_http_status": "400",
+        "user_exch_alice_pwd_entity_id": "None",
+        "user_exch_alice_pwd_display_name": "None",
+        "user_exch_alice_pwd_email": "None",
+        "user_exch_alice_pwd_groups": "None",
+        "user_exch_alice_pwd_revoke_http_status": "200",
+        "exchanged_session_token": "None",
+        "exchanged_http_status": "400",
+        "exchanged_metadata": "None",
+        "session_user_exch_alice_exchanged_login_success": "False",
+        "session_user_exch_alice_exchanged_login_status": "400",
+        "session_user_exch_alice_exchanged_login_http_status": "400",
+        "user_exch_alice_pwd_introspect_after_revoke_http_status": "200",
+        "user_exch_alice_pwd_introspect_after_revoke_metadata": "None",
+        "exch_bob_access_token": "None",
+        "exch_bob_login_http_status": "400",
+        "exch_bob_login_metadata": "None",
+        "session_user_exch_bob_pwd_metadata": "{'error': 'invalid_grant', 'error_description': 'The provided authorization grant or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, o",
+        "session_user_exch_bob_pwd_login_success": "False",
+        "session_user_exch_bob_pwd_login_status": "400",
+        "session_user_exch_bob_pwd_login_http_status": "400",
+        "user_exch_bob_pwd_entity_id": "None",
+        "user_exch_bob_pwd_display_name": "None",
+        "user_exch_bob_pwd_email": "None",
+        "user_exch_bob_pwd_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "8f30e6a8409da231",
+      "sequence_id": "seq_i2_expired_authentik_issued_token_rejected_at_introspection",
+      "sequence_description": "Obtain a short-lived token (via password grant), revoke it to simulate end-of-life, then attempt to exchange it via token_exchange and introspect it; should not be accepted as a valid subject_token after invalidation. Includes a control token from a second identity.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I2",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "LOW",
+      "description": "[LLM-Judge] Introspection returned HTTP 200 after a revoke attempt despite no access token ever being issued; without introspection response metadata, it's unclear whether the endpoint correctly reported the token as inactive or accepted an empty/invalid token.",
+      "cve_analog": "none",
+      "evidence": {
+        "exch_alice_access_token": null,
+        "user_exch_alice_pwd_revoke_http_status": 200,
+        "user_exch_alice_pwd_introspect_after_revoke_http_status": 200,
+        "user_exch_alice_pwd_introspect_after_revoke_metadata": null,
+        "llm_judge_description": "Introspection returned HTTP 200 after a revoke attempt despite no access token ever being issued; without introspection response metadata, it's unclear whether the endpoint correctly reported the token as inactive or accepted an empty/invalid token."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_expired_authentik_issued_token_rejected_at_introspection",
+      "description": "Obtain a short-lived token (via password grant), revoke it to simulate end-of-life, then attempt to exchange it via token_exchange and introspect it; should not be accepted as a valid subject_token after invalidation. Includes a control token from a second identity.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A token that is no longer valid (revoked/end-of-life) must not be accepted as a subject_token for token exchange nor appear active via introspection.",
+      "cve_analog": "none",
+      "status": "LOGIN_FAILED",
+      "events_total": 10,
+      "events_succeeded": 5,
+      "events_failed": 5,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "org_i2_token_exchange_replay",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "i2_exchange_client",
+            "client_secret": "i2_exchange_secret",
+            "redirect_uris": "https://exchange.example.com/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": "local"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "exchange_provider_id": "provider_id",
+            "exchange_provider_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i2_exch_alice",
+            "email": "i2_exch_alice@example.com",
+            "name": "I2 Exchange Alice",
+            "password": "Password123!exA",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "exch_alice_id": "identity_id",
+            "exch_alice_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i2_exch_bob",
+            "email": "i2_exch_bob@example.com",
+            "name": "I2 Exchange Bob",
+            "password": "Password123!exB",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "exch_bob_id": "identity_id",
+            "exch_bob_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "i2_exchange_client",
+            "client_secret": "i2_exchange_secret",
+            "username": "i2_exch_alice",
+            "password": "Password123!exA",
+            "scope": "openid email profile"
+          },
+          "auth_as": "session_user_exch_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "exch_alice_access_token": "session_token",
+            "exch_alice_login_http_status": "http_status",
+            "exch_alice_login_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_exch_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exch_alice_pwd_entity_id": "sub",
+            "user_exch_alice_pwd_display_name": "name",
+            "user_exch_alice_pwd_email": "email",
+            "user_exch_alice_pwd_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "session_token": "{{exch_alice_access_token}}",
+            "client_id": "i2_exchange_client",
+            "client_secret": "i2_exchange_secret",
+            "token": "{{exch_alice_access_token}}",
+            "token_type_hint": "access_token"
+          },
+          "auth_as": "session_user_exch_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exch_alice_pwd_revoke_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "subject_token": "{{exch_alice_access_token}}",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "client_id": "i2_exchange_client",
+            "client_secret": "i2_exchange_secret",
+            "audience": "i2_exchange_client",
+            "scope": "openid email profile"
+          },
+          "auth_as": "session_user_exch_alice_exchanged",
+          "expected_outcome": "any",
+          "captures": {
+            "exchanged_session_token": "session_token",
+            "exchanged_http_status": "http_status",
+            "exchanged_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{exch_alice_access_token}}",
+            "client_id": "i2_exchange_client",
+            "client_secret": "i2_exchange_secret"
+          },
+          "auth_as": "session_user_exch_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exch_alice_pwd_introspect_after_revoke_http_status": "http_status",
+            "user_exch_alice_pwd_introspect_after_revoke_metadata": "metadata"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "i2_exchange_client",
+            "client_secret": "i2_exchange_secret",
+            "username": "i2_exch_bob",
+            "password": "Password123!exB",
+            "scope": "openid email profile"
+          },
+          "auth_as": "session_user_exch_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "exch_bob_access_token": "session_token",
+            "exch_bob_login_http_status": "http_status",
+            "exch_bob_login_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_exch_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_exch_bob_pwd_entity_id": "sub",
+            "user_exch_bob_pwd_display_name": "name",
+            "user_exch_bob_pwd_email": "email",
+            "user_exch_bob_pwd_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_revoked_subject_token_not_exchangeable",
+          "invariant": "I2",
+          "assertion": "user_exch_alice_exchanged_login_status >= 400",
+          "violation_description": "Revoked access token was accepted as subject_token for token exchange (replay after invalidation)",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_revoked_token_not_introspectable_or_active",
+          "invariant": "I2",
+          "assertion": "user_exch_alice_pwd_introspect_after_revoke_http_status >= 400",
+          "violation_description": "Revoked token still introspected successfully; may remain active/replayable",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_control_other_user_still_works",
+          "invariant": "I2",
+          "assertion": "user_exch_bob_pwd_http_status == 200",
+          "violation_description": "Control login failed; cannot attribute exchange/introspection behavior to freshness enforcement",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "client_id": "i2_exchange_client",
+        "client_secret": "i2_exchange_secret",
+        "provider_client_id": "i2_exchange_client",
+        "provider_client_secret": "i2_exchange_secret",
+        "provider_id": "17",
+        "exchange_provider_id": "17",
+        "exchange_provider_http_status": "201",
+        "identity_id": "14",
+        "username": "i2_exch_bob",
+        "exch_alice_id": "13",
+        "exch_alice_http_status": "201",
+        "exch_bob_id": "14",
+        "exch_bob_http_status": "201",
+        "exch_alice_access_token": "None",
+        "exch_alice_login_http_status": "400",
+        "exch_alice_login_metadata": "None",
+        "session_user_exch_alice_pwd_metadata": "{'error': 'invalid_grant', 'error_description': 'The provided authorization grant or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, o",
+        "session_user_exch_alice_pwd_login_success": "False",
+        "session_user_exch_alice_pwd_login_status": "400",
+        "session_user_exch_alice_pwd_login_http_status": "400",
+        "user_exch_alice_pwd_entity_id": "None",
+        "user_exch_alice_pwd_display_name": "None",
+        "user_exch_alice_pwd_email": "None",
+        "user_exch_alice_pwd_groups": "None",
+        "user_exch_alice_pwd_revoke_http_status": "200",
+        "exchanged_session_token": "None",
+        "exchanged_http_status": "400",
+        "exchanged_metadata": "None",
+        "session_user_exch_alice_exchanged_login_success": "False",
+        "session_user_exch_alice_exchanged_login_status": "400",
+        "session_user_exch_alice_exchanged_login_http_status": "400",
+        "user_exch_alice_pwd_introspect_after_revoke_http_status": "200",
+        "user_exch_alice_pwd_introspect_after_revoke_metadata": "None",
+        "exch_bob_access_token": "None",
+        "exch_bob_login_http_status": "400",
+        "exch_bob_login_metadata": "None",
+        "session_user_exch_bob_pwd_metadata": "{'error': 'invalid_grant', 'error_description': 'The provided authorization grant or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, o",
+        "session_user_exch_bob_pwd_login_success": "False",
+        "session_user_exch_bob_pwd_login_status": "400",
+        "session_user_exch_bob_pwd_login_http_status": "400",
+        "user_exch_bob_pwd_entity_id": "None",
+        "user_exch_bob_pwd_display_name": "None",
+        "user_exch_bob_pwd_email": "None",
+        "user_exch_bob_pwd_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "6e163a00cb73eb17",
+      "sequence_id": "seq_i3_jwt_expiry_boundary_config_change_reauth",
+      "sequence_description": "JWT M2M coherence under config change: baseline JWT login succeeds, then auth method is re-saved/updated (simulating config change propagation) and the same JWT is re-used to ensure behavior is consistent and not dependent on stale session/config state.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I3",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "HIGH",
+      "description": "[LLM-Judge] JWT login reports HTTP 200 success but no session/access token is captured, causing subsequent UserInfo verification to fail (possible token issuance/response parsing defect or misconfigured grant).",
+      "cve_analog": "none",
+      "evidence": {
+        "control_jwt_login_http_status": 200,
+        "control_jwt_session_token": null,
+        "reauth_jwt_login_http_status": 200,
+        "reauth_jwt_session_token": null,
+        "user_control_jwt_coherence_login_success": true,
+        "user_reauth_jwt_coherence_login_success": true,
+        "llm_judge_description": "JWT login reports HTTP 200 success but no session/access token is captured, causing subsequent UserInfo verification to fail (possible token issuance/response parsing defect or misconfigured grant)."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i3_jwt_expiry_boundary_config_change_reauth",
+      "description": "JWT M2M coherence under config change: baseline JWT login succeeds, then auth method is re-saved/updated (simulating config change propagation) and the same JWT is re-used to ensure behavior is consistent and not dependent on stale session/config state.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: Authentication decisions must be coherent across configuration updates; re-saving/updating the OAuth source should not allow step-skipping or stale acceptance paths for JWT login.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 3,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "federated-oidc-source-jwt",
+            "slug": "federated-oidc-source-jwt",
+            "provider_type": "openidconnect",
+            "consumer_key": "source_client_id",
+            "consumer_secret": "source_client_secret",
+            "authorization_url": "https://upstream.example/authorize",
+            "access_token_url": "https://upstream.example/token",
+            "profile_url": "https://upstream.example/userinfo",
+            "oidc_well_known_url": "https://upstream.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://upstream.example/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_id": "source_id",
+            "source_slug": "slug",
+            "source_enable_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "token": "",
+            "client_id": "clientStateSwap",
+            "client_secret": "clientStateSwap_secret",
+            "scope": "openid",
+            "jwt": "",
+            "jwt_claims": {
+              "sub": "svc-coherence",
+              "iss": "https://upstream.example/",
+              "aud": "clientStateSwap",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch}}"
+            }
+          },
+          "auth_as": "user_control_jwt_coherence",
+          "expected_outcome": "any",
+          "captures": {
+            "control_jwt_session_token": "session_token",
+            "control_jwt_login_http_status": "http_status",
+            "control_jwt_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_jwt_coherence",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_jwt_coherence_entity_id": "sub",
+            "user_control_jwt_coherence_display_name": "name",
+            "user_control_jwt_coherence_email": "email",
+            "user_control_jwt_coherence_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "federated-oidc-source-jwt",
+            "slug": "federated-oidc-source-jwt",
+            "provider_type": "openidconnect",
+            "consumer_key": "source_client_id",
+            "consumer_secret": "source_client_secret",
+            "authorization_url": "https://upstream.example/authorize",
+            "access_token_url": "https://upstream.example/token",
+            "profile_url": "https://upstream.example/userinfo",
+            "oidc_well_known_url": "https://upstream.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://upstream.example/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_resave_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "token": "",
+            "client_id": "clientStateSwap",
+            "client_secret": "clientStateSwap_secret",
+            "scope": "openid",
+            "jwt": "",
+            "jwt_claims": {
+              "sub": "svc-coherence",
+              "iss": "https://upstream.example/",
+              "aud": "clientStateSwap",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch}}"
+            }
+          },
+          "auth_as": "user_reauth_jwt_coherence",
+          "expected_outcome": "any",
+          "captures": {
+            "reauth_jwt_session_token": "session_token",
+            "reauth_jwt_login_http_status": "http_status",
+            "reauth_jwt_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_reauth_jwt_coherence",
+          "expected_outcome": "any",
+          "captures": {
+            "user_reauth_jwt_coherence_entity_id": "sub",
+            "user_reauth_jwt_coherence_display_name": "name",
+            "user_reauth_jwt_coherence_email": "email",
+            "user_reauth_jwt_coherence_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i3_control_jwt_login_succeeds",
+          "invariant": "I3",
+          "assertion": "control_jwt_login_http_status == 200",
+          "violation_description": "Control JWT login failed; cannot evaluate coherence across config change.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i3_reauth_after_resave_consistent",
+          "invariant": "I3",
+          "assertion": "reauth_jwt_login_http_status == 200",
+          "violation_description": "JWT login behavior changed unexpectedly after source re-save; indicates non-atomic config propagation or stale verification state.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i3_same_principal_same_identity_across_reauth",
+          "invariant": "I3",
+          "assertion": "user_control_jwt_coherence_entity_id == user_reauth_jwt_coherence_entity_id",
+          "violation_description": "Same JWT principal mapped to different downstream identity across a config re-save, suggesting flow/config coherence issues.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "d783b0e6-5fe2-45ac-9ced-5e1416d54da0",
+        "slug": "federated-oidc-source-jwt",
+        "source_slug": "federated-oidc-source-jwt",
+        "source_enable_http_status": "201",
+        "_oidc_source_issuer_mismatch": "true",
+        "control_jwt_session_token": "None",
+        "control_jwt_login_http_status": "200",
+        "control_jwt_metadata": "None",
+        "user_control_jwt_coherence_login_success": "True",
+        "user_control_jwt_coherence_login_status": "200",
+        "user_control_jwt_coherence_login_http_status": "200",
+        "user_control_jwt_coherence_entity_id": "None",
+        "user_control_jwt_coherence_display_name": "None",
+        "user_control_jwt_coherence_email": "None",
+        "user_control_jwt_coherence_groups": "None",
+        "source_resave_http_status": "400",
+        "reauth_jwt_session_token": "None",
+        "reauth_jwt_login_http_status": "200",
+        "reauth_jwt_metadata": "None",
+        "user_reauth_jwt_coherence_login_success": "True",
+        "user_reauth_jwt_coherence_login_status": "200",
+        "user_reauth_jwt_coherence_login_http_status": "200",
+        "user_reauth_jwt_coherence_entity_id": "None",
+        "user_reauth_jwt_coherence_display_name": "None",
+        "user_reauth_jwt_coherence_email": "None",
+        "user_reauth_jwt_coherence_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "c6e349f56147f891",
+      "sequence_id": "seq_i3_jwt_expiry_boundary_config_change_reauth",
+      "sequence_description": "JWT M2M coherence under config change: baseline JWT login succeeds, then auth method is re-saved/updated (simulating config change propagation) and the same JWT is re-used to ensure behavior is consistent and not dependent on stale session/config state.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I3",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] The intended 'config change re-save' step failed (HTTP 400 slug already exists), so the coherence-under-config-change property was not actually tested; repeated JWT acceptance may not reflect post-update behavior.",
+      "cve_analog": "none",
+      "evidence": {
+        "source_resave_http_status": 400,
+        "slug": "federated-oidc-source-jwt",
+        "source_slug": "federated-oidc-source-jwt",
+        "source_id": "d783b0e6-5fe2-45ac-9ced-5e1416d54da0",
+        "llm_judge_description": "The intended 'config change re-save' step failed (HTTP 400 slug already exists), so the coherence-under-config-change property was not actually tested; repeated JWT acceptance may not reflect post-update behavior."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i3_jwt_expiry_boundary_config_change_reauth",
+      "description": "JWT M2M coherence under config change: baseline JWT login succeeds, then auth method is re-saved/updated (simulating config change propagation) and the same JWT is re-used to ensure behavior is consistent and not dependent on stale session/config state.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: Authentication decisions must be coherent across configuration updates; re-saving/updating the OAuth source should not allow step-skipping or stale acceptance paths for JWT login.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 3,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "federated-oidc-source-jwt",
+            "slug": "federated-oidc-source-jwt",
+            "provider_type": "openidconnect",
+            "consumer_key": "source_client_id",
+            "consumer_secret": "source_client_secret",
+            "authorization_url": "https://upstream.example/authorize",
+            "access_token_url": "https://upstream.example/token",
+            "profile_url": "https://upstream.example/userinfo",
+            "oidc_well_known_url": "https://upstream.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://upstream.example/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_id": "source_id",
+            "source_slug": "slug",
+            "source_enable_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "token": "",
+            "client_id": "clientStateSwap",
+            "client_secret": "clientStateSwap_secret",
+            "scope": "openid",
+            "jwt": "",
+            "jwt_claims": {
+              "sub": "svc-coherence",
+              "iss": "https://upstream.example/",
+              "aud": "clientStateSwap",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch}}"
+            }
+          },
+          "auth_as": "user_control_jwt_coherence",
+          "expected_outcome": "any",
+          "captures": {
+            "control_jwt_session_token": "session_token",
+            "control_jwt_login_http_status": "http_status",
+            "control_jwt_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_jwt_coherence",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_jwt_coherence_entity_id": "sub",
+            "user_control_jwt_coherence_display_name": "name",
+            "user_control_jwt_coherence_email": "email",
+            "user_control_jwt_coherence_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "federated-oidc-source-jwt",
+            "slug": "federated-oidc-source-jwt",
+            "provider_type": "openidconnect",
+            "consumer_key": "source_client_id",
+            "consumer_secret": "source_client_secret",
+            "authorization_url": "https://upstream.example/authorize",
+            "access_token_url": "https://upstream.example/token",
+            "profile_url": "https://upstream.example/userinfo",
+            "oidc_well_known_url": "https://upstream.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://upstream.example/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_resave_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "token": "",
+            "client_id": "clientStateSwap",
+            "client_secret": "clientStateSwap_secret",
+            "scope": "openid",
+            "jwt": "",
+            "jwt_claims": {
+              "sub": "svc-coherence",
+              "iss": "https://upstream.example/",
+              "aud": "clientStateSwap",
+              "exp": "{{now_epoch_plus_3600}}",
+              "iat": "{{now_epoch}}"
+            }
+          },
+          "auth_as": "user_reauth_jwt_coherence",
+          "expected_outcome": "any",
+          "captures": {
+            "reauth_jwt_session_token": "session_token",
+            "reauth_jwt_login_http_status": "http_status",
+            "reauth_jwt_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_reauth_jwt_coherence",
+          "expected_outcome": "any",
+          "captures": {
+            "user_reauth_jwt_coherence_entity_id": "sub",
+            "user_reauth_jwt_coherence_display_name": "name",
+            "user_reauth_jwt_coherence_email": "email",
+            "user_reauth_jwt_coherence_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i3_control_jwt_login_succeeds",
+          "invariant": "I3",
+          "assertion": "control_jwt_login_http_status == 200",
+          "violation_description": "Control JWT login failed; cannot evaluate coherence across config change.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i3_reauth_after_resave_consistent",
+          "invariant": "I3",
+          "assertion": "reauth_jwt_login_http_status == 200",
+          "violation_description": "JWT login behavior changed unexpectedly after source re-save; indicates non-atomic config propagation or stale verification state.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i3_same_principal_same_identity_across_reauth",
+          "invariant": "I3",
+          "assertion": "user_control_jwt_coherence_entity_id == user_reauth_jwt_coherence_entity_id",
+          "violation_description": "Same JWT principal mapped to different downstream identity across a config re-save, suggesting flow/config coherence issues.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "d783b0e6-5fe2-45ac-9ced-5e1416d54da0",
+        "slug": "federated-oidc-source-jwt",
+        "source_slug": "federated-oidc-source-jwt",
+        "source_enable_http_status": "201",
+        "_oidc_source_issuer_mismatch": "true",
+        "control_jwt_session_token": "None",
+        "control_jwt_login_http_status": "200",
+        "control_jwt_metadata": "None",
+        "user_control_jwt_coherence_login_success": "True",
+        "user_control_jwt_coherence_login_status": "200",
+        "user_control_jwt_coherence_login_http_status": "200",
+        "user_control_jwt_coherence_entity_id": "None",
+        "user_control_jwt_coherence_display_name": "None",
+        "user_control_jwt_coherence_email": "None",
+        "user_control_jwt_coherence_groups": "None",
+        "source_resave_http_status": "400",
+        "reauth_jwt_session_token": "None",
+        "reauth_jwt_login_http_status": "200",
+        "reauth_jwt_metadata": "None",
+        "user_reauth_jwt_coherence_login_success": "True",
+        "user_reauth_jwt_coherence_login_status": "200",
+        "user_reauth_jwt_coherence_login_http_status": "200",
+        "user_reauth_jwt_coherence_entity_id": "None",
+        "user_reauth_jwt_coherence_display_name": "None",
+        "user_reauth_jwt_coherence_email": "None",
+        "user_reauth_jwt_coherence_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "0ad75619337e18b7",
+      "sequence_id": "seq_i5_cross_provider_jwt_audience_confusion",
+      "sequence_description": "Cross-provider JWT audience confusion: use a JWT minted for provider-A (aud=clientA) to authenticate against provider-B (client_id=clientB). Expected: rejection or at least no cross-provider acceptance.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I5",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Cross-provider JWT audience confusion test is invalid/inconclusive because provider-A and provider-B were not created (client_id already exists), yet the 'attack' JWT login still succeeded, so the run does not demonstrate a real cross-provider acceptance vulnerability.",
+      "cve_analog": "none",
+      "evidence": {
+        "providerA_http_status": 400,
+        "providerA_id": null,
+        "providerB_http_status": 400,
+        "providerB_id": null,
+        "user_control_clientA_login_http_status": 200,
+        "user_attacker_cross_aud_to_clientB_login_http_status": 200,
+        "llm_judge_description": "Cross-provider JWT audience confusion test is invalid/inconclusive because provider-A and provider-B were not created (client_id already exists), yet the 'attack' JWT login still succeeded, so the run does not demonstrate a real cross-provider acceptance vulnerability."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_cross_provider_jwt_audience_confusion",
+      "description": "Cross-provider JWT audience confusion: use a JWT minted for provider-A (aud=clientA) to authenticate against provider-B (client_id=clientB). Expected: rejection or at least no cross-provider acceptance.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Effective permissions must be bound to the upstream intent (audience/client) and broker policy; a JWT intended for clientA must not be accepted to obtain a session for clientB.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 3,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "mock-oidc-source-sharedjwks",
+            "slug": "mock-oidc-source-sharedjwks",
+            "provider_type": "oidc",
+            "consumer_key": "mock-client",
+            "consumer_secret": "mock-secret",
+            "authorization_url": "https://mockidp.example/authorize",
+            "access_token_url": "https://mockidp.example/token",
+            "profile_url": "https://mockidp.example/userinfo",
+            "oidc_well_known_url": "https://mockidp.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://mockidp.example/.well-known/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_id": "source_id",
+            "source_slug": "slug",
+            "source_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "provA",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "clientA",
+            "client_secret": "clientA-secret",
+            "redirect_uris": "https://appA.example/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": "mock-oidc-source-sharedjwks"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "providerA_id": "provider_id",
+            "providerA_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "provB",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "clientB",
+            "client_secret": "clientB-secret",
+            "redirect_uris": "https://appB.example/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": "mock-oidc-source-sharedjwks"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "providerB_id": "provider_id",
+            "providerB_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_id": "clientA",
+            "client_secret": "clientA-secret",
+            "scope": "openid email",
+            "jwt_claims": {
+              "sub": "svc-aud-test",
+              "aud": "clientA",
+              "iss": "https://mockidp.example/",
+              "exp": "{{now_epoch_plus_3600}}"
+            }
+          },
+          "auth_as": "user_control_clientA",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_id": "clientB",
+            "client_secret": "clientB-secret",
+            "scope": "openid email",
+            "jwt_claims": {
+              "sub": "svc-aud-test",
+              "aud": "clientA",
+              "iss": "https://mockidp.example/",
+              "exp": "{{now_epoch_plus_3600}}"
+            }
+          },
+          "auth_as": "user_attacker_cross_aud_to_clientB",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_clientA",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_clientA_entity_id": "sub",
+            "user_control_clientA_display_name": "name",
+            "user_control_clientA_email": "email",
+            "user_control_clientA_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_cross_aud_to_clientB",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_cross_aud_to_clientB_entity_id": "sub",
+            "user_attacker_cross_aud_to_clientB_display_name": "name",
+            "user_attacker_cross_aud_to_clientB_email": "email",
+            "user_attacker_cross_aud_to_clientB_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_control_login_succeeds_clientA",
+          "invariant": "I5",
+          "assertion": "user_control_clientA_login_success == true",
+          "violation_description": "Control JWT login for clientA failed; cannot attribute cross-audience behavior to authorization binding.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_cross_provider_audience_mismatch_rejected",
+          "invariant": "I5",
+          "assertion": "user_attacker_cross_aud_to_clientB_login_status >= 400",
+          "violation_description": "JWT intended for clientA (aud=clientA) was accepted to authenticate to clientB, indicating missing audience/client binding.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "b1f2ab64-e7e8-461d-9fcb-73da8ee8f582",
+        "slug": "mock-oidc-source-sharedjwks",
+        "source_slug": "mock-oidc-source-sharedjwks",
+        "source_http_status": "201",
+        "providerA_id": "None",
+        "providerA_http_status": "400",
+        "providerB_id": "None",
+        "providerB_http_status": "400",
+        "_oidc_source_issuer_mismatch": "true",
+        "user_control_clientA_login_success": "True",
+        "user_control_clientA_login_status": "200",
+        "user_control_clientA_login_http_status": "200",
+        "user_attacker_cross_aud_to_clientB_login_success": "True",
+        "user_attacker_cross_aud_to_clientB_login_status": "200",
+        "user_attacker_cross_aud_to_clientB_login_http_status": "200",
+        "user_control_clientA_entity_id": "None",
+        "user_control_clientA_display_name": "None",
+        "user_control_clientA_email": "None",
+        "user_control_clientA_groups": "None",
+        "user_attacker_cross_aud_to_clientB_entity_id": "None",
+        "user_attacker_cross_aud_to_clientB_display_name": "None",
+        "user_attacker_cross_aud_to_clientB_email": "None",
+        "user_attacker_cross_aud_to_clientB_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "da4e4a9b01e8a37f",
+      "sequence_id": "seq_i5_cross_provider_jwt_audience_confusion",
+      "sequence_description": "Cross-provider JWT audience confusion: use a JWT minted for provider-A (aud=clientA) to authenticate against provider-B (client_id=clientB). Expected: rejection or at least no cross-provider acceptance.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I5",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "LOW",
+      "description": "[LLM-Judge] Identity verification could not be performed because no session/access token was available for UserInfo, preventing confirmation of what identity/scopes were actually granted after the JWT logins.",
+      "cve_analog": "none",
+      "evidence": {
+        "user_control_clientA_entity_id": null,
+        "user_attacker_cross_aud_to_clientB_entity_id": null,
+        "llm_judge_description": "Identity verification could not be performed because no session/access token was available for UserInfo, preventing confirmation of what identity/scopes were actually granted after the JWT logins."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_cross_provider_jwt_audience_confusion",
+      "description": "Cross-provider JWT audience confusion: use a JWT minted for provider-A (aud=clientA) to authenticate against provider-B (client_id=clientB). Expected: rejection or at least no cross-provider acceptance.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Effective permissions must be bound to the upstream intent (audience/client) and broker policy; a JWT intended for clientA must not be accepted to obtain a session for clientB.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 3,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "mock-oidc-source-sharedjwks",
+            "slug": "mock-oidc-source-sharedjwks",
+            "provider_type": "oidc",
+            "consumer_key": "mock-client",
+            "consumer_secret": "mock-secret",
+            "authorization_url": "https://mockidp.example/authorize",
+            "access_token_url": "https://mockidp.example/token",
+            "profile_url": "https://mockidp.example/userinfo",
+            "oidc_well_known_url": "https://mockidp.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://mockidp.example/.well-known/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_id": "source_id",
+            "source_slug": "slug",
+            "source_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "provA",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "clientA",
+            "client_secret": "clientA-secret",
+            "redirect_uris": "https://appA.example/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": "mock-oidc-source-sharedjwks"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "providerA_id": "provider_id",
+            "providerA_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "provB",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "clientB",
+            "client_secret": "clientB-secret",
+            "redirect_uris": "https://appB.example/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": "mock-oidc-source-sharedjwks"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "providerB_id": "provider_id",
+            "providerB_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_id": "clientA",
+            "client_secret": "clientA-secret",
+            "scope": "openid email",
+            "jwt_claims": {
+              "sub": "svc-aud-test",
+              "aud": "clientA",
+              "iss": "https://mockidp.example/",
+              "exp": "{{now_epoch_plus_3600}}"
+            }
+          },
+          "auth_as": "user_control_clientA",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_id": "clientB",
+            "client_secret": "clientB-secret",
+            "scope": "openid email",
+            "jwt_claims": {
+              "sub": "svc-aud-test",
+              "aud": "clientA",
+              "iss": "https://mockidp.example/",
+              "exp": "{{now_epoch_plus_3600}}"
+            }
+          },
+          "auth_as": "user_attacker_cross_aud_to_clientB",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_clientA",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_clientA_entity_id": "sub",
+            "user_control_clientA_display_name": "name",
+            "user_control_clientA_email": "email",
+            "user_control_clientA_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_cross_aud_to_clientB",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_cross_aud_to_clientB_entity_id": "sub",
+            "user_attacker_cross_aud_to_clientB_display_name": "name",
+            "user_attacker_cross_aud_to_clientB_email": "email",
+            "user_attacker_cross_aud_to_clientB_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_control_login_succeeds_clientA",
+          "invariant": "I5",
+          "assertion": "user_control_clientA_login_success == true",
+          "violation_description": "Control JWT login for clientA failed; cannot attribute cross-audience behavior to authorization binding.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_cross_provider_audience_mismatch_rejected",
+          "invariant": "I5",
+          "assertion": "user_attacker_cross_aud_to_clientB_login_status >= 400",
+          "violation_description": "JWT intended for clientA (aud=clientA) was accepted to authenticate to clientB, indicating missing audience/client binding.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "b1f2ab64-e7e8-461d-9fcb-73da8ee8f582",
+        "slug": "mock-oidc-source-sharedjwks",
+        "source_slug": "mock-oidc-source-sharedjwks",
+        "source_http_status": "201",
+        "providerA_id": "None",
+        "providerA_http_status": "400",
+        "providerB_id": "None",
+        "providerB_http_status": "400",
+        "_oidc_source_issuer_mismatch": "true",
+        "user_control_clientA_login_success": "True",
+        "user_control_clientA_login_status": "200",
+        "user_control_clientA_login_http_status": "200",
+        "user_attacker_cross_aud_to_clientB_login_success": "True",
+        "user_attacker_cross_aud_to_clientB_login_status": "200",
+        "user_attacker_cross_aud_to_clientB_login_http_status": "200",
+        "user_control_clientA_entity_id": "None",
+        "user_control_clientA_display_name": "None",
+        "user_control_clientA_email": "None",
+        "user_control_clientA_groups": "None",
+        "user_attacker_cross_aud_to_clientB_entity_id": "None",
+        "user_attacker_cross_aud_to_clientB_display_name": "None",
+        "user_attacker_cross_aud_to_clientB_email": "None",
+        "user_attacker_cross_aud_to_clientB_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "d3e3d5ba17c79fb8",
+      "sequence_id": "seq_i5_cross_provider_introspection_leak",
+      "sequence_description": "Attempt to introspect a token issued for provider-A using provider-B client credentials (should be rejected; otherwise token metadata leaks across provider boundary).",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I5",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Introspection endpoint returned HTTP 200 even though the login/token acquisition failed, suggesting introspection may be callable without a valid token context (should typically return 400/401 or active=false).",
+      "cve_analog": "none",
+      "evidence": {
+        "user_alice_pwd_A_login_http_status": 400,
+        "user_alice_pwd_A_login_success": false,
+        "user_alice_pwd_A_introspect_http_status": 200,
+        "user_alice_pwd_A_introspect_metadata": null,
+        "llm_judge_description": "Introspection endpoint returned HTTP 200 even though the login/token acquisition failed, suggesting introspection may be callable without a valid token context (should typically return 400/401 or active=false)."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_cross_provider_introspection_leak",
+      "description": "Attempt to introspect a token using a different provider's client credentials (cross-provider metadata leak).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Token metadata/authorization context must be bound to the issuing provider; a different provider's client credentials must not be able to introspect and learn claims about the token.",
+      "cve_analog": "none",
+      "status": "LOGIN_FAILED",
+      "events_total": 5,
+      "events_succeeded": 4,
+      "events_failed": 1,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "orgA-introspect",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "orgA_client_id",
+            "client_secret": "orgA_client_secret",
+            "redirect_uris": "https://app.example.com/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "orgA_provider_id": "provider_id",
+            "orgA_provider_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "orgB-introspect",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "orgB_client_id",
+            "client_secret": "orgB_client_secret",
+            "redirect_uris": "https://app2.example.com/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "orgB_provider_id": "provider_id",
+            "orgB_provider_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "orgA_client_id",
+            "client_secret": "orgA_client_secret",
+            "username": "alice",
+            "password": "alice-password",
+            "scope": "openid email"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "alice_orgA_session_token": "session_token",
+            "alice_orgA_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{alice_orgA_session_token}}",
+            "client_id": "orgB_client_id",
+            "client_secret": "orgB_client_secret"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_introspect_cross_metadata": "metadata",
+            "user_alice_pwd_introspect_cross_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{alice_orgA_session_token}}",
+            "client_id": "orgA_client_id",
+            "client_secret": "orgA_client_secret"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_introspect_same_metadata": "metadata",
+            "user_alice_pwd_introspect_same_http_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_cross_provider_introspection_must_fail",
+          "invariant": "I5",
+          "assertion": "user_alice_pwd_introspect_cross_http_status >= 400",
+          "violation_description": "Cross-provider introspection succeeded; provider-B credentials could introspect provider-A token, leaking authorization context/claims across provider boundary.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_same_provider_introspection_control",
+          "invariant": "I5",
+          "assertion": "user_alice_pwd_introspect_same_http_status == 200",
+          "violation_description": "Control failed: same-provider introspection did not succeed, so cross-provider failure/success cannot be attributed to provider binding enforcement.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "client_id": "orgB_client_id",
+        "client_secret": "orgB_client_secret",
+        "provider_client_id": "orgB_client_id",
+        "provider_client_secret": "orgB_client_secret",
+        "provider_id": "36",
+        "orgA_provider_id": "35",
+        "orgA_provider_http_status": "201",
+        "orgB_provider_id": "36",
+        "orgB_provider_http_status": "201",
+        "alice_orgA_session_token": "None",
+        "alice_orgA_login_http_status": "400",
+        "session_user_alice_pwd_metadata": "{'error': 'invalid_grant', 'error_description': 'The provided authorization grant or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, o",
+        "session_user_alice_pwd_login_success": "False",
+        "session_user_alice_pwd_login_status": "400",
+        "session_user_alice_pwd_login_http_status": "400",
+        "user_alice_pwd_introspect_cross_metadata": "None",
+        "user_alice_pwd_introspect_cross_http_status": "200",
+        "user_alice_pwd_introspect_same_metadata": "None",
+        "user_alice_pwd_introspect_same_http_status": "200"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "4eabe4b525c58702",
+      "sequence_id": "seq_i5_cross_provider_introspection_leak",
+      "sequence_description": "Attempt to introspect a token issued for provider-A using provider-B client credentials (should be rejected; otherwise token metadata leaks across provider boundary).",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I5",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "LOW",
+      "description": "[LLM-Judge] Cross-provider introspection test is inconclusive because provider-A and provider-B were not created (client_id collisions), so the observed HTTP 200 cannot be attributed to a provider-boundary leak.",
+      "cve_analog": "none",
+      "evidence": {
+        "providerA_http_status": 400,
+        "providerA_id": null,
+        "providerB_http_status": 400,
+        "providerB_id": null,
+        "user_alice_pwd_A_cross_introspect_http_status": 200,
+        "user_alice_pwd_A_cross_introspect_metadata": null,
+        "llm_judge_description": "Cross-provider introspection test is inconclusive because provider-A and provider-B were not created (client_id collisions), so the observed HTTP 200 cannot be attributed to a provider-boundary leak."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_cross_provider_introspection_leak",
+      "description": "Attempt to introspect a token using a different provider's client credentials (cross-provider metadata leak).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Token metadata/authorization context must be bound to the issuing provider; a different provider's client credentials must not be able to introspect and learn claims about the token.",
+      "cve_analog": "none",
+      "status": "LOGIN_FAILED",
+      "events_total": 5,
+      "events_succeeded": 4,
+      "events_failed": 1,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "orgA-introspect",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "orgA_client_id",
+            "client_secret": "orgA_client_secret",
+            "redirect_uris": "https://app.example.com/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "orgA_provider_id": "provider_id",
+            "orgA_provider_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "orgB-introspect",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "orgB_client_id",
+            "client_secret": "orgB_client_secret",
+            "redirect_uris": "https://app2.example.com/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "orgB_provider_id": "provider_id",
+            "orgB_provider_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "orgA_client_id",
+            "client_secret": "orgA_client_secret",
+            "username": "alice",
+            "password": "alice-password",
+            "scope": "openid email"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "alice_orgA_session_token": "session_token",
+            "alice_orgA_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{alice_orgA_session_token}}",
+            "client_id": "orgB_client_id",
+            "client_secret": "orgB_client_secret"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_introspect_cross_metadata": "metadata",
+            "user_alice_pwd_introspect_cross_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{alice_orgA_session_token}}",
+            "client_id": "orgA_client_id",
+            "client_secret": "orgA_client_secret"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_introspect_same_metadata": "metadata",
+            "user_alice_pwd_introspect_same_http_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_cross_provider_introspection_must_fail",
+          "invariant": "I5",
+          "assertion": "user_alice_pwd_introspect_cross_http_status >= 400",
+          "violation_description": "Cross-provider introspection succeeded; provider-B credentials could introspect provider-A token, leaking authorization context/claims across provider boundary.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_same_provider_introspection_control",
+          "invariant": "I5",
+          "assertion": "user_alice_pwd_introspect_same_http_status == 200",
+          "violation_description": "Control failed: same-provider introspection did not succeed, so cross-provider failure/success cannot be attributed to provider binding enforcement.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "client_id": "orgB_client_id",
+        "client_secret": "orgB_client_secret",
+        "provider_client_id": "orgB_client_id",
+        "provider_client_secret": "orgB_client_secret",
+        "provider_id": "36",
+        "orgA_provider_id": "35",
+        "orgA_provider_http_status": "201",
+        "orgB_provider_id": "36",
+        "orgB_provider_http_status": "201",
+        "alice_orgA_session_token": "None",
+        "alice_orgA_login_http_status": "400",
+        "session_user_alice_pwd_metadata": "{'error': 'invalid_grant', 'error_description': 'The provided authorization grant or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, o",
+        "session_user_alice_pwd_login_success": "False",
+        "session_user_alice_pwd_login_status": "400",
+        "session_user_alice_pwd_login_http_status": "400",
+        "user_alice_pwd_introspect_cross_metadata": "None",
+        "user_alice_pwd_introspect_cross_http_status": "200",
+        "user_alice_pwd_introspect_same_metadata": "None",
+        "user_alice_pwd_introspect_same_http_status": "200"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "9a2f700572089f41",
+      "sequence_id": "seq_i5_external_jwt_scope_overgrant_via_userinfo",
+      "sequence_description": "Use JWT M2M login with minimal requested scope and verify UserInfo does not over-disclose claims (e.g., groups) beyond requested scope.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I5",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Post-login session/token was not captured/available for UserInfo calls, preventing verification of scope-based claim minimization and indicating a potential token handling/session issuance issue in the test flow.",
+      "cve_analog": "none",
+      "evidence": {
+        "user_m2m_min_scope_login_http_status": 200,
+        "user_m2m_min_scope_login_success": true,
+        "user_m2m_groups_scope_login_http_status": 200,
+        "user_m2m_groups_scope_login_success": true,
+        "llm_judge_description": "Post-login session/token was not captured/available for UserInfo calls, preventing verification of scope-based claim minimization and indicating a potential token handling/session issuance issue in the test flow."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_external_jwt_scope_overgrant_via_userinfo",
+      "description": "Use JWT M2M login with minimal requested scope and verify UserInfo does not over-disclose claims (e.g., groups) beyond requested scope.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: UserInfo claims must be limited by requested scopes and broker policy; a minimal-scope JWT login must not yield extra claims such as groups/profile.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 4,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "mock_oidc_source_for_jwt_m2m",
+            "slug": "mock-oidc-source-jwt",
+            "provider_type": "oidc",
+            "consumer_key": "mock-consumer",
+            "consumer_secret": "mock-secret",
+            "authorization_url": "https://mockidp.example/authorize",
+            "access_token_url": "https://mockidp.example/token",
+            "profile_url": "https://mockidp.example/userinfo",
+            "oidc_well_known_url": "https://mockidp.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://mockidp.example/.well-known/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "jwt_source_id": "source_id",
+            "jwt_source_slug": "slug",
+            "jwt_source_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "jwt_m2m_provider",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "clientJwtM2M",
+            "client_secret": "secretJwtM2M",
+            "redirect_uris": "https://jwtm2m.example/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": "[\"mock-oidc-source-jwt\"]"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "providerJwtM2M_id": "provider_id",
+            "providerJwtM2M_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_id": "clientJwtM2M",
+            "client_secret": "secretJwtM2M",
+            "scope": "openid email",
+            "jwt_claims": {
+              "sub": "svc-min-scope",
+              "iss": "https://mockidp.example/",
+              "aud": "clientJwtM2M",
+              "exp": "{{now_epoch_plus_3600}}",
+              "groups": [
+                "admin",
+                "superuser"
+              ],
+              "name": "Service Min Scope"
+            }
+          },
+          "auth_as": "user_m2m_min_scope",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_m2m_min_scope",
+          "expected_outcome": "any",
+          "captures": {
+            "user_m2m_min_scope_entity_id": "sub",
+            "user_m2m_min_scope_display_name": "name",
+            "user_m2m_min_scope_email": "email",
+            "user_m2m_min_scope_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_id": "clientJwtM2M",
+            "client_secret": "secretJwtM2M",
+            "scope": "openid email groups",
+            "jwt_claims": {
+              "sub": "svc-groups-scope",
+              "iss": "https://mockidp.example/",
+              "aud": "clientJwtM2M",
+              "exp": "{{now_epoch_plus_3600}}",
+              "groups": [
+                "admin",
+                "superuser"
+              ],
+              "name": "Service Groups Scope"
+            }
+          },
+          "auth_as": "user_m2m_groups_scope",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_m2m_groups_scope",
+          "expected_outcome": "any",
+          "captures": {
+            "user_m2m_groups_scope_entity_id": "sub",
+            "user_m2m_groups_scope_display_name": "name",
+            "user_m2m_groups_scope_email": "email",
+            "user_m2m_groups_scope_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_control_min_scope_login_succeeds",
+          "invariant": "I5",
+          "assertion": "user_m2m_min_scope_login_status < 400 AND user_m2m_min_scope_http_status == 200",
+          "violation_description": "Control failed: minimal-scope JWT login or UserInfo failed; cannot evaluate over-grant behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_no_groups_disclosure_without_groups_scope",
+          "invariant": "I5",
+          "assertion": "user_m2m_min_scope_groups is None OR user_m2m_min_scope_groups == []",
+          "violation_description": "UserInfo disclosed groups despite requesting only 'openid email'; claims exceeded UpstreamIntent(scopes) \u2229 BrokerPolicy(config).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_groups_disclosure_only_when_requested",
+          "invariant": "I5",
+          "assertion": "user_m2m_groups_scope_http_status == 200 AND user_m2m_groups_scope_groups is not None",
+          "violation_description": "Control failed: even with 'groups' scope, groups were not returned; scope mapping may be missing, making the over-grant test inconclusive.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "f873d4c3-1939-442d-9b82-e9f88dcd1bbe",
+        "slug": "mock-oidc-source-jwt",
+        "jwt_source_id": "f873d4c3-1939-442d-9b82-e9f88dcd1bbe",
+        "jwt_source_slug": "mock-oidc-source-jwt",
+        "jwt_source_http_status": "201",
+        "client_id": "clientJwtM2M",
+        "client_secret": "secretJwtM2M",
+        "provider_client_id": "clientJwtM2M",
+        "provider_client_secret": "secretJwtM2M",
+        "provider_id": "34",
+        "providerJwtM2M_id": "34",
+        "providerJwtM2M_http_status": "201",
+        "_oidc_source_issuer_mismatch": "true",
+        "user_m2m_min_scope_login_success": "True",
+        "user_m2m_min_scope_login_status": "200",
+        "user_m2m_min_scope_login_http_status": "200",
+        "user_m2m_min_scope_entity_id": "None",
+        "user_m2m_min_scope_display_name": "None",
+        "user_m2m_min_scope_email": "None",
+        "user_m2m_min_scope_groups": "None",
+        "user_m2m_groups_scope_login_success": "True",
+        "user_m2m_groups_scope_login_status": "200",
+        "user_m2m_groups_scope_login_http_status": "200",
+        "user_m2m_groups_scope_entity_id": "None",
+        "user_m2m_groups_scope_display_name": "None",
+        "user_m2m_groups_scope_email": "None",
+        "user_m2m_groups_scope_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "3edb8b4908bb9463",
+      "sequence_id": "seq_i5_cross_provider_introspection_leak",
+      "sequence_description": "Attempt to introspect a token using a different provider's client credentials (cross-provider metadata leak).",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I5",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Introspection endpoint returned HTTP 200 even though no access token was obtained (login failed), suggesting introspection may be returning a success response for invalid/empty token inputs.",
+      "cve_analog": "none",
+      "evidence": {
+        "alice_orgA_login_http_status": 400,
+        "alice_orgA_session_token": null,
+        "session_user_alice_pwd_login_success": false,
+        "user_alice_pwd_introspect_cross_http_status": 200,
+        "user_alice_pwd_introspect_same_http_status": 200,
+        "user_alice_pwd_introspect_cross_metadata": null,
+        "user_alice_pwd_introspect_same_metadata": null,
+        "llm_judge_description": "Introspection endpoint returned HTTP 200 even though no access token was obtained (login failed), suggesting introspection may be returning a success response for invalid/empty token inputs."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_cross_provider_introspection_leak",
+      "description": "Attempt to introspect a token using a different provider's client credentials (cross-provider metadata leak).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Token metadata/authorization context must be bound to the issuing provider; a different provider's client credentials must not be able to introspect and learn claims about the token.",
+      "cve_analog": "none",
+      "status": "LOGIN_FAILED",
+      "events_total": 5,
+      "events_succeeded": 4,
+      "events_failed": 1,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "orgA-introspect",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "orgA_client_id",
+            "client_secret": "orgA_client_secret",
+            "redirect_uris": "https://app.example.com/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "orgA_provider_id": "provider_id",
+            "orgA_provider_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "orgB-introspect",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "orgB_client_id",
+            "client_secret": "orgB_client_secret",
+            "redirect_uris": "https://app2.example.com/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "orgB_provider_id": "provider_id",
+            "orgB_provider_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "orgA_client_id",
+            "client_secret": "orgA_client_secret",
+            "username": "alice",
+            "password": "alice-password",
+            "scope": "openid email"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "alice_orgA_session_token": "session_token",
+            "alice_orgA_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{alice_orgA_session_token}}",
+            "client_id": "orgB_client_id",
+            "client_secret": "orgB_client_secret"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_introspect_cross_metadata": "metadata",
+            "user_alice_pwd_introspect_cross_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{alice_orgA_session_token}}",
+            "client_id": "orgA_client_id",
+            "client_secret": "orgA_client_secret"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_introspect_same_metadata": "metadata",
+            "user_alice_pwd_introspect_same_http_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_cross_provider_introspection_must_fail",
+          "invariant": "I5",
+          "assertion": "user_alice_pwd_introspect_cross_http_status >= 400",
+          "violation_description": "Cross-provider introspection succeeded; provider-B credentials could introspect provider-A token, leaking authorization context/claims across provider boundary.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_same_provider_introspection_control",
+          "invariant": "I5",
+          "assertion": "user_alice_pwd_introspect_same_http_status == 200",
+          "violation_description": "Control failed: same-provider introspection did not succeed, so cross-provider failure/success cannot be attributed to provider binding enforcement.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "client_id": "orgB_client_id",
+        "client_secret": "orgB_client_secret",
+        "provider_client_id": "orgB_client_id",
+        "provider_client_secret": "orgB_client_secret",
+        "provider_id": "36",
+        "orgA_provider_id": "35",
+        "orgA_provider_http_status": "201",
+        "orgB_provider_id": "36",
+        "orgB_provider_http_status": "201",
+        "alice_orgA_session_token": "None",
+        "alice_orgA_login_http_status": "400",
+        "session_user_alice_pwd_metadata": "{'error': 'invalid_grant', 'error_description': 'The provided authorization grant or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, o",
+        "session_user_alice_pwd_login_success": "False",
+        "session_user_alice_pwd_login_status": "400",
+        "session_user_alice_pwd_login_http_status": "400",
+        "user_alice_pwd_introspect_cross_metadata": "None",
+        "user_alice_pwd_introspect_cross_http_status": "200",
+        "user_alice_pwd_introspect_same_metadata": "None",
+        "user_alice_pwd_introspect_same_http_status": "200"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "d692d69e764e1f8c",
+      "sequence_id": "seq_i5_cross_provider_revocation_bypass",
+      "sequence_description": "Revoke a token using the issuing provider, then attempt to use it for UserInfo; also attempt revocation using a different provider to detect cross-provider revocation bypass/overreach.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I5",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Token revocation endpoint returned HTTP 200 success even though no access/refresh token was ever obtained (login failed), suggesting revoke may not validate token presence/format and could be misleading or overly permissive.",
+      "cve_analog": "none",
+      "evidence": {
+        "bob_orgA_session_token": null,
+        "session_user_bob_pwd_login_http_status": 400,
+        "session_user_bob_pwd_login_success": false,
+        "user_bob_pwd_cross_revoke_http_status": 200,
+        "user_bob_pwd_same_revoke_http_status": 200,
+        "llm_judge_description": "Token revocation endpoint returned HTTP 200 success even though no access/refresh token was ever obtained (login failed), suggesting revoke may not validate token presence/format and could be misleading or overly permissive."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_cross_provider_revocation_bypass",
+      "description": "Revoke a token using the issuing provider, then attempt to use it for UserInfo; also attempt revocation using a different provider to detect cross-provider revocation bypass/overreach.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Token validity and revocation must be bound to the issuing provider; a revoked token must not authorize UserInfo, and a different provider must not be able to revoke or validate tokens outside its policy boundary.",
+      "cve_analog": "none",
+      "status": "LOGIN_FAILED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "orgA-revoke",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "orgA_revoke_client_id",
+            "client_secret": "orgA_revoke_client_secret",
+            "redirect_uris": "https://app.example.com/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "orgA_revoke_provider_id": "provider_id",
+            "orgA_revoke_provider_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "orgB-revoke",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "orgB_revoke_client_id",
+            "client_secret": "orgB_revoke_client_secret",
+            "redirect_uris": "https://app2.example.com/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "orgB_revoke_provider_id": "provider_id",
+            "orgB_revoke_provider_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "orgA_revoke_client_id",
+            "client_secret": "orgA_revoke_client_secret",
+            "username": "bob",
+            "password": "bob-password",
+            "scope": "openid email"
+          },
+          "auth_as": "session_user_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "bob_orgA_session_token": "session_token",
+            "bob_orgA_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_bob_pwd_entity_id": "sub",
+            "user_bob_pwd_display_name": "name",
+            "user_bob_pwd_email": "email",
+            "user_bob_pwd_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "session_token": "{{bob_orgA_session_token}}",
+            "client_id": "orgB_revoke_client_id",
+            "client_secret": "orgB_revoke_client_secret",
+            "token": "{{bob_orgA_session_token}}",
+            "token_type_hint": "access_token"
+          },
+          "auth_as": "session_user_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_bob_pwd_cross_revoke_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "session_token": "{{bob_orgA_session_token}}",
+            "client_id": "orgA_revoke_client_id",
+            "client_secret": "orgA_revoke_client_secret",
+            "token": "{{bob_orgA_session_token}}",
+            "token_type_hint": "access_token"
+          },
+          "auth_as": "session_user_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_bob_pwd_same_revoke_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_bob_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_bob_pwd_entity_id": "sub",
+            "user_bob_pwd_display_name": "name",
+            "user_bob_pwd_email": "email",
+            "user_bob_pwd_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_cross_provider_revoke_must_fail",
+          "invariant": "I5",
+          "assertion": "user_bob_pwd_cross_revoke_http_status >= 400",
+          "violation_description": "Cross-provider revocation succeeded; provider-B credentials could revoke provider-A token, violating authorization boundary between providers.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_same_provider_revoke_control",
+          "invariant": "I5",
+          "assertion": "user_bob_pwd_same_revoke_http_status == 200",
+          "violation_description": "Control failed: same-provider revocation did not succeed, so post-revocation behavior cannot be attributed to revocation enforcement.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_revoked_token_must_not_authorize_userinfo",
+          "invariant": "I5",
+          "assertion": "user_bob_pwd_postrevoke_http_status >= 400",
+          "violation_description": "Revoked access token still authorized UserInfo; effective permissions exceeded broker policy (revocation) and upstream intent.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "client_id": "orgB_revoke_client_id",
+        "client_secret": "orgB_revoke_client_secret",
+        "provider_client_id": "orgB_revoke_client_id",
+        "provider_client_secret": "orgB_revoke_client_secret",
+        "provider_id": "38",
+        "orgA_revoke_provider_id": "37",
+        "orgA_revoke_provider_http_status": "201",
+        "orgB_revoke_provider_id": "38",
+        "orgB_revoke_provider_http_status": "201",
+        "bob_orgA_session_token": "None",
+        "bob_orgA_login_http_status": "400",
+        "session_user_bob_pwd_metadata": "{'error': 'invalid_grant', 'error_description': 'The provided authorization grant or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, o",
+        "session_user_bob_pwd_login_success": "False",
+        "session_user_bob_pwd_login_status": "400",
+        "session_user_bob_pwd_login_http_status": "400",
+        "user_bob_pwd_entity_id": "None",
+        "user_bob_pwd_display_name": "None",
+        "user_bob_pwd_email": "None",
+        "user_bob_pwd_groups": "None",
+        "user_bob_pwd_cross_revoke_http_status": "200",
+        "user_bob_pwd_same_revoke_http_status": "200"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "5e71e9001e904922",
+      "sequence_id": "seq_i5_jwt_scope_overgrant_via_empty_scope",
+      "sequence_description": "JWT M2M login: compare explicit minimal scope vs empty scope (which authentik treats as all configured scopes) to detect over-grant when client omits scope.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I5",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "HIGH",
+      "description": "[LLM-Judge] M2M JWT token endpoint returned HTTP 200 but no access/session token was captured, preventing any verification of granted scopes/claims and suggesting the token response was malformed or the test harness failed to parse it.",
+      "cve_analog": "none",
+      "evidence": {
+        "session_user_m2m_min_scope_login_http_status": 200,
+        "session_user_m2m_min_scope_login_success": true,
+        "m2m_min_scope_session_token": null,
+        "session_user_m2m_empty_scope_login_http_status": 200,
+        "session_user_m2m_empty_scope_login_success": true,
+        "m2m_empty_scope_session_token": null,
+        "llm_judge_description": "M2M JWT token endpoint returned HTTP 200 but no access/session token was captured, preventing any verification of granted scopes/claims and suggesting the token response was malformed or the test harness failed to parse it."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_jwt_scope_overgrant_via_empty_scope",
+      "description": "JWT M2M login: compare explicit minimal scope vs empty scope (which authentik treats as all configured scopes) to detect over-grant when client omits scope.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Effective claims/permissions should not exceed the explicitly requested upstream intent; omitting scope should not silently broaden claims beyond a minimal explicit scope baseline.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 4,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "org-jwt-scope",
+            "authorization_flow": "default-provider-authorization-flow",
+            "client_type": "confidential",
+            "client_id": "jwt_scope_client_id",
+            "client_secret": "jwt_scope_client_secret",
+            "redirect_uris": "https://m2m.example.com/callback",
+            "signing_key": "default-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "jwt_scope_provider_id": "provider_id",
+            "jwt_scope_provider_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "mock-federated-oidc-source",
+            "slug": "mock-federated-oidc-source",
+            "provider_type": "openidconnect",
+            "consumer_key": "mock-consumer-key",
+            "consumer_secret": "mock-consumer-secret",
+            "authorization_url": "https://mockidp.example.com/auth",
+            "access_token_url": "https://mockidp.example.com/token",
+            "profile_url": "https://mockidp.example.com/userinfo",
+            "oidc_well_known_url": "https://mockidp.example.com/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://mockidp.example.com/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "mock_source_id": "source_id",
+            "mock_source_slug": "slug",
+            "mock_source_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_id": "jwt_scope_client_id",
+            "client_secret": "jwt_scope_client_secret",
+            "scope": "openid email",
+            "jwt_claims": {
+              "sub": "svc-min-scope",
+              "iss": "https://mockidp.example.com/",
+              "aud": "jwt_scope_client_id",
+              "exp": "{{now_epoch_plus_3600}}"
+            }
+          },
+          "auth_as": "session_user_m2m_min_scope",
+          "expected_outcome": "any",
+          "captures": {
+            "m2m_min_scope_session_token": "session_token",
+            "user_m2m_min_scope_login_http_status": "http_status",
+            "user_m2m_min_scope_login_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_m2m_min_scope",
+          "expected_outcome": "any",
+          "captures": {
+            "user_m2m_min_scope_entity_id": "sub",
+            "user_m2m_min_scope_display_name": "name",
+            "user_m2m_min_scope_email": "email",
+            "user_m2m_min_scope_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_id": "jwt_scope_client_id",
+            "client_secret": "jwt_scope_client_secret",
+            "scope": "",
+            "jwt_claims": {
+              "sub": "svc-empty-scope",
+              "iss": "https://mockidp.example.com/",
+              "aud": "jwt_scope_client_id",
+              "exp": "{{now_epoch_plus_3600}}"
+            }
+          },
+          "auth_as": "session_user_m2m_empty_scope",
+          "expected_outcome": "any",
+          "captures": {
+            "m2m_empty_scope_session_token": "session_token",
+            "user_m2m_empty_scope_login_http_status": "http_status",
+            "user_m2m_empty_scope_login_metadata": "metadata"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_m2m_empty_scope",
+          "expected_outcome": "any",
+          "captures": {
+            "user_m2m_empty_scope_entity_id": "sub",
+            "user_m2m_empty_scope_display_name": "name",
+            "user_m2m_empty_scope_email": "email",
+            "user_m2m_empty_scope_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_control_min_scope_login_succeeds",
+          "invariant": "I5",
+          "assertion": "user_m2m_min_scope_login_http_status == 200 AND user_m2m_min_scope_http_status == 200",
+          "violation_description": "Control failed: minimal-scope JWT login or UserInfo did not succeed, so over-grant comparison is not meaningful.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_empty_scope_should_not_broaden_claims",
+          "invariant": "I5",
+          "assertion": "user_m2m_empty_scope_groups == user_m2m_min_scope_groups",
+          "violation_description": "Empty scope broadened effective claims (e.g., groups) beyond explicit minimal scope, violating authorization binding to upstream intent.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "client_id": "jwt_scope_client_id",
+        "client_secret": "jwt_scope_client_secret",
+        "provider_client_id": "jwt_scope_client_id",
+        "provider_client_secret": "jwt_scope_client_secret",
+        "provider_id": "39",
+        "jwt_scope_provider_id": "39",
+        "jwt_scope_provider_http_status": "201",
+        "source_id": "a884652d-8519-4251-88db-5c0dd392b822",
+        "slug": "mock-federated-oidc-source",
+        "mock_source_id": "a884652d-8519-4251-88db-5c0dd392b822",
+        "mock_source_slug": "mock-federated-oidc-source",
+        "mock_source_http_status": "201",
+        "_oidc_source_issuer_mismatch": "true",
+        "m2m_min_scope_session_token": "None",
+        "user_m2m_min_scope_login_http_status": "200",
+        "user_m2m_min_scope_login_metadata": "None",
+        "session_user_m2m_min_scope_login_success": "True",
+        "session_user_m2m_min_scope_login_status": "200",
+        "session_user_m2m_min_scope_login_http_status": "200",
+        "user_m2m_min_scope_entity_id": "None",
+        "user_m2m_min_scope_display_name": "None",
+        "user_m2m_min_scope_email": "None",
+        "user_m2m_min_scope_groups": "None",
+        "m2m_empty_scope_session_token": "None",
+        "user_m2m_empty_scope_login_http_status": "200",
+        "user_m2m_empty_scope_login_metadata": "None",
+        "session_user_m2m_empty_scope_login_success": "True",
+        "session_user_m2m_empty_scope_login_status": "200",
+        "session_user_m2m_empty_scope_login_http_status": "200",
+        "user_m2m_empty_scope_entity_id": "None",
+        "user_m2m_empty_scope_display_name": "None",
+        "user_m2m_empty_scope_email": "None",
+        "user_m2m_empty_scope_groups": "None"
+      }
+    }
+  }
+]

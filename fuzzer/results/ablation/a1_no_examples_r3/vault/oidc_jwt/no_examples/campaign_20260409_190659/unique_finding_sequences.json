@@ -1,0 +1,545 @@
+[
+  {
+    "finding": {
+      "finding_id": "f83a7acb46d220ca",
+      "sequence_id": "seq_I2_jwt_iat_future_with_strict_leeway_and_control",
+      "sequence_description": "Test whether Vault incorrectly accepts a JWT with iat far in the future (time-based freshness failure) while a control token succeeds; uses strict leeway to avoid default grace windows.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_b_attack_login_status >= 400\nEvaluation: user_b_attack_login_status=200 >= 400 \u2192 False\nImplication: Vault accepted a JWT with iat far in the future under strict leeway (freshness failure).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_b_attack_login_status >= 400",
+        "evaluation": "user_b_attack_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_b_attack_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_jwt_iat_future_with_strict_leeway_and_control",
+      "description": "Test whether Vault incorrectly accepts a JWT with iat far in the future (time-based freshness failure) while a control token succeeds; uses strict leeway to avoid default grace windows.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A JWT with iat far in the future should be rejected under strict clock-skew settings; otherwise tokens can be replayed/used outside intended lifetime windows.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 7,
+      "events_failed": 0,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "mount": "jwt",
+            "auth_type": "jwt",
+            "description": "jwt mount for iat-future test",
+            "config": {},
+            "local": false,
+            "seal_wrap": false,
+            "external_entropy_access": false,
+            "options": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwt_validation_pubkeys": [
+              "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwfuzzerpubkeyplaceholder\n-----END PUBLIC KEY-----"
+            ],
+            "bound_issuer": "https://issuer.example/",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "role_iat_strict"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_auth_role",
+          "params": {
+            "mount": "jwt",
+            "role_name": "role_iat_strict",
+            "role_type": "jwt",
+            "bound_audiences": [
+              "vault-aud"
+            ],
+            "identity_claim": "sub",
+            "clock_skew_leeway": -1,
+            "expiration_leeway": -1,
+            "not_before_leeway": -1,
+            "claim_constraints": {
+              "sub": "user-a"
+            },
+            "claim_constraint_type": "string"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "read_role_config",
+          "params": {
+            "mount": "jwt",
+            "role_name": "role_iat_strict"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "bound_audiences": "role_iat_bound_audiences",
+            "identity_claim": "role_iat_identity_claim"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "role_iat_strict",
+            "token": "executor_builds_from_jwt_claims",
+            "jwt_claims": {
+              "iss": "https://issuer.example/",
+              "sub": "user-a",
+              "aud": "vault-aud",
+              "iat": "{{now_epoch}}",
+              "nbf": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}",
+              "jti": "jti-control-1"
+            }
+          },
+          "auth_as": "user_a_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_a_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_a_control_entity_id": "data.entity_id",
+            "user_a_control_display_name": "data.display_name",
+            "user_a_control_policies": "data.policies",
+            "user_a_control_identity_policies": "data.identity_policies",
+            "user_a_control_meta": "data.meta",
+            "user_a_control_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "role_iat_strict",
+            "token": "executor_builds_from_jwt_claims",
+            "jwt_claims": {
+              "iss": "https://issuer.example/",
+              "sub": "user-a",
+              "aud": "vault-aud",
+              "iat": "{{now_epoch_plus_86400}}",
+              "nbf": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_90000}}",
+              "jti": "jti-iat-future-1"
+            }
+          },
+          "auth_as": "user_b_attack",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I2_jwt_iat_future_with_strict_leeway_and_control_0",
+          "invariant": "I2",
+          "assertion": "user_a_control_login_success == true AND user_a_control_http_status == 200",
+          "violation_description": "Control login failed; cannot attribute attack failure/success to iat handling.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I2_jwt_iat_future_with_strict_leeway_and_control_1",
+          "invariant": "I2",
+          "assertion": "user_b_attack_login_status >= 400",
+          "violation_description": "Vault accepted a JWT with iat far in the future under strict leeway (freshness failure).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "mount": "jwt",
+        "engine": "secret",
+        "bound_subject": "",
+        "bound_audiences": "['vault-aud']",
+        "identity_claim": "sub",
+        "groups_claim": "",
+        "audience_restriction": "['vault-aud']",
+        "session_token": "hvs.CAESIEXaTq15ezRjieZTz0v0oppu1jggHA_m0Z70ancs03KDGh4KHGh2cy5jbE9BN2Z2aFlyMHlFUUpYbXppck9ndjA",
+        "identity_id": "0423e955-aebe-e002-ab5d-25608e33d5f0",
+        "granted_policies": "['default']",
+        "metadata": "{'role': 'role_iat_strict'}",
+        "token_accessor": "pWQMiJZrHTVoxGciE1CTS4p0",
+        "user_a_control_session_token": "hvs.CAESIO5NVA3_2lAjJ0W0drRXlAcH1Hd5HBxs7_pr_DjDnedAGh4KHGh2cy4yR2tRRnV6MXJPU2hwemd0TVlvN0FiQ0E",
+        "user_a_control_identity_id": "0423e955-aebe-e002-ab5d-25608e33d5f0",
+        "user_a_control_granted_policies": "['default']",
+        "user_a_control_metadata": "{'role': 'role_iat_strict'}",
+        "user_a_control_token_accessor": "FbKO9AEaqJYqV8mXcgHCf9JK",
+        "user_a_control_login_success": "True",
+        "user_a_control_login_status": "200",
+        "user_a_control_login_http_status": "200",
+        "creation_ttl": "2764800",
+        "display_name": "jwt-user-a",
+        "expire_time": "2026-05-11T19:19:44.609766484Z",
+        "num_uses": "0",
+        "ttl": "2764799",
+        "user_a_control_entity_id": "0423e955-aebe-e002-ab5d-25608e33d5f0",
+        "user_a_control_display_name": "jwt-user-a",
+        "user_a_control_policies": "['default']",
+        "user_a_control_identity_policies": "None",
+        "user_a_control_meta": "{'role': 'role_iat_strict'}",
+        "user_a_control_num_uses": "0",
+        "user_a_control_creation_ttl": "2764800",
+        "user_a_control_expire_time": "2026-05-11T19:19:44.609766484Z",
+        "user_a_control_ttl": "2764799",
+        "user_b_attack_session_token": "hvs.CAESIEXaTq15ezRjieZTz0v0oppu1jggHA_m0Z70ancs03KDGh4KHGh2cy5jbE9BN2Z2aFlyMHlFUUpYbXppck9ndjA",
+        "user_b_attack_identity_id": "0423e955-aebe-e002-ab5d-25608e33d5f0",
+        "user_b_attack_granted_policies": "['default']",
+        "user_b_attack_metadata": "{'role': 'role_iat_strict'}",
+        "user_b_attack_token_accessor": "pWQMiJZrHTVoxGciE1CTS4p0",
+        "user_b_attack_login_success": "True",
+        "user_b_attack_login_status": "200",
+        "user_b_attack_login_http_status": "200"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "1e70c5a8c44f13f3",
+      "sequence_id": "seq_I4_003_identity_claim_config_change_rebinding",
+      "sequence_description": "I4 config-change rebinding: login as principal A with identity_claim=sub, then admin changes role identity_claim to email; principal B with different sub but same email logs in\u2014should not map to A's entity (no unintended merge across claim-basis change).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I4",
+      "identified_invariant": "I4",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "[PlatformVerify:vault] Identity mismatch: sent='sub-B-after-mutation' \u2192 granted='jwt-shared@example.test'",
+      "cve_analog": "none",
+      "evidence": {
+        "mismatch_type": "identity_mismatch",
+        "sent": "sub-B-after-mutation",
+        "granted": "jwt-shared@example.test"
+      },
+      "detection_source": "L2_platform_verifier",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I4_003_identity_claim_config_change_rebinding",
+      "description": "I4 config-change rebinding: login as principal A with identity_claim=sub, then admin changes role identity_claim to email; principal B with different sub but same email logs in\u2014should not map to A's entity (no unintended merge across claim-basis change).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "I4: Changing identity_claim on a role could cause alias/entity rebinding such that a different upstream principal later maps onto an existing entity created under the old identity_claim basis (identity merge across config mutation).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 11,
+      "events_succeeded": 9,
+      "events_failed": 2,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "mount": "jwt",
+            "auth_type": "jwt",
+            "description": "jwt auth for I4 identity_claim mutation rebinding test",
+            "config": {},
+            "local": false,
+            "seal_wrap": false,
+            "external_entropy_access": false,
+            "options": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwt_validation_pubkeys": [
+              "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwfuzzerpubkeyplaceholderonly\n-----END PUBLIC KEY-----"
+            ],
+            "bound_issuer": "https://issuer.example.test",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "role_mutate_identity_claim"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_auth_role",
+          "params": {
+            "mount": "jwt",
+            "role_name": "role_mutate_identity_claim",
+            "role_type": "jwt",
+            "bound_audiences": [
+              "vault-aud"
+            ],
+            "identity_claim": "sub",
+            "claim_constraints": {
+              "aud": "vault-aud"
+            },
+            "claim_constraint_type": "string"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "role_mutate_identity_claim",
+            "token": "executor_builds_jwt",
+            "jwt_claims": {
+              "iss": "https://issuer.example.test",
+              "aud": "vault-aud",
+              "sub": "sub-A-before-mutation",
+              "email": "shared@example.test",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}"
+            }
+          },
+          "auth_as": "user_A",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_A",
+          "expected_outcome": "any",
+          "captures": {
+            "user_A_entity_id": "data.entity_id",
+            "user_A_display_name": "data.display_name",
+            "user_A_policies": "data.policies",
+            "user_A_identity_policies": "data.identity_policies",
+            "user_A_meta": "data.meta",
+            "user_A_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_entity_details",
+          "params": {
+            "id": "{{user_A_entity_id}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "verified_entity_name": "data.name",
+            "verified_entity_id": "data.id"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "modify_role_config",
+          "params": {
+            "mount": "jwt",
+            "role_name": "role_mutate_identity_claim",
+            "role_type": "jwt",
+            "bound_audiences": [
+              "vault-aud"
+            ],
+            "identity_claim": "email",
+            "claim_constraints": {
+              "aud": "vault-aud"
+            },
+            "claim_constraint_type": "string"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "read_role_config",
+          "params": {
+            "mount": "jwt",
+            "role_name": "role_mutate_identity_claim"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "identity_claim": "role_identity_claim_after",
+            "bound_audiences": "role_bound_audiences_after"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "role_mutate_identity_claim",
+            "token": "executor_builds_jwt",
+            "jwt_claims": {
+              "iss": "https://issuer.example.test",
+              "aud": "vault-aud",
+              "sub": "sub-B-after-mutation",
+              "email": "shared@example.test",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}"
+            }
+          },
+          "auth_as": "user_B",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_B",
+          "expected_outcome": "any",
+          "captures": {
+            "user_B_entity_id": "data.entity_id",
+            "user_B_display_name": "data.display_name",
+            "user_B_policies": "data.policies",
+            "user_B_identity_policies": "data.identity_policies",
+            "user_B_meta": "data.meta",
+            "user_B_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_entity_details",
+          "params": {
+            "id": "{{user_B_entity_id}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "verified_entity_name": "data.name",
+            "verified_entity_id": "data.id"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i4_diversity_baseline",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "Baseline failed: mechanism cannot distinguish principals",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_role_mutation_applied",
+          "invariant": "I4",
+          "assertion": "role_identity_claim_after contains \"email\"",
+          "violation_description": "Role identity_claim mutation did not apply; rebinding test is inconclusive",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i4_no_rebinding_merge_after_identity_claim_change",
+          "invariant": "I4",
+          "assertion": "user_A_entity_id != user_B_entity_id",
+          "violation_description": "After changing identity_claim from sub to email, a different principal with same email mapped to the existing entity (unintended identity merge across config mutation)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I4"
+      },
+      "captured_state": {
+        "mount": "jwt",
+        "engine": "secret",
+        "session_token": "hvs.CAESIDPhTXcBD7-YRuQESyZ8G95qdlsFqqu0ghKy-1cCHc1jGh4KHGh2cy5LOE96RjF5SUxteEJCREk0cUZSaTRya0g",
+        "identity_id": "ef10bd65-b0c4-9ba8-c3a0-cee33f82cbe7",
+        "granted_policies": "['default']",
+        "metadata": "{'role': 'role_mutate_identity_claim'}",
+        "token_accessor": "t2faVf5wfZcWWv9lXf9tHWVj",
+        "user_A_session_token": "hvs.CAESINIuv1iC7rvWKAhvr2lOJwPeknwRP8m1DNwrR1AbiAW0Gh4KHGh2cy5JZGNJQlUzY2tMOW9IRXRsWFhHTHZ4cVo",
+        "user_A_identity_id": "80dafcec-6d55-9fe6-5e63-647b91cfe4d4",
+        "user_A_granted_policies": "['default']",
+        "user_A_metadata": "{'role': 'role_mutate_identity_claim'}",
+        "user_A_token_accessor": "AsGgh2lX6AxojrYMhS5VPnOG",
+        "user_A_login_success": "True",
+        "user_A_login_status": "200",
+        "user_A_login_http_status": "200",
+        "creation_ttl": "2764800",
+        "display_name": "jwt-shared@example.test",
+        "expire_time": "2026-05-11T19:19:45.033039807Z",
+        "num_uses": "0",
+        "ttl": "2764800",
+        "user_A_entity_id": "80dafcec-6d55-9fe6-5e63-647b91cfe4d4",
+        "user_A_display_name": "jwt-sub-A-before-mutation",
+        "user_A_policies": "['default']",
+        "user_A_identity_policies": "None",
+        "user_A_meta": "{'role': 'role_mutate_identity_claim'}",
+        "user_A_num_uses": "0",
+        "user_A_creation_ttl": "2764800",
+        "user_A_expire_time": "2026-05-11T19:19:45.019648094Z",
+        "user_A_ttl": "2764800",
+        "verified_entity_name": "None",
+        "verified_entity_id": "None",
+        "__modify_role_succeeded": "True",
+        "bound_subject": "",
+        "bound_audiences": "['vault-aud']",
+        "identity_claim": "email",
+        "groups_claim": "",
+        "audience_restriction": "['vault-aud']",
+        "user_B_session_token": "hvs.CAESIDPhTXcBD7-YRuQESyZ8G95qdlsFqqu0ghKy-1cCHc1jGh4KHGh2cy5LOE96RjF5SUxteEJCREk0cUZSaTRya0g",
+        "user_B_identity_id": "ef10bd65-b0c4-9ba8-c3a0-cee33f82cbe7",
+        "user_B_granted_policies": "['default']",
+        "user_B_metadata": "{'role': 'role_mutate_identity_claim'}",
+        "user_B_token_accessor": "t2faVf5wfZcWWv9lXf9tHWVj",
+        "user_B_login_success": "True",
+        "user_B_login_status": "200",
+        "user_B_login_http_status": "200",
+        "user_B_entity_id": "ef10bd65-b0c4-9ba8-c3a0-cee33f82cbe7",
+        "user_B_display_name": "jwt-shared@example.test",
+        "user_B_policies": "['default']",
+        "user_B_identity_policies": "None",
+        "user_B_meta": "{'role': 'role_mutate_identity_claim'}",
+        "user_B_num_uses": "0",
+        "user_B_creation_ttl": "2764800",
+        "user_B_expire_time": "2026-05-11T19:19:45.033039807Z",
+        "user_B_ttl": "2764800"
+      }
+    }
+  }
+]

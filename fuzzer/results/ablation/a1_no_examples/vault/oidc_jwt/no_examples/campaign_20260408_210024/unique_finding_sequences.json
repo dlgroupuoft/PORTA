@@ -1,0 +1,241 @@
+[
+  {
+    "finding": {
+      "finding_id": "52bb54cc6a14ca26",
+      "sequence_id": "seq_I3_jwt_signing_key_rotation_pubkeys",
+      "sequence_description": "JWT signing key rotation: configure trust with key-A, baseline login succeeds; rotate trust to key-B via jwt_validation_pubkeys; re-login with key-A-signed JWT must be rejected (no stale key cache).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attack_old_keyA_after_rotation_login_status >= 400\nEvaluation: user_attack_old_keyA_after_rotation_login_status=200 >= 400 \u2192 False\nImplication: After rotating trusted pubkeys to key-B, Vault still accepted a key-A JWT; indicates stale trust anchor/caching incoherence (I3).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attack_old_keyA_after_rotation_login_status >= 400",
+        "evaluation": "user_attack_old_keyA_after_rotation_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attack_old_keyA_after_rotation_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I3_jwt_signing_key_rotation_pubkeys",
+      "description": "JWT signing key rotation: configure trust with key-A, baseline login succeeds; rotate trust to key-B via jwt_validation_pubkeys; re-login with key-A-signed JWT must be rejected (no stale key cache).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: After configure_jwt_validation rotates the active trust anchor, new logins must be validated against the updated trust source immediately; acceptance of old-key tokens indicates stale trust state or cache incoherence.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 7,
+      "events_failed": 0,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "mount": "jwt",
+            "auth_type": "jwt",
+            "description": "jwt mount for I3 signing key rotation",
+            "config": {},
+            "local": false,
+            "seal_wrap": false,
+            "external_entropy_access": false,
+            "options": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwt_validation_pubkeys": [
+              "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwfuzzerKeyAExampleOnlyDoNotUseInProd\n-----END PUBLIC KEY-----"
+            ],
+            "bound_issuer": "https://issuer.rotate.example.test",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "role_i3_rotate"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_auth_role",
+          "params": {
+            "mount": "jwt",
+            "role_name": "role_i3_rotate",
+            "role_type": "jwt",
+            "bound_audiences": [
+              "vault-rotate-aud"
+            ],
+            "identity_claim": "sub",
+            "claim_constraints": {},
+            "claim_constraint_type": "string",
+            "claim_mappings": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "role_i3_rotate",
+            "token": "executor_generated",
+            "jwt_claims": {
+              "iss": "https://issuer.rotate.example.test",
+              "sub": "user-keyA",
+              "aud": "vault-rotate-aud",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}",
+              "kid": "keyA"
+            },
+            "jwt_header": {
+              "kid": "keyA"
+            }
+          },
+          "auth_as": "user_control_keyA",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "control_keyA_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_keyA",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_keyA_entity_id": "data.entity_id",
+            "user_control_keyA_display_name": "data.display_name",
+            "user_control_keyA_policies": "data.policies",
+            "user_control_keyA_identity_policies": "data.identity_policies",
+            "user_control_keyA_meta": "data.meta",
+            "user_control_keyA_num_uses": "data.num_uses"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "configure_jwt_validation",
+          "params": {
+            "mount": "jwt",
+            "jwt_validation_pubkeys": [
+              "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwfuzzerKeyBExampleOnlyDoNotUseInProd\n-----END PUBLIC KEY-----"
+            ],
+            "bound_issuer": "https://issuer.rotate.example.test",
+            "jwt_supported_algs": [
+              "RS256"
+            ],
+            "default_role": "role_i3_rotate"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "mount": "jwt",
+            "role": "role_i3_rotate",
+            "token": "executor_generated",
+            "jwt_claims": {
+              "iss": "https://issuer.rotate.example.test",
+              "sub": "user-keyA",
+              "aud": "vault-rotate-aud",
+              "iat": "{{now_epoch}}",
+              "exp": "{{now_epoch_plus_3600}}",
+              "kid": "keyA"
+            },
+            "jwt_header": {
+              "kid": "keyA"
+            }
+          },
+          "auth_as": "user_attack_old_keyA_after_rotation",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "attack_old_keyA_http_status"
+          },
+          "phase": "login"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I3_jwt_signing_key_rotation_pubkeys_0",
+          "invariant": "I3",
+          "assertion": "user_control_keyA_login_success == true",
+          "violation_description": "Control login with key-A failed; cannot test rotation coherence.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I3_jwt_signing_key_rotation_pubkeys_1",
+          "invariant": "I3",
+          "assertion": "user_attack_old_keyA_after_rotation_login_status >= 400",
+          "violation_description": "After rotating trusted pubkeys to key-B, Vault still accepted a key-A JWT; indicates stale trust anchor/caching incoherence (I3).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "mount": "jwt",
+        "engine": "secret",
+        "session_token": "hvs.CAESIMotUQHDqJxiweUWZrAJD0wix-jhGSLn2kGTADbAFBTEGh4KHGh2cy5ZMEdlOXFmbWRoMnZoRThxV0JrbGxEUDE",
+        "identity_id": "085993df-fb5f-2a17-4685-185cc66fc06a",
+        "granted_policies": "['default']",
+        "metadata": "{'role': 'role_i3_rotate'}",
+        "token_accessor": "cmbJ9rYC9aeMxzYovKoCC9Xk",
+        "http_status": "None",
+        "user_control_keyA_session_token": "hvs.CAESIFr7chma4pTTk8iVbwtvx4bl7pzLC95u8qYVYa_LKyQcGh4KHGh2cy5xS0V2RXlHNjNadThSYkRDZTJENVdIejM",
+        "user_control_keyA_identity_id": "085993df-fb5f-2a17-4685-185cc66fc06a",
+        "user_control_keyA_granted_policies": "['default']",
+        "user_control_keyA_metadata": "{'role': 'role_i3_rotate'}",
+        "user_control_keyA_token_accessor": "ezbjvGLro75osl2BWdh4czGP",
+        "user_control_keyA_login_success": "True",
+        "user_control_keyA_login_status": "200",
+        "user_control_keyA_login_http_status": "200",
+        "creation_ttl": "2764800",
+        "display_name": "jwt-user-keyA",
+        "expire_time": "2026-05-10T21:21:05.14772791Z",
+        "num_uses": "0",
+        "ttl": "2764800",
+        "user_control_keyA_entity_id": "085993df-fb5f-2a17-4685-185cc66fc06a",
+        "user_control_keyA_display_name": "jwt-user-keyA",
+        "user_control_keyA_policies": "['default']",
+        "user_control_keyA_identity_policies": "None",
+        "user_control_keyA_meta": "{'role': 'role_i3_rotate'}",
+        "user_control_keyA_num_uses": "0",
+        "user_control_keyA_creation_ttl": "2764800",
+        "user_control_keyA_expire_time": "2026-05-10T21:21:05.14772791Z",
+        "user_control_keyA_ttl": "2764800",
+        "user_attack_old_keyA_after_rotation_session_token": "hvs.CAESIMotUQHDqJxiweUWZrAJD0wix-jhGSLn2kGTADbAFBTEGh4KHGh2cy5ZMEdlOXFmbWRoMnZoRThxV0JrbGxEUDE",
+        "user_attack_old_keyA_after_rotation_identity_id": "085993df-fb5f-2a17-4685-185cc66fc06a",
+        "user_attack_old_keyA_after_rotation_granted_policies": "['default']",
+        "user_attack_old_keyA_after_rotation_metadata": "{'role': 'role_i3_rotate'}",
+        "user_attack_old_keyA_after_rotation_token_accessor": "cmbJ9rYC9aeMxzYovKoCC9Xk",
+        "user_attack_old_keyA_after_rotation_login_success": "True",
+        "user_attack_old_keyA_after_rotation_login_status": "200",
+        "user_attack_old_keyA_after_rotation_login_http_status": "200"
+      }
+    }
+  }
+]

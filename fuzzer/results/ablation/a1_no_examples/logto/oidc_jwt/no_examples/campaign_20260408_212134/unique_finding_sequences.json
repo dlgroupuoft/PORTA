@@ -1,0 +1,248 @@
+[
+  {
+    "finding": {
+      "finding_id": "a2c8bcb7595787be",
+      "sequence_id": "seq_I2_oidc_sso_nonce_bypass_cross_session_control",
+      "sequence_description": "I2 attack: probe OIDC SSO freshness by attempting a nonce-less IdP response acceptance (mock IdP omits nonce) across two distinct upstream principals (sub changes). Includes a password-login control to ensure the tenant/app is functional. Expected secure behavior: both SSO attempts are rejected (>=400) regardless of upstream principal changes; control password login succeeds.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "OIDC SSO verify accepted id_token without nonce claim. The mock IdP omits nonce by default; per OIDC Core 3.1.3.7 \u00a711, the RP must reject id_tokens with missing nonce when nonce was sent in the authorization request. Nonce validation bypassed.",
+      "cve_analog": "none",
+      "evidence": {
+        "connector_id": "g48u69qlbjav",
+        "mutation_type": "i2_oidc_sso_nonce_bypass"
+      },
+      "detection_source": "L1_syntactic",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_oidc_sso_nonce_bypass_cross_session_control",
+      "description": "I2 attack: probe OIDC SSO freshness by attempting a nonce-less IdP response acceptance (mock IdP omits nonce) across two distinct upstream principals (sub changes). Includes a password-login control to ensure the tenant/app is functional. Expected secure behavior: both SSO attempts are rejected (>=400) regardless of upstream principal changes; control password login succeeds.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: If Logto accepts an OIDC SSO id_token missing nonce (when nonce was sent), the callback artifact can be replayed or reused across sessions/principals, violating freshness/anti-replay expectations for OIDC login responses.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 9,
+      "events_succeeded": 6,
+      "events_failed": 3,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i2_ctrl_user",
+            "password": "P@ssw0rd!12345",
+            "name": "I2 Control User",
+            "primary_email": "i2_ctrl_user@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "identity_id": "setup_control_identity_id",
+            "http_status": "setup_control_user_http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "i2_ctrl_user",
+            "password": "P@ssw0rd!12345",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "session_user_control_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "session_token": "user_control_pwd_session_token",
+            "http_status": "user_control_pwd_login_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_pwd_entity_id": "sub",
+            "user_control_pwd_display_name": "username",
+            "user_control_pwd_email": "email",
+            "user_control_pwd_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "attackerA-sub-001",
+            "email": "attackerA@example.com",
+            "name": "Attacker A",
+            "groups": "i2-testers",
+            "email_verified": "false"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "setup_set_claims_a_http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "mutation_type": "i2_oidc_sso_nonce_bypass",
+            "saml_response": "AUTO",
+            "relay_state": "AUTO"
+          },
+          "auth_as": "session_user_attackerA_oidc_sso",
+          "expected_outcome": "any",
+          "captures": {
+            "session_token": "user_attackerA_oidc_sso_session_token",
+            "http_status": "user_attackerA_oidc_sso_login_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "attackerB-sub-002",
+            "email": "attackerB@example.com",
+            "name": "Attacker B",
+            "groups": "i2-testers",
+            "email_verified": "false"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "setup_set_claims_b_http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "mutation_type": "i2_oidc_sso_nonce_bypass",
+            "saml_response": "AUTO",
+            "relay_state": "AUTO"
+          },
+          "auth_as": "session_user_attackerB_oidc_sso",
+          "expected_outcome": "any",
+          "captures": {
+            "session_token": "user_attackerB_oidc_sso_session_token",
+            "http_status": "user_attackerB_oidc_sso_login_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attackerA_oidc_sso",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attackerA_oidc_sso_entity_id": "sub",
+            "user_attackerA_oidc_sso_display_name": "username",
+            "user_attackerA_oidc_sso_email": "email",
+            "user_attackerA_oidc_sso_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attackerB_oidc_sso",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attackerB_oidc_sso_entity_id": "sub",
+            "user_attackerB_oidc_sso_display_name": "username",
+            "user_attackerB_oidc_sso_email": "email",
+            "user_attackerB_oidc_sso_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I2_oidc_sso_nonce_bypass_cross_session_control_0",
+          "invariant": "I2",
+          "assertion": "user_control_pwd_login_http_status == 200 AND user_control_pwd_http_status == 200",
+          "violation_description": "Control password login failed; cannot attribute SSO rejection/acceptance to nonce/freshness enforcement.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I2_oidc_sso_nonce_bypass_cross_session_control_1",
+          "invariant": "I2",
+          "assertion": "user_attackerA_oidc_sso_login_http_status >= 400",
+          "violation_description": "Logto accepted an OIDC SSO login response missing nonce (attackerA); should be rejected to enforce freshness/anti-replay.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I2_oidc_sso_nonce_bypass_cross_session_control_2",
+          "invariant": "I2",
+          "assertion": "user_attackerB_oidc_sso_login_http_status >= 400",
+          "violation_description": "Logto accepted an OIDC SSO login response missing nonce (attackerB); should be rejected to enforce freshness/anti-replay.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "g48u69qlbjav",
+        "saml_sso_connector_id": "m35pjhb6puha",
+        "test_app_client_id": "0zhewqwl5leajb4pe32mq",
+        "test_app_client_secret": "#internal:oRAXBgQO8UaSwgIJXZKt0u0R3k5TEeoP",
+        "m2m_app_client_id": "49ff8mftecflhx40hsdmd",
+        "m2m_app_client_secret": "#internal:gvrb6o63viSiJbMygAo7k1A0IQiKoSDO",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "j0pj2inc4oiq",
+        "username": "i2_ctrl_user",
+        "http_status": "None",
+        "session_token": "None",
+        "session_user_control_pwd_session_token": "ftg-K59ztaDGZZirPi2RUxQsBET15A2DRh0qcVquRjU",
+        "session_user_control_pwd_login_success": "True",
+        "session_user_control_pwd_login_status": "200",
+        "session_user_control_pwd_login_http_status": "200",
+        "user_control_pwd_entity_id": "None",
+        "user_control_pwd_display_name": "i2_ctrl_user",
+        "user_control_pwd_email": "None",
+        "user_control_pwd_groups": "None",
+        "session_user_attackerA_oidc_sso_session_token": "SCiVsdMAJnkWycFX6QeVDa_dlNy2ycXvYb_jdDGybBs",
+        "session_user_attackerA_oidc_sso_login_success": "True",
+        "session_user_attackerA_oidc_sso_login_status": "200",
+        "session_user_attackerA_oidc_sso_login_http_status": "200",
+        "session_user_attackerB_oidc_sso_session_token": "GTKj4EfUn7JfNdv_dIPGAd9xk2b-_zRvMwmKy_k7YIM",
+        "session_user_attackerB_oidc_sso_login_success": "True",
+        "session_user_attackerB_oidc_sso_login_status": "200",
+        "session_user_attackerB_oidc_sso_login_http_status": "200",
+        "user_attackerA_oidc_sso_entity_id": "None",
+        "user_attackerA_oidc_sso_display_name": "i2_ctrl_user",
+        "user_attackerA_oidc_sso_email": "None",
+        "user_attackerA_oidc_sso_groups": "None",
+        "user_attackerB_oidc_sso_entity_id": "None",
+        "user_attackerB_oidc_sso_display_name": "i2_ctrl_user",
+        "user_attackerB_oidc_sso_email": "None",
+        "user_attackerB_oidc_sso_groups": "None"
+      }
+    }
+  }
+]

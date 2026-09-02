@@ -1,0 +1,405 @@
+{
+  "name": "dex",
+  "base_url": "http://localhost:5556",
+  "admin_auth": {
+    "header": "Authorization",
+    "value": "Bearer {admin_token}"
+  },
+  "supported_protocols": [
+    "oidc_jwt",
+    "saml"
+  ],
+  "identity_carrying_types": [
+    "jwt",
+    "password",
+    "saml",
+    "ldap",
+    "cert"
+  ],
+  "api_mapping": {
+    "oidc_jwt": {
+      "login_with_mock": {
+        "method": "GET",
+        "path": "/dex/auth",
+        "body_map": {
+          "client_id": "client_id",
+          "redirect_uri": "redirect_uri",
+          "response_type": "response_type",
+          "scope": "scope",
+          "state": "state",
+          "connector_id": "connector_id"
+        },
+        "response_map": {
+          "session_token": "auth_code"
+        },
+        "auth": "none",
+        "default_params": {
+          "client_id": "valence-test-client",
+          "redirect_uri": "http://localhost:9090/callback",
+          "response_type": "code",
+          "scope": "openid email groups profile",
+          "state": "valence-test",
+          "connector_id": "mock"
+        },
+        "metadata": {
+          "follow_redirects": false
+        },
+        "note": "Initiate mock connector login; follows redirect chain to capture auth code"
+      },
+      "exchange_code_for_token": {
+        "method": "POST",
+        "path": "/dex/token",
+        "body_map": {
+          "grant_type": "grant_type",
+          "code": "code",
+          "redirect_uri": "redirect_uri",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "pkce_verifier": "code_verifier",
+          "requested_token_type": "requested_token_type",
+          "subject_token": "subject_token",
+          "subject_token_type": "subject_token_type",
+          "connector_id": "connector_id",
+          "scope": "scope"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "id_token": "id_token",
+          "refresh_token": "refresh_token",
+          "issued_token_type": "issued_token_type",
+          "token_type": "token_type",
+          "expires_in": "expires_in"
+        },
+        "content_type": "form",
+        "auth": "none",
+        "default_params": {
+          "grant_type": "authorization_code",
+          "redirect_uri": "http://localhost:9090/callback",
+          "client_id": "valence-test-client",
+          "client_secret": "valence-test-secret"
+        }
+      },
+      "verify_granted_identity": {
+        "method": "GET",
+        "path": "/dex/userinfo",
+        "response_map": {
+          "identity_id": "sub",
+          "display_name": "email",
+          "email": "email",
+          "granted_policies": "groups",
+          "groups": "groups"
+        },
+        "auth": "session",
+        "note": "Standard OIDC UserInfo endpoint (from discovery)"
+      },
+      "get_jwks": {
+        "method": "GET",
+        "path": "/dex/keys",
+        "response_map": {
+          "keys": "keys"
+        },
+        "auth": "none",
+        "note": "JWKS endpoint for public key retrieval (from discovery)"
+      },
+      "token_exchange": {
+        "method": "POST",
+        "path": "/dex/token",
+        "body_map": {
+          "grant_type": "grant_type",
+          "subject_token": "subject_token",
+          "subject_token_type": "subject_token_type",
+          "connector_id": "connector_id",
+          "scope": "scope",
+          "requested_token_type": "requested_token_type",
+          "client_id": "client_id",
+          "client_secret": "client_secret"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "token_type": "token_type",
+          "issued_token_type": "issued_token_type"
+        },
+        "auth": "client",
+        "content_type": "form",
+        "default_params": {
+          "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+          "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+          "connector_id": "mock",
+          "requested_token_type": "urn:ietf:params:oauth:token-type:id_token"
+        }
+      }
+    },
+    "saml": {
+      "saml_login": {
+        "method": "POST",
+        "path": "/dex/callback",
+        "body_map": {
+          "SAMLResponse": "SAMLResponse",
+          "RelayState": "RelayState"
+        },
+        "response_map": {
+          "session_token": "auth_code"
+        },
+        "content_type": "form",
+        "auth": "none",
+        "metadata": {
+          "follow_redirects": false,
+          "initiate_saml_flow": true,
+          "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+          "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+          "saml_idp_issuer": "http://mock-saml-idp"
+        },
+        "note": "SAML ACS endpoint; executor auto-generates attacker SAMLResponse; captures code from redirect"
+      },
+      "exchange_code_for_token": {
+        "method": "POST",
+        "path": "/dex/token",
+        "body_map": {
+          "grant_type": "grant_type",
+          "code": "code",
+          "redirect_uri": "redirect_uri",
+          "client_id": "client_id",
+          "client_secret": "client_secret"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "id_token": "id_token",
+          "refresh_token": "refresh_token",
+          "expires_in": "expires_in",
+          "token_type": "token_type"
+        },
+        "content_type": "form",
+        "auth": "none",
+        "default_params": {
+          "grant_type": "authorization_code",
+          "redirect_uri": "http://localhost:9090/callback",
+          "client_id": "valence-test-client",
+          "client_secret": "valence-test-secret"
+        }
+      },
+      "verify_granted_identity": {
+        "method": "GET",
+        "path": "/dex/userinfo",
+        "response_map": {
+          "identity_id": "sub",
+          "display_name": "email",
+          "email": "email",
+          "granted_policies": "groups",
+          "groups": "groups"
+        },
+        "auth": "session",
+        "note": "Standard OIDC UserInfo endpoint (from discovery)"
+      },
+      "login_with_mock": {
+        "method": "GET",
+        "path": "/dex/auth",
+        "body_map": {
+          "client_id": "client_id",
+          "redirect_uri": "redirect_uri",
+          "response_type": "response_type",
+          "scope": "scope",
+          "state": "state",
+          "connector_id": "connector_id"
+        },
+        "response_map": {
+          "session_token": "auth_code"
+        },
+        "auth": "none",
+        "default_params": {
+          "client_id": "valence-test-client",
+          "redirect_uri": "http://localhost:9090/callback",
+          "response_type": "code",
+          "scope": "openid email groups profile",
+          "state": "valence-test",
+          "connector_id": "mock"
+        },
+        "metadata": {
+          "follow_redirects": false
+        },
+        "note": "Initiate mock connector login for baseline sessions; follows redirect chain to capture auth code"
+      },
+      "get_jwks": {
+        "method": "GET",
+        "path": "/dex/keys",
+        "response_map": {
+          "keys": "keys"
+        },
+        "auth": "none",
+        "note": "JWKS endpoint for public key retrieval (from discovery)"
+      }
+    }
+  },
+  "known_behaviors": [
+    {
+      "id": "dex_refresh_token_rotation_by_design",
+      "description": "Dex issues a new refresh token on every successful refresh by default.",
+      "invariants": [
+        "I2"
+      ],
+      "conditions": {
+        "refresh_token": "changes_between_successive_refreshes"
+      },
+      "source": "configuration/tokens.md",
+      "note": "Token changes across refreshes are expected and should not be flagged as session confusion or token corruption."
+    },
+    {
+      "id": "dex_saml_offline_access_ignored",
+      "description": "The SAML connector ignores the offline_access scope and does not issue refresh tokens.",
+      "invariants": [
+        "I2"
+      ],
+      "conditions": {
+        "connector": "saml",
+        "request.scope": "contains offline_access",
+        "response.refresh_token": "absent"
+      },
+      "source": "connectors/saml.md and configuration/custom-scopes-claims-clients.md",
+      "note": "Absence of a refresh token for SAML logins is by design, not a grant truncation bug."
+    },
+    {
+      "id": "dex_token_exchange_token_in_access_token_field",
+      "description": "In token exchange responses, the issued token is always returned in the access_token field regardless of requested_token_type, with issued_token_type describing what it is.",
+      "invariants": [
+        "I1"
+      ],
+      "conditions": {
+        "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+        "response.access_token": "present",
+        "response.issued_token_type": "present"
+      },
+      "source": "guides/token-exchange.md",
+      "note": "Test harnesses must inspect issued_token_type instead of assuming access_token always means a standard OAuth access token."
+    },
+    {
+      "id": "dex_oidc_groups_may_be_stale_without_refresh",
+      "description": "OIDC connector group claims only update when the ID token is refreshed; regular connector behavior can leave groups stale, so groups are disabled by default unless explicitly enabled.",
+      "invariants": [
+        "I2",
+        "I5"
+      ],
+      "conditions": {
+        "connector.type": "oidc",
+        "config.insecureEnableGroups": true
+      },
+      "source": "connectors/oidc.md",
+      "note": "Observed stale group membership after upstream changes may be expected depending on connector configuration and refresh timing."
+    },
+    {
+      "id": "dex_claim_mapping_non_override_default",
+      "description": "OIDC claimMapping does not replace a standard claim already present in the upstream ID token unless overrideClaimMapping is enabled.",
+      "invariants": [
+        "I4"
+      ],
+      "conditions": {
+        "connector.type": "oidc",
+        "config.overrideClaimMapping": false
+      },
+      "source": "connectors/oidc.md",
+      "note": "Unexpected retention of the original standard claim value is by design and should not be mistaken for failed mapping logic."
+    },
+    {
+      "id": "dex_public_client_localhost_redirect_restriction",
+      "description": "Public clients without explicit redirectURIs only allow localhost-based redirects or the out-of-band urn URI.",
+      "invariants": [
+        "I3"
+      ],
+      "conditions": {
+        "client.public": true,
+        "client.redirectURIs": "omitted"
+      },
+      "source": "configuration/custom-scopes-claims-clients.md",
+      "note": "Redirect rejection for other URIs is expected policy, not an authorization endpoint bug."
+    },
+    {
+      "id": "dex_saml_nameid_is_subject",
+      "description": "Dex uses the SAML NameID element as the stable downstream user identifier.",
+      "invariants": [
+        "I4"
+      ],
+      "conditions": {
+        "connector.type": "saml"
+      },
+      "source": "connectors/saml.md overview and configuration",
+      "note": "Principal binding tests must account for NameID-driven identity mapping; differing email/username attributes do not override the core subject identifier."
+    },
+    {
+      "id": "dex_saml_requires_inresponseto",
+      "description": "Dex rejects unsolicited SAML responses because it requires an AuthnRequest/Response pair and validates InResponseTo.",
+      "invariants": [
+        "I3"
+      ],
+      "conditions": {
+        "connector.type": "saml",
+        "saml.response.InResponseTo": "missing_or_unmatched"
+      },
+      "source": "connectors/saml.md overview",
+      "note": "A failed login with an otherwise valid-looking assertion may be expected if the response is not bound to a Dex-initiated session."
+    },
+    {
+      "id": "dex_saml_group_filtering_excludes_unlisted_groups",
+      "description": "When filterGroups is enabled, Dex intentionally drops groups not present in allowedGroups from the groups claim.",
+      "invariants": [
+        "I5"
+      ],
+      "conditions": {
+        "connector.type": "saml",
+        "config.filterGroups": true
+      },
+      "source": "connectors/saml.md group filtering",
+      "note": "Missing upstream groups in the resulting token may be expected policy behavior rather than an authorization binding bug."
+    }
+  ],
+  "verification_fields": {
+    "identity_field": "sub",
+    "identity_name_field": "email",
+    "policies_field": "groups",
+    "groups_field": "groups"
+  },
+  "api_constraints": [
+    "CRITICAL: Dex does NOT support token introspection (RFC 7662). Do NOT use introspect_token events. Verify identity via verify_granted_identity (userinfo) only.",
+    "CRITICAL: redirect_uri MUST be exactly 'http://localhost:9090/callback' \u2014 this is the only registered redirect URI for valence-test-client.",
+    "CRITICAL: client_id MUST be 'valence-test-client' and client_secret MUST be 'valence-test-secret' \u2014 these are the only registered credentials.",
+    "CRITICAL: connector_id for mock connector login MUST be 'mock'.",
+    "CRITICAL for I3 (Flow Coherence) PKCE testing: The Dex mock connector returns the SAME identity (email, sub) for ALL users regardless of login parameters. Therefore, I3 assertions MUST check HTTP status codes (e.g., exchange_code_for_token returns non-200 when code_verifier is missing/wrong) \u2014 do NOT compare emails or entity_ids across users. Capture the exchange HTTP status and assert it is non-200 for the attack path.",
+    "All login requests require the openid scope for OpenID Connect behavior.",
+    "AudienceRestriction is checked against entityIssuer when configured; otherwise against redirectURI.",
+    "CA material for SAML signature validation can be supplied either as a file path (ca) or inline base64 data (caData).",
+    "Cross-client audience minting requires the target client to list the acting client in trustedPeers.",
+    "Dex is configured primarily through static config files; the documented runtime API is gRPC for management, while OAuth/OIDC login and verification use HTTP endpoints.",
+    "Dex must initiate the SAML flow and validates the SAML Response InResponseTo value; unsolicited/unprompted AuthnResponses are not accepted.",
+    "Dex persists state for refresh tokens, replay prevention, and signing key rotation; storage is security-sensitive.",
+    "Dex v2 is configured primarily through a static config file; connectors are not dynamically managed through documented REST endpoints.",
+    "Dex's management API is gRPC only, not REST; no exact HTTP paths for connector creation or modification are documented.",
+    "For exchanging upstream access tokens through the OIDC connector, getUserInfo must be enabled if the upstream token is opaque and claims must be fetched from UserInfo.",
+    "Group filtering only applies when groupsAttr is configured and the downstream request includes the groups scope.",
+    "If filterGroups is true, groups not listed in allowedGroups are excluded from the resulting groups claim.",
+    "If refresh token rotation is disabled, administrators should also configure absoluteLifetime or validIfNotUsedFor to preserve security.",
+    "If the SAML response assertion status contains a Destination element, it must exactly match the configured redirectURI.",
+    "Kubernetes OIDC integrations typically trust ID tokens for only one client audience unless cross-client trust is used.",
+    "LDAP authentication sends the user's plaintext password to the LDAP server; TLS is strongly recommended and insecureNoSSL may be removed in a future release.",
+    "LDAP searches returning multiple user entries are treated as ambiguous and fail authentication.",
+    "OIDC connector claimMapping only maps a non-standard claim when the standard claim is absent, unless overrideClaimMapping is enabled.",
+    "OIDC connector group claims are disabled by default unless insecureEnableGroups is set, because groups only refresh on ID token refresh and may become stale.",
+    "OIDC connector issuer must match provider discovery unless issuerAlias is configured for off-spec providers.",
+    "Password grant only works when oauth2.grantTypes includes \"password\" and oauth2.passwordConnector is configured.",
+    "Public clients without explicit redirectURIs only support redirects beginning with http://localhost or the special urn:ietf:wg:oauth:2.0:oob URI.",
+    "Refresh token rotation is enabled by default: every refresh returns a new refresh token.",
+    "SAML authentication uses the HTTP POST binding and submits the response to /callback/{connector_id}.",
+    "SAML connector does not support signed AuthnRequests or encrypted attributes.",
+    "SAML redirectURI must exactly match the Destination in the assertion status if that element is present.",
+    "SAML responses must match the initiated AuthnRequest via InResponseTo; Dex does not accept unsolicited SAML responses.",
+    "Skipping signature validation via insecureSkipSignatureValidation is documented as testing-only and insecure.",
+    "The Dex gRPC API is not REST and does not provide authentication or authorization beyond TLS client authentication.",
+    "The SAML connector does not support encrypted attributes.",
+    "The SAML connector does not support refresh tokens; offline_access is ignored for SAML logins.",
+    "The SAML connector does not support signed AuthnRequests.",
+    "The SAML connector ignores offline_access and does not issue refresh tokens.",
+    "The SAML connector uses NameID as the user's unique identifier and assumes it is unique and immutable.",
+    "The gRPC API is disabled by default and, when exposed, relies only on TLS client authentication with no built-in authorization.",
+    "Token exchange only works when oauth2.grantTypes includes \"urn:ietf:params:oauth:grant-type:token-exchange\"; the deployed instance does NOT include this grant type.",
+    "nameIDPolicyFormat defaults to urn:oasis:names:tc:SAML:2.0:nameid-format:persistent if not specified.",
+    "offline_access is optional and causes refresh_token issuance, but some connectors do not support it.",
+    "reuseInterval permits reuse of the previous refresh token for a bounded interval to tolerate concurrent requests and network lag.",
+    "For I5 token exchange scope escalation testing: (1) login_with_mock with scope=openid+email to get an access_token with limited claims; (2) call token_exchange with grant_type=urn:ietf:params:oauth:grant-type:token-exchange, subject_token=<access_token>, subject_token_type=urn:ietf:params:oauth:token-type:access_token, connector_id=mock, scope=openid+email+groups+profile+federated:id, requested_token_type=urn:ietf:params:oauth:token-type:id_token; (3) decode the exchanged token and assert it does NOT contain groups or federated_claims. If it does, scope escalation occurred."
+  ]
+}

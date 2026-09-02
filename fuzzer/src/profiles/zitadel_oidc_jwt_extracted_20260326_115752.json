@@ -1,0 +1,720 @@
+{
+  "name": "zitadel",
+  "base_url": "http://localhost:8080",
+  "admin_auth": {
+    "header": "Authorization",
+    "value": "Bearer {admin_token}"
+  },
+  "supported_protocols": [
+    "oidc_jwt"
+  ],
+  "api_mapping": {
+    "oidc_jwt": {
+      "start_oidc_auth": {
+        "method": "GET",
+        "path": "/oauth/v2/authorize",
+        "body_map": {
+          "client_id": "client_id",
+          "redirect_uri": "redirect_uri",
+          "response_type": "response_type",
+          "scope": "scope",
+          "id_token_hint": "id_token_hint",
+          "login_hint": "login_hint",
+          "max_age": "max_age",
+          "nonce": "nonce",
+          "prompt": "prompt",
+          "state": "state",
+          "ui_locales": "ui_locales",
+          "response_mode": "response_mode",
+          "code_challenge": "code_challenge",
+          "code_challenge_method": "code_challenge_method"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "query",
+        "metadata": {
+          "follow_redirects": false
+        }
+      },
+      "exchange_code_for_token": {
+        "method": "POST",
+        "path": "/oauth/v2/token",
+        "body_map": {
+          "grant_type": "grant_type",
+          "code": "code",
+          "redirect_uri": "redirect_uri",
+          "client_id": "client_id",
+          "code_verifier": "code_verifier",
+          "client_assertion": "client_assertion",
+          "client_assertion_type": "client_assertion_type",
+          "scope": "scope",
+          "refresh_token": "refresh_token",
+          "client_secret": "client_secret"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "metadata": "id_token",
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form"
+      },
+      "login_with_jwt": {
+        "method": "POST",
+        "path": "/oauth/v2/token",
+        "body_map": {
+          "grant_type": "grant_type",
+          "jwt": "assertion",
+          "scope": "scope",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "client_assertion": "client_assertion",
+          "client_assertion_type": "client_assertion_type"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "metadata": "id_token",
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form"
+      },
+      "token_exchange": {
+        "method": "POST",
+        "path": "/oauth/v2/token",
+        "body_map": {
+          "grant_type": "grant_type",
+          "subject_token": "subject_token",
+          "subject_token_type": "subject_token_type",
+          "actor_token": "actor_token",
+          "actor_token_type": "actor_token_type",
+          "requested_token_type": "requested_token_type",
+          "scope": "scope",
+          "audience": "audience",
+          "resource": "resource",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "client_assertion": "client_assertion",
+          "client_assertion_type": "client_assertion_type"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "metadata": "id_token",
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form"
+      },
+      "verify_granted_identity": {
+        "method": "GET",
+        "path": "/oidc/v1/userinfo",
+        "body_map": {},
+        "response_map": {
+          "identity_id": "sub",
+          "metadata": ".",
+          "http_status": "_http_status"
+        },
+        "auth": "session",
+        "content_type": "query"
+      },
+      "revoke_session": {
+        "method": "POST",
+        "path": "/oauth/v2/revoke",
+        "body_map": {
+          "session_token": "token",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "client_assertion": "client_assertion",
+          "client_assertion_type": "client_assertion_type"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form"
+      }
+    }
+  },
+  "known_behaviors": {
+    "oidc_jwt": [
+      {
+        "id": "zitadel_i4_i5_2f9eaaf7",
+        "description": "JWT bearer grant authenticates service accounts/machine identities rather than end-user browser sessions.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "conditions": {
+          "operation_name": "login_with_jwt"
+        },
+        "source": "grant-types.mdx; oauth-recommended-flows.mdx",
+        "note": "Do not compare machine-token identity behavior to interactive user-login expectations."
+      },
+      {
+        "id": "zitadel_i4_i5_18db1338",
+        "description": "UserInfo returns claims only according to granted scopes; many profile and email fields are omitted unless explicitly requested.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "conditions": {
+          "operation_name": "verify_granted_identity"
+        },
+        "source": "claims.mdx; scopes.mdx; endpoints.mdx",
+        "note": "Missing optional claims is by design and should not be flagged as identity loss or authorization failure."
+      },
+      {
+        "id": "zitadel_i4_i5_cda5dc23",
+        "description": "UserInfo only returns information depending on the granted scopes.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "conditions": {
+          "path": "/oidc/v1/userinfo"
+        },
+        "source": "endpoints.mdx; claims.mdx; scopes.mdx",
+        "note": "Absence of email/profile/roles/metadata claims without corresponding scopes is by design and must not be treated as identity confusion or authorization stripping."
+      },
+      {
+        "id": "zitadel_i5_8e1082fa",
+        "description": "Token exchange may return opaque or JWT access tokens, and id_token is only returned with openid scope.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "operation_name": "token_exchange"
+        },
+        "source": "_token_exchange_response.mdx; _token_exchange_types.mdx",
+        "note": "Differences in token format or absence of id_token are by design and should not be treated as privilege anomalies."
+      },
+      {
+        "id": "zitadel_i5_a8aaaa0c",
+        "description": "Token exchange may return invalid_scope when requested scope exceeds what was granted by the resource owner.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "error": "invalid_scope"
+        },
+        "source": "endpoints.mdx",
+        "note": "This is correct authorization binding, not a bug."
+      },
+      {
+        "id": "zitadel_i5_b1218144",
+        "description": "Access tokens include all client IDs and the project ID in aud by default.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "aud": "<multiple_default_audiences>"
+        },
+        "source": "claims.mdx standard claims aud",
+        "note": "Do not treat extra default audience entries as audience escalation without first accounting for documented defaults."
+      },
+      {
+        "id": "zitadel_i2_94ebe431",
+        "description": "JWT bearer assertions are documented as signed JWTs sent to the token endpoint, but the docs do not describe jti tracking or one-time-use enforcement for authorization-grant assertions.",
+        "invariants": [
+          "I2"
+        ],
+        "conditions": {
+          "operation": "login_with_jwt"
+        },
+        "source": "endpoints.mdx; grant-types.mdx",
+        "note": "Do not flag replay_same_token or missing jti tracking as a vulnerability based on these docs alone; treat as stateless JWT behavior unless a stronger one-time-use guarantee is documented."
+      },
+      {
+        "id": "zitadel_i3_4f373114",
+        "description": "redirect_uri must match exactly one of the preregistered URIs and, for code exchange, must match exactly the redirect_uri used in the authorization request.",
+        "invariants": [
+          "I3"
+        ],
+        "conditions": {
+          "grant_type": "authorization_code"
+        },
+        "source": "endpoints.mdx; authmethods/_basic.mdx; authmethods/_pkce.mdx; authmethods/_jwtpk.mdx",
+        "note": "Failures on mismatched redirect_uri are expected and should not be reported as flow incoherence."
+      },
+      {
+        "id": "zitadel_i3_0a69bde5",
+        "description": "Invalid response_mode values on the authorization endpoint are ignored.",
+        "invariants": [
+          "I3"
+        ],
+        "conditions": {
+          "response_mode": "<invalid_value>"
+        },
+        "source": "endpoints.mdx authorization_endpoint response modes",
+        "note": "A flow continuing with default response handling after an invalid response_mode is documented behavior, not a coherence bug."
+      },
+      {
+        "id": "zitadel_i4_1be48211",
+        "description": "The userinfo endpoint returns ZITADEL's internal subject identifier in sub rather than echoing an external login name or JWT assertion label.",
+        "invariants": [
+          "I4"
+        ],
+        "conditions": {
+          "sub": "<internal_subject_id>"
+        },
+        "source": "claims.mdx standard claims sub",
+        "note": "Avoid false I4 positives when the sent identifier is a service-account userId, clientId, or external username string."
+      }
+    ]
+  },
+  "verification_fields": {
+    "identity_field": "sub",
+    "identity_name_field": "preferred_username",
+    "policies_field": "urn:zitadel:iam:org:project:roles",
+    "groups_field": "urn:zitadel:iam:org:project:roles"
+  },
+  "api_constraints": {
+    "oidc_jwt": [
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 expired_token and future_token tests against login_with_jwt, the JWT bearer assertion itself must carry time claims acceptable to ZITADEL: aud MUST include the ZITADEL issuing domain, exp must be in the future for control tokens, and iat MUST NOT be older than 1 hour. Use a control assertion with iat={{now_epoch}} and exp={{now_epoch_plus_3600}}. Without a valid control, LOGIN_FAILED may reflect malformed assertion construction rather than freshness enforcement.",
+        "invariants": [
+          "I1",
+          "I2"
+        ],
+        "applies_to": [
+          "login_with_jwt"
+        ],
+        "source": "grant-types.mdx; authn-methods.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 proof-integrity tests on login_with_jwt, the JWT header must include kid matching the downloaded keyId. ZITADEL uses kid to identify the verification key. A missing or wrong kid can cause rejection before the intended signature-validation test is exercised.",
+        "invariants": [
+          "I1"
+        ],
+        "applies_to": [
+          "login_with_jwt"
+        ],
+        "source": "grant-types.mdx; authn-methods.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 issuer/audience trust tests on login_with_jwt, the assertion aud claim is exact-value based and MUST include ZITADEL's issuing domain as documented. Do not use wildcard or pattern values; there is no companion matching-mode parameter. If testing multiple issuers/audiences, generate distinct exact assertions rather than assuming glob semantics.",
+        "invariants": [
+          "I1",
+          "I4",
+          "I5"
+        ],
+        "applies_to": [
+          "login_with_jwt"
+        ],
+        "source": "grant-types.mdx; authn-methods.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 redirect_uri_mismatch tests in the authorization-code flow, exchange_code_for_token MUST send the exact same redirect_uri used in start_oidc_auth. ZITADEL requires an exact match and returns invalid_grant when the redirection URI differs. This is by-spec flow binding, not an identity bug.",
+        "invariants": [
+          "I3"
+        ],
+        "applies_to": [
+          "start_oidc_auth",
+          "exchange_code_for_token"
+        ],
+        "source": "endpoints.mdx; authmethods/_basic.mdx; authmethods/_pkce.mdx; authmethods/_jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 PKCE tests, ZITADEL supports only code_challenge_method=S256. Do not send other PKCE methods when constructing control flows. A failing exchange with a non-S256 method is invalid test setup, not evidence about code/session binding.",
+        "invariants": [
+          "I3"
+        ],
+        "applies_to": [
+          "start_oidc_auth",
+          "exchange_code_for_token"
+        ],
+        "source": "authmethods/_pkce.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 state-swap tests, start_oidc_auth SHOULD include state and the oracle must evaluate callback/code binding rather than identity comparison alone. ZITADEL documents state as the CSRF/session continuity value returned unmodified to the redirect_uri; omitting it weakens the test and can create ambiguous results.",
+        "invariants": [
+          "I3"
+        ],
+        "applies_to": [
+          "start_oidc_auth"
+        ],
+        "source": "endpoints.mdx; authmethods/_basic.mdx; authmethods/_pkce.mdx; authmethods/_jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 token-exchange audience tests, token_exchange audience MUST be a subset of the combined audiences from subject_token and actor_token. If the requested audience is outside that subset, rejection is expected by design. Use a control exchange where audience is within the documented subset before asserting any audience-binding weakness.",
+        "invariants": [
+          "I5"
+        ],
+        "applies_to": [
+          "token_exchange"
+        ],
+        "source": "_token_exchange_request.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 token-exchange scope-escalation tests, requested scope at token_exchange may be reduced or rejected when it exceeds the scope granted by the resource owner. Always compare against a control exchange with equal-or-narrower scope; do not treat rejection of broader scope as a vulnerability.",
+        "invariants": [
+          "I5"
+        ],
+        "applies_to": [
+          "token_exchange"
+        ],
+        "source": "endpoints.mdx; _token_exchange_request.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 token-exchange type tests, only documented token-type combinations are valid. In particular, subject_token_type=refresh_token is not allowed; requested_token_type defaults to access token if omitted; requested_token_type=jwt is only meaningful for the documented combinations. Invalid type combinations must not be interpreted as authorization-binding failures.",
+        "invariants": [
+          "I5"
+        ],
+        "applies_to": [
+          "token_exchange"
+        ],
+        "source": "_token_exchange_types.mdx; _token_exchange_request.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For SESSION inspection after login_with_jwt, verify_granted_identity uses /oidc/v1/userinfo and requires a user access token. The docs explicitly say to send the access_token of the user, not the client. JWT bearer service-account tokens may not yield human-user style claims at userinfo, so absence of expected profile fields is not by itself an I4 violation; rely on sub and returned claims actually documented for the granted scopes.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "applies_to": [
+          "verify_granted_identity",
+          "login_with_jwt"
+        ],
+        "source": "endpoints.mdx; claims.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 claim-presence tests, many claims are scope-gated in ZITADEL. UserInfo and token contents depend on requested scopes such as openid, profile, email, offline_access, and reserved urn:zitadel scopes. Missing claims without the corresponding scope are expected behavior, not under-grant or over-grant evidence. Always request the exact scope needed for the claim under test.",
+        "invariants": [
+          "I5"
+        ],
+        "applies_to": [
+          "start_oidc_auth",
+          "exchange_code_for_token",
+          "login_with_jwt",
+          "verify_granted_identity",
+          "token_exchange"
+        ],
+        "source": "scopes.mdx; claims.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 reserved-scope audience tests, adding urn:zitadel:iam:org:project:id:{projectid}:aud or urn:zitadel:iam:org:project:id:zitadel:aud intentionally adds audience values to the access token. Do not include these scopes in baseline/control flows unless the test specifically targets audience expansion, or you may create false positives about excess audience grants.",
+        "invariants": [
+          "I5"
+        ],
+        "applies_to": [
+          "start_oidc_auth",
+          "login_with_jwt",
+          "token_exchange"
+        ],
+        "source": "scopes.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For revoke_session, the documented revocation endpoint requires client authentication depending on the authorization method. A bare token POST may fail with invalid_client. Treat revocation as supported only when the test harness can supply the appropriate client authentication for the token being revoked; otherwise cleanup failure is environmental, not a session-lifecycle bug.",
+        "invariants": [
+          "I2"
+        ],
+        "applies_to": [
+          "revoke_session"
+        ],
+        "source": "endpoints.mdx; authn-methods.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 expired_token and future_token tests on login_with_jwt, the JWT bearer assertion MUST include aud containing ZITADEL's issuing domain, and iat MUST NOT be older than 1 hour. A failure without these baseline claims is invalid test setup, not evidence about exp/nbf enforcement.",
+        "invariants": [
+          "I1",
+          "I2"
+        ],
+        "operations": [
+          "login_with_jwt"
+        ],
+        "source": "grant-types.mdx; authn-methods.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 key-identification tests on login_with_jwt, the JWT header MUST include kid matching the downloaded keyId. Missing or wrong kid can fail before the platform reaches the intended trust/signature validation path.",
+        "invariants": [
+          "I1"
+        ],
+        "operations": [
+          "login_with_jwt"
+        ],
+        "source": "grant-types.mdx; authn-methods.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 token-freshness tests on login_with_jwt, include a CONTROL login using a valid assertion alongside the ATTACK login. Recommended control claims: iat={{now_epoch}}, exp={{now_epoch_plus_3600}}. Without a control, token rejection cannot be distinguished from broken client/service-account setup.",
+        "invariants": [
+          "I2"
+        ],
+        "operations": [
+          "login_with_jwt"
+        ],
+        "source": "endpoints.mdx; grant-types.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 redirect_uri_mismatch tests on exchange_code_for_token, ZITADEL requires redirect_uri at the token endpoint to match exactly the redirect_uri used at authorization time. Any mismatch is expected invalid_grant behavior, not a session mixup or identity bug.",
+        "invariants": [
+          "I3"
+        ],
+        "operations": [
+          "start_oidc_auth",
+          "exchange_code_for_token"
+        ],
+        "source": "endpoints.mdx; authmethods/_basic.mdx; authmethods/_pkce.mdx; authmethods/_jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 PKCE tests, when code_challenge was sent on start_oidc_auth, exchange_code_for_token MUST send client_id and the matching code_verifier. ZITADEL supports only code_challenge_method=S256. Tests using other methods are invalid setup.",
+        "invariants": [
+          "I3"
+        ],
+        "operations": [
+          "start_oidc_auth",
+          "exchange_code_for_token"
+        ],
+        "source": "authmethods/_pkce.mdx; authmethods/_pkcenative.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 state-swap tests, state is only returned to the redirect_uri and is recommended for CSRF mitigation. The executor must compare returned state values at the browser redirect boundary; the token endpoint does not validate state directly.",
+        "invariants": [
+          "I3"
+        ],
+        "operations": [
+          "start_oidc_auth",
+          "exchange_code_for_token"
+        ],
+        "source": "endpoints.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 token_exchange_wrong_audience and token_exchange_ignore_audience tests, token_exchange audience MUST be a subset of the combined audiences from subject_token and actor_token. Requests outside that subset are expected rejection and must not be reported as inconsistent authorization behavior.",
+        "invariants": [
+          "I5"
+        ],
+        "operations": [
+          "token_exchange"
+        ],
+        "source": "_token_exchange_request.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 token_exchange_scope_escalation tests, ZITADEL documents that invalid_scope is returned when requested scope exceeds the scope granted by the resource owner. The fuzzer MUST request expanded scope only after establishing a narrower baseline token, and interpret invalid_scope as correct enforcement.",
+        "invariants": [
+          "I5"
+        ],
+        "operations": [
+          "token_exchange"
+        ],
+        "source": "endpoints.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For token_exchange type tests, supported token-type combinations are constrained: subject_token_type=refresh_token is not allowed; requested_token_type defaults to access token if omitted; requested_token_type=jwt is only for specific combinations documented in the token type matrix. Unsupported combinations are invalid setup, not security findings.",
+        "invariants": [
+          "I1",
+          "I5"
+        ],
+        "operations": [
+          "token_exchange"
+        ],
+        "source": "_token_exchange_request.mdx; _token_exchange_types.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For verify_granted_identity, UserInfo returns claims depending on granted scopes. The fuzzer MUST request the relevant scopes during login before asserting presence/absence of claims such as email, profile fields, roles, or metadata. Missing claims without corresponding scope are expected behavior.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "operations": [
+          "verify_granted_identity",
+          "start_oidc_auth",
+          "login_with_jwt",
+          "token_exchange"
+        ],
+        "source": "claims.mdx; scopes.mdx; endpoints.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For revocation tests, /oauth/v2/revoke requires client authentication depending on the configured auth method. The fuzzer MUST supply the appropriate client credentials or client assertion when revoking; otherwise failure may be invalid_client rather than evidence that revocation is unsupported.",
+        "invariants": [
+          "I2",
+          "I3"
+        ],
+        "operations": [
+          "revoke_session"
+        ],
+        "source": "endpoints.mdx; authn-methods.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 freshness tests on login_with_jwt, the JWT bearer assertion MUST include exp and iat claims, and iat MUST NOT be older than 1 hour. Use template values such as iat={{now_epoch}} and exp={{now_epoch_plus_3600}} for control tokens. Without a valid control assertion, LOGIN_FAILED cannot be distinguished from broken JWT construction.",
+        "applies_to": [
+          "login_with_jwt"
+        ],
+        "invariants": [
+          "I2"
+        ],
+        "source": "grant-types.mdx JWT Profile; authn-methods.mdx JWT with Private Key"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 issuer/audience trust tests on login_with_jwt and private_key_jwt client authentication, the JWT aud claim MUST include ZITADEL's issuing domain (https://${CUSTOM_DOMAIN}). Tokens with other audiences are expected to fail by design, so do not interpret such failures as proof of signature or issuer enforcement beyond audience validation.",
+        "applies_to": [
+          "login_with_jwt",
+          "exchange_code_for_token",
+          "token_exchange"
+        ],
+        "invariants": [
+          "I1"
+        ],
+        "source": "grant-types.mdx JWT Profile; authn-methods.mdx JWT with Private Key"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 key-identification tests, JWTs used with the JWT profile or private_key_jwt client authentication MUST carry a kid header matching the downloaded keyId. Missing or mismatched kid can fail before any deeper signature-validation logic is exercised.",
+        "applies_to": [
+          "login_with_jwt",
+          "exchange_code_for_token",
+          "token_exchange"
+        ],
+        "invariants": [
+          "I1"
+        ],
+        "source": "grant-types.mdx JWT Profile; authn-methods.mdx JWT with Private Key"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 replay_same_token against login_with_jwt, do NOT flag successful reuse of the same JWT bearer assertion as a vulnerability unless the docs explicitly promise one-time-use semantics. The provided documentation describes stateless JWT bearer validation requirements (signature, issuer, expiry) and does not document jti tracking or single-use enforcement.",
+        "applies_to": [
+          "login_with_jwt"
+        ],
+        "invariants": [
+          "I2"
+        ],
+        "source": "jwt_idp.mdx; grant-types.mdx JWT Profile"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 redirect_uri_mismatch tests, exchange_code_for_token MUST send the exact same redirect_uri used at start_oidc_auth. A mismatch is expected to return invalid_grant by design and should be asserted as flow binding, not treated as an identity mismatch.",
+        "applies_to": [
+          "start_oidc_auth",
+          "exchange_code_for_token"
+        ],
+        "invariants": [
+          "I3"
+        ],
+        "source": "endpoints.mdx authorization code grant; authmethods/_basic.mdx; authmethods/_pkce.mdx; authmethods/_jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 PKCE tests, when start_oidc_auth includes code_challenge, exchange_code_for_token MUST include the matching code_verifier and client_id. ZITADEL documents S256 as the only supported code_challenge_method. Using another method or omitting code_verifier after sending a challenge is expected to fail by design.",
+        "applies_to": [
+          "start_oidc_auth",
+          "exchange_code_for_token"
+        ],
+        "invariants": [
+          "I3"
+        ],
+        "source": "authmethods/_pkce.mdx; authmethods/_pkcenative.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 state-swap tests, start_oidc_auth SHOULD include a state value and the oracle must validate callback state continuity. Omitting state weakens the test because ZITADEL only recommends state for CSRF mitigation; a missing state is not evidence of broken session binding.",
+        "applies_to": [
+          "start_oidc_auth"
+        ],
+        "invariants": [
+          "I3"
+        ],
+        "source": "endpoints.mdx authorization_endpoint additional parameters"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 scope-tightening and token-exchange escalation tests, token_exchange audience MUST be a subset of the combined audiences from subject and actor tokens. Requests outside that subset are expected to fail by design and should not be interpreted as broader authorization bugs.",
+        "applies_to": [
+          "token_exchange"
+        ],
+        "invariants": [
+          "I5"
+        ],
+        "source": "_token_exchange_request.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 token_exchange_scope_escalation tests, requested scope on token_exchange may be rejected with invalid_scope when it exceeds the scope granted by the resource owner. This is by design per the token endpoint error semantics; compare exchanged claims only when the exchange succeeds.",
+        "applies_to": [
+          "token_exchange"
+        ],
+        "invariants": [
+          "I5"
+        ],
+        "source": "endpoints.mdx token endpoint error response; _token_exchange_request.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 token type tests on token_exchange, respect ZITADEL's supported token-type matrix: subject_token_type refresh_token is not allowed; requested_token_type defaults to access token if omitted; requested_token_type jwt is only valid for specific combinations; user_id subject_token is only allowed with actor_token. Invalid combinations are expected setup failures, not vulnerabilities.",
+        "applies_to": [
+          "token_exchange"
+        ],
+        "invariants": [
+          "I5"
+        ],
+        "source": "_token_exchange_types.mdx; _token_exchange_request.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 audience tests, ZITADEL's access-token aud claim by default includes all client IDs and the project ID. Do not assume a single audience value in baseline tokens; when testing audience narrowing or wrong-audience exchange, inspect the actual aud set first.",
+        "applies_to": [
+          "login_with_jwt",
+          "exchange_code_for_token",
+          "token_exchange",
+          "verify_granted_identity"
+        ],
+        "invariants": [
+          "I5"
+        ],
+        "source": "claims.mdx standard claims aud description"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 org-binding tests via OIDC authorization, reserved scopes have enforcement semantics: urn:zitadel:iam:org:id:{id} enforces membership in the selected organization, and urn:zitadel:iam:org:domain:primary:{domainname} enforces membership plus username suffix. Failures under these scopes are expected policy enforcement, not identity confusion.",
+        "applies_to": [
+          "start_oidc_auth"
+        ],
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "source": "scopes.mdx reserved scopes"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 identity verification, verify_granted_identity returns sub as ZITADEL's internal subject identifier, not the original external username or service-account label. The fuzzer MUST compare stable identity claims/metadata with this in mind and MUST NOT expect the sent JWT subject string to be echoed by /userinfo.",
+        "applies_to": [
+          "verify_granted_identity",
+          "login_with_jwt",
+          "exchange_code_for_token",
+          "token_exchange"
+        ],
+        "invariants": [
+          "I4"
+        ],
+        "source": "claims.mdx standard claims sub description"
+      }
+    ]
+  }
+}

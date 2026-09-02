@@ -1,0 +1,3107 @@
+[
+  {
+    "finding": {
+      "finding_id": "5337c24a47c3110c",
+      "sequence_id": "seq_I1_saml_assertion_signature_toggle_mismatch",
+      "sequence_description": "Test whether Casdoor enforces assertion-level signature integrity when the application is configured to require signed assertions. Hypothesis: SP may accept an attacker-signed SAMLResponse even when Enable SAML assertion signature is enabled, indicating verification policy is not applied to the consumed semantic proof (response vs assertion signature confusion).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_saml_login_status >= 400\nEvaluation: user_attacker_saml_login_status=200 >= 400 \u2192 False\nImplication: Expected secure behavior: attacker-signed forged SAMLResponse must be rejected, especially when assertion signatures are required by application policy.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_saml_login_status >= 400",
+        "evaluation": "user_attacker_saml_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_saml_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I1_saml_assertion_signature_toggle_mismatch",
+      "description": "Test whether Casdoor enforces assertion-level signature integrity when the application is configured to require signed assertions. Hypothesis: SP may accept an attacker-signed SAMLResponse even when Enable SAML assertion signature is enabled, indicating verification policy is not applied to the consumed semantic proof (response vs assertion signature confusion).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: If the application requires assertion signatures, Casdoor must reject SAML logins where the assertion is not signed under the configured trust anchor/policy. Accepting an attacker-forged response would indicate authenticity checks are not applied to the consumed assertion semantics.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 2,
+      "events_failed": 4,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "update_application",
+          "params": {
+            "owner": "admin",
+            "name": "app-test",
+            "display_name": "app-test",
+            "organization": "test-org",
+            "client_id": "app-test",
+            "client_secret": "app-test",
+            "redirect_uris": [
+              "http://localhost:8000/callback"
+            ],
+            "grant_types": [
+              "password",
+              "authorization_code"
+            ],
+            "token_format": "JWT",
+            "expire_in_hours": 1,
+            "refresh_expire_in_hours": 24,
+            "category": "application",
+            "type": "webapp",
+            "providers": [
+              "provider-saml-test"
+            ],
+            "enable_password": true,
+            "enable_sign_up": false,
+            "enable_signin_session": true,
+            "enable_code_signin": true,
+            "enable_exclusive_signin": false,
+            "enable_webauthn": false,
+            "tags": [],
+            "saml_reply_url": "http://localhost:8000/callback",
+            "enable_saml_post_binding": true,
+            "disable_saml_attributes": false,
+            "enable_saml_assertion_signature": true,
+            "use_email_as_saml_nameid": true,
+            "cert": "cert-built-in",
+            "code_resend_timeout": 1
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "app-test",
+            "client_secret": "app-test",
+            "username": "victim_i1_sigpolicy",
+            "password": "Passw0rd!123",
+            "scope": "openid profile email"
+          },
+          "auth_as": "user_victim_pwd",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_victim_pwd.session_token}}"
+          },
+          "auth_as": "session_user_victim_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_pwd_entity_id": "sub",
+            "user_victim_pwd_identity_name": "preferred_username",
+            "user_victim_pwd_display_name": "name",
+            "user_victim_pwd_meta": "$",
+            "user_victim_pwd_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{user_victim_pwd.session_token}}",
+            "token_type_hint": "access_token",
+            "client_id": "app-test",
+            "client_secret": "app-test",
+            "token": "{{user_victim_pwd.session_token}}"
+          },
+          "auth_as": "session_user_victim_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "active": "user_victim_pwd_active",
+            "aud": "user_victim_pwd_aud",
+            "iss": "user_victim_pwd_iss",
+            "sub": "user_victim_pwd_sub",
+            "exp": "user_victim_pwd_exp",
+            "iat": "user_victim_pwd_iat",
+            "nbf": "user_victim_pwd_nbf",
+            "http_status": "user_victim_pwd_http_status_introspect",
+            "metadata": "user_victim_pwd_metadata"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO_FORGED",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state-i1-assertion-sig-policy",
+            "redirect_uri": "http://localhost:8000/callback"
+          },
+          "auth_as": "user_attacker_saml",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attacker_saml.session_token}}"
+          },
+          "auth_as": "session_user_attacker_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_saml_entity_id": "sub",
+            "user_attacker_saml_identity_name": "preferred_username",
+            "user_attacker_saml_display_name": "name",
+            "user_attacker_saml_meta": "$",
+            "user_attacker_saml_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I1_saml_assertion_signature_toggle_mismatch_0",
+          "invariant": "I1",
+          "assertion": "user_victim_pwd_login_success == true AND user_victim_pwd_http_status == 200",
+          "violation_description": "Control: password login should succeed so the app is reachable and verification endpoints work.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I1_saml_assertion_signature_toggle_mismatch_1",
+          "invariant": "I1",
+          "assertion": "user_victim_pwd_active == true",
+          "violation_description": "Control: issued access token should be active.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I1_saml_assertion_signature_toggle_mismatch_2",
+          "invariant": "I1",
+          "assertion": "user_attacker_saml_login_status >= 400",
+          "violation_description": "Expected secure behavior: attacker-signed forged SAMLResponse must be rejected, especially when assertion signatures are required by application policy.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "user_victim_pwd_login_success": "False",
+        "user_victim_pwd_login_status": "400",
+        "user_victim_pwd_login_http_status": "400",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_victim_pwd_entity_id": "None",
+        "user_victim_pwd_identity_name": "None",
+        "user_victim_pwd_display_name": "None",
+        "user_victim_pwd_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_victim_pwd_email": "None",
+        "active": "None",
+        "aud": "None",
+        "iss": "None",
+        "sub": "None",
+        "exp": "None",
+        "iat": "None",
+        "nbf": "None",
+        "http_status": "None",
+        "session_token": "5351bedf373f1876234c",
+        "user_attacker_saml_entity_id": "admin",
+        "user_attacker_saml_email": "admin",
+        "user_attacker_saml_session_token": "5351bedf373f1876234c",
+        "user_attacker_saml_login_success": "True",
+        "user_attacker_saml_login_status": "200",
+        "user_attacker_saml_login_http_status": "200",
+        "user_attacker_saml_identity_name": "None",
+        "user_attacker_saml_display_name": "None",
+        "user_attacker_saml_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "391830852a148566",
+      "sequence_id": "seq_I2_saml_onetimeuse_replay_001",
+      "sequence_description": "Replay a SAML assertion that includes <OneTimeUse/> using the same Assertion/@ID twice. First login is a control (should succeed). Second login should be rejected if OneTimeUse and/or replay cache is enforced.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_onetimeuse_replay_login_status >= 400\nEvaluation: user_attacker_onetimeuse_replay_login_status=200 >= 400 \u2192 False\nImplication: SP accepted replayed OneTimeUse assertion (second submission should be rejected)",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_onetimeuse_replay_login_status >= 400",
+        "evaluation": "user_attacker_onetimeuse_replay_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_onetimeuse_replay_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_saml_onetimeuse_replay_001",
+      "description": "Replay a SAML assertion that includes <OneTimeUse/> using the same Assertion/@ID twice. First login is a control (should succeed). Second login should be rejected if OneTimeUse and/or replay cache is enforced.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A SAML assertion marked OneTimeUse must not be accepted more than once; replaying the same Assertion/@ID should be rejected on the second submission.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 2,
+      "events_failed": 3,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "victim_i2_onetimeuse",
+            "display_name": "Victim I2 OneTimeUse",
+            "email": "victim_i2_onetimeuse@test.org",
+            "phone": "10000000001",
+            "password": "Passw0rd!123",
+            "type": "normal-user",
+            "tag": "i2-onetimeuse",
+            "is_admin": false,
+            "is_global_admin": false,
+            "is_forbidden": false,
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_user_metadata": "metadata"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state_onetimeuse_1",
+            "redirect_uri": "http://localhost:8000/callback",
+            "target_identity": "victim_i2_onetimeuse",
+            "email": "victim_i2_onetimeuse@test.org",
+            "realm": "test-org",
+            "include_onetimeuse": true,
+            "fixed_assertion_id": "_replay_onetimeuse"
+          },
+          "auth_as": "user_attacker_onetimeuse_first",
+          "expected_outcome": "any",
+          "captures": {
+            "session_token": "session_token",
+            "http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attacker_onetimeuse_first.session_token}}"
+          },
+          "auth_as": "session_user_attacker_onetimeuse_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_onetimeuse_first_entity_id": "sub",
+            "user_attacker_onetimeuse_first_identity_name": "preferred_username",
+            "user_attacker_onetimeuse_first_display_name": "name",
+            "user_attacker_onetimeuse_first_meta": "$",
+            "user_attacker_onetimeuse_first_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state_onetimeuse_2",
+            "redirect_uri": "http://localhost:8000/callback",
+            "target_identity": "victim_i2_onetimeuse",
+            "email": "victim_i2_onetimeuse@test.org",
+            "realm": "test-org",
+            "include_onetimeuse": true,
+            "fixed_assertion_id": "_replay_onetimeuse"
+          },
+          "auth_as": "user_attacker_onetimeuse_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "session_token": "session_token",
+            "http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attacker_onetimeuse_replay.session_token}}"
+          },
+          "auth_as": "session_user_attacker_onetimeuse_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_onetimeuse_replay_entity_id": "sub",
+            "user_attacker_onetimeuse_replay_identity_name": "preferred_username",
+            "user_attacker_onetimeuse_replay_display_name": "name",
+            "user_attacker_onetimeuse_replay_meta": "$",
+            "user_attacker_onetimeuse_replay_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_onetimeuse_control_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_attacker_onetimeuse_first_login_status < 400",
+          "violation_description": "Control SAML login failed; cannot evaluate OneTimeUse replay enforcement",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_onetimeuse_replay_rejected",
+          "invariant": "I2",
+          "assertion": "user_attacker_onetimeuse_replay_login_status >= 400",
+          "violation_description": "SP accepted replayed OneTimeUse assertion (second submission should be rejected)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "victim_user_metadata": "{'status': 'error', 'msg': 'Phone already exists', 'sub': '', 'name': '', 'data': None, 'data2': None, 'data3': None}",
+        "session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6InZpY3RpbV9pMl9vbmV0aW1ldXNlIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTA5VDE3OjI2OjU0WiIsInVwZGF0ZWRUaW1lI",
+        "http_status": "200",
+        "user_attacker_onetimeuse_first_entity_id": "victim_i2_onetimeuse",
+        "user_attacker_onetimeuse_first_email": "victim_i2_onetimeuse@test.org",
+        "user_attacker_onetimeuse_first_session_token": "ea45eda580053808f9f6",
+        "user_attacker_onetimeuse_first_login_success": "True",
+        "user_attacker_onetimeuse_first_login_status": "200",
+        "user_attacker_onetimeuse_first_login_http_status": "200",
+        "user_attacker_onetimeuse_first_identity_name": "None",
+        "user_attacker_onetimeuse_first_display_name": "None",
+        "user_attacker_onetimeuse_first_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_attacker_onetimeuse_replay_entity_id": "victim_i2_onetimeuse",
+        "user_attacker_onetimeuse_replay_email": "victim_i2_onetimeuse@test.org",
+        "user_attacker_onetimeuse_replay_session_token": "6461f6ee7160a9947553",
+        "user_attacker_onetimeuse_replay_login_success": "True",
+        "user_attacker_onetimeuse_replay_login_status": "200",
+        "user_attacker_onetimeuse_replay_login_http_status": "200",
+        "user_attacker_onetimeuse_replay_identity_name": "None",
+        "user_attacker_onetimeuse_replay_display_name": "None",
+        "user_attacker_onetimeuse_replay_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "67d6422a254d850d",
+      "sequence_id": "seq_I2_saml_replay_after_logout",
+      "sequence_description": "Test whether Casdoor rejects replay of the same SAML Assertion/@ID after the first session is explicitly logged out (replay cache must survive logout).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_victim_saml2_replay_login_status >= 400\nEvaluation: user_victim_saml2_replay_login_status=200 >= 400 \u2192 False\nImplication: SP accepted replay of the same SAML Assertion/@ID after logout (replay cache not enforced across logout)",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_victim_saml2_replay_login_status >= 400",
+        "evaluation": "user_victim_saml2_replay_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "status": "ok",
+          "user_victim_saml2_replay_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_saml_replay_after_logout",
+      "description": "Test whether Casdoor rejects replay of the same SAML Assertion/@ID after the first session is explicitly logged out (replay cache must survive logout).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A SAML assertion is a one-time credential artifact; even after logout, replaying the same Assertion/@ID should be rejected.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 6,
+      "events_failed": 1,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "victim_i2_replay_logout",
+            "display_name": "Victim I2 Replay Logout",
+            "email": "victim_i2_replay_logout@test.org",
+            "phone": "12025550101",
+            "password": "Passw0rd!234",
+            "type": "normal",
+            "tag": "i2-test",
+            "is_admin": false,
+            "is_global_admin": false,
+            "is_forbidden": false,
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_user_metadata": "metadata"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state_i2_replay_logout_1",
+            "redirect_uri": "http://localhost:8000/callback",
+            "fixed_assertion_id": "_i2_replay_after_logout",
+            "target_identity": "victim_i2_replay_logout",
+            "email": "victim_i2_replay_logout@test.org",
+            "realm": "test-org"
+          },
+          "auth_as": "user_victim_saml1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_saml1_session_token": "session_token",
+            "user_victim_saml1_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_victim_saml1_session_token}}"
+          },
+          "auth_as": "session_user_victim_saml1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_saml1_entity_id": "sub",
+            "user_victim_saml1_identity_name": "preferred_username",
+            "user_victim_saml1_display_name": "name",
+            "user_victim_saml1_meta": "$",
+            "user_victim_saml1_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{user_victim_saml1_session_token}}",
+            "token_type_hint": "access_token",
+            "client_id": "app-test",
+            "client_secret": "app-test",
+            "token": "{{user_victim_saml1_session_token}}"
+          },
+          "auth_as": "session_user_victim_saml1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_saml1_active": "active",
+            "user_victim_saml1_exp": "exp",
+            "user_victim_saml1_iat": "iat",
+            "user_victim_saml1_http_status": "http_status",
+            "user_victim_saml1_aud": "aud",
+            "user_victim_saml1_sub": "sub"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "logout_all": "true"
+          },
+          "auth_as": "session_user_victim_saml1",
+          "expected_outcome": "any",
+          "captures": {
+            "logout1_http_status": "http_status",
+            "logout1_status": "status",
+            "logout1_message": "message"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state_i2_replay_logout_2",
+            "redirect_uri": "http://localhost:8000/callback",
+            "fixed_assertion_id": "_i2_replay_after_logout",
+            "target_identity": "victim_i2_replay_logout",
+            "email": "victim_i2_replay_logout@test.org",
+            "realm": "test-org"
+          },
+          "auth_as": "user_victim_saml2_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_saml2_replay_session_token": "session_token",
+            "user_victim_saml2_replay_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_victim_saml2_replay_session_token}}"
+          },
+          "auth_as": "session_user_victim_saml2_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_saml2_replay_entity_id": "sub",
+            "user_victim_saml2_replay_identity_name": "preferred_username",
+            "user_victim_saml2_replay_display_name": "name",
+            "user_victim_saml2_replay_meta": "$",
+            "user_victim_saml2_replay_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_victim_saml1_login_status < 400",
+          "violation_description": "Control SAML login failed; cannot evaluate replay behavior",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_replay_rejected_even_after_logout",
+          "invariant": "I2",
+          "assertion": "user_victim_saml2_replay_login_status >= 400",
+          "violation_description": "SP accepted replay of the same SAML Assertion/@ID after logout (replay cache not enforced across logout)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "{'sub': '46b2e759-3cd7-450f-8802-644c8c5d5a78', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'victim_i2_replay_logout', 'name': 'Victim I2 Replay Logout'}",
+        "victim_user_metadata": "{'status': 'ok', 'msg': '', 'sub': '', 'name': '', 'data': 'Affected', 'data2': None, 'data3': None}",
+        "session_token": "5fc32b080bdba56d6ece",
+        "user_victim_saml1_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6InZpY3RpbV9pMl9yZXBsYXlfbG9nb3V0IiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTA5VDE3OjI2OjU1WiIsInVwZGF0ZWRUa",
+        "user_victim_saml1_http_status": "400",
+        "user_victim_saml1_entity_id": "46b2e759-3cd7-450f-8802-644c8c5d5a78",
+        "user_victim_saml1_email": "victim_i2_replay_logout@test.org",
+        "user_victim_saml1_login_success": "True",
+        "user_victim_saml1_login_status": "200",
+        "user_victim_saml1_login_http_status": "200",
+        "identity_id": "46b2e759-3cd7-450f-8802-644c8c5d5a78",
+        "identity_name": "victim_i2_replay_logout",
+        "display_name": "Victim I2 Replay Logout",
+        "user_victim_saml1_identity_name": "victim_i2_replay_logout",
+        "user_victim_saml1_display_name": "Victim I2 Replay Logout",
+        "user_victim_saml1_meta": "{'sub': '46b2e759-3cd7-450f-8802-644c8c5d5a78', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'victim_i2_replay_logout', 'name': 'Victim I2 Replay Logout'}",
+        "user_victim_saml1_identity_id": "46b2e759-3cd7-450f-8802-644c8c5d5a78",
+        "user_victim_saml1_metadata": "{'sub': '46b2e759-3cd7-450f-8802-644c8c5d5a78', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'victim_i2_replay_logout', 'name': 'Victim I2 Replay Logout'}",
+        "user_victim_saml1_active": "None",
+        "user_victim_saml1_exp": "None",
+        "user_victim_saml1_iat": "None",
+        "user_victim_saml1_aud": "None",
+        "user_victim_saml1_sub": "None",
+        "status": "ok",
+        "message": "",
+        "logout1_http_status": "200",
+        "logout1_status": "ok",
+        "logout1_message": "",
+        "user_victim_saml2_replay_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6InZpY3RpbV9pMl9yZXBsYXlfbG9nb3V0IiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTA5VDE3OjI2OjU1WiIsInVwZGF0ZWRUa",
+        "user_victim_saml2_replay_http_status": "200",
+        "user_victim_saml2_replay_entity_id": "46b2e759-3cd7-450f-8802-644c8c5d5a78",
+        "user_victim_saml2_replay_email": "victim_i2_replay_logout@test.org",
+        "user_victim_saml2_replay_login_success": "True",
+        "user_victim_saml2_replay_login_status": "200",
+        "user_victim_saml2_replay_login_http_status": "200",
+        "user_victim_saml2_replay_identity_name": "victim_i2_replay_logout",
+        "user_victim_saml2_replay_display_name": "Victim I2 Replay Logout",
+        "user_victim_saml2_replay_meta": "{'sub': '46b2e759-3cd7-450f-8802-644c8c5d5a78', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'victim_i2_replay_logout', 'name': 'Victim I2 Replay Logout'}",
+        "user_victim_saml2_replay_identity_id": "46b2e759-3cd7-450f-8802-644c8c5d5a78",
+        "user_victim_saml2_replay_metadata": "{'sub': '46b2e759-3cd7-450f-8802-644c8c5d5a78', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'victim_i2_replay_logout', 'name': 'Victim I2 Replay Logout'}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "791b330bfd83ea8c",
+      "sequence_id": "seq_I2_saml_replay_cross_principal_same_assertion_id",
+      "sequence_description": "Test whether replay detection is incorrectly scoped to principal/session by replaying the same Assertion/@ID for a different upstream principal (should still be rejected).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_bob_saml2_replay_login_status >= 400\nEvaluation: user_bob_saml2_replay_login_status=200 >= 400 \u2192 False\nImplication: SP accepted replay of the same SAML Assertion/@ID for a different principal (replay detection incorrectly scoped)",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_bob_saml2_replay_login_status >= 400",
+        "evaluation": "user_bob_saml2_replay_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_bob_saml2_replay_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_saml_replay_cross_principal_same_assertion_id",
+      "description": "Test whether replay detection is incorrectly scoped to principal/session by replaying the same Assertion/@ID for a different upstream principal (should still be rejected).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: Assertion ID replay detection must be global (at least per SP/provider), not per-user; the same Assertion/@ID must not be accepted again even if the asserted principal changes.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 6,
+      "events_failed": 0,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "alice_i2_replay_scope",
+            "display_name": "Alice I2 Replay Scope",
+            "email": "alice_i2_replay_scope@test.org",
+            "phone": "12025550111",
+            "password": "Passw0rd!234",
+            "type": "normal",
+            "tag": "i2-test",
+            "is_admin": false,
+            "is_global_admin": false,
+            "is_forbidden": false,
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "alice_user_metadata": "metadata"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "bob_i2_replay_scope",
+            "display_name": "Bob I2 Replay Scope",
+            "email": "bob_i2_replay_scope@test.org",
+            "phone": "12025550112",
+            "password": "Passw0rd!234",
+            "type": "normal",
+            "tag": "i2-test",
+            "is_admin": false,
+            "is_global_admin": false,
+            "is_forbidden": false,
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "bob_user_metadata": "metadata"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state_i2_replay_scope_1",
+            "redirect_uri": "http://localhost:8000/callback",
+            "fixed_assertion_id": "_i2_replay_cross_principal",
+            "target_identity": "alice_i2_replay_scope",
+            "email": "alice_i2_replay_scope@test.org",
+            "realm": "test-org"
+          },
+          "auth_as": "user_alice_saml1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_saml1_session_token": "session_token",
+            "user_alice_saml1_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_alice_saml1_session_token}}"
+          },
+          "auth_as": "session_user_alice_saml1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_saml1_entity_id": "sub",
+            "user_alice_saml1_identity_name": "preferred_username",
+            "user_alice_saml1_display_name": "name",
+            "user_alice_saml1_meta": "$",
+            "user_alice_saml1_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state_i2_replay_scope_2",
+            "redirect_uri": "http://localhost:8000/callback",
+            "fixed_assertion_id": "_i2_replay_cross_principal",
+            "target_identity": "bob_i2_replay_scope",
+            "email": "bob_i2_replay_scope@test.org",
+            "realm": "test-org"
+          },
+          "auth_as": "user_bob_saml2_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_bob_saml2_replay_session_token": "session_token",
+            "user_bob_saml2_replay_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_bob_saml2_replay_session_token}}"
+          },
+          "auth_as": "session_user_bob_saml2_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_bob_saml2_replay_entity_id": "sub",
+            "user_bob_saml2_replay_identity_name": "preferred_username",
+            "user_bob_saml2_replay_display_name": "name",
+            "user_bob_saml2_replay_meta": "$",
+            "user_bob_saml2_replay_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_alice_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_alice_saml1_login_status < 400",
+          "violation_description": "Control SAML login for Alice failed; cannot evaluate replay scoping",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_replay_rejected_cross_principal",
+          "invariant": "I2",
+          "assertion": "user_bob_saml2_replay_login_status >= 400",
+          "violation_description": "SP accepted replay of the same SAML Assertion/@ID for a different principal (replay detection incorrectly scoped)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "{'sub': '8ec5aca4-a626-4933-8a56-44ca7567915f', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'bob_i2_replay_scope', 'name': 'Bob I2 Replay Scope'}",
+        "alice_user_metadata": "{'status': 'ok', 'msg': '', 'sub': '', 'name': '', 'data': 'Affected', 'data2': None, 'data3': None}",
+        "bob_user_metadata": "{'status': 'ok', 'msg': '', 'sub': '', 'name': '', 'data': 'Affected', 'data2': None, 'data3': None}",
+        "session_token": "586b5caccfff2cea9e02",
+        "user_alice_saml1_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImFsaWNlX2kyX3JlcGxheV9zY29wZSIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wOVQxNzoyNjo1N1oiLCJ1cGRhdGVkVGltZ",
+        "user_alice_saml1_http_status": "200",
+        "user_alice_saml1_entity_id": "8120655e-a222-4e76-9724-9d4339b51ca9",
+        "user_alice_saml1_email": "alice_i2_replay_scope@test.org",
+        "user_alice_saml1_login_success": "True",
+        "user_alice_saml1_login_status": "200",
+        "user_alice_saml1_login_http_status": "200",
+        "identity_id": "8ec5aca4-a626-4933-8a56-44ca7567915f",
+        "identity_name": "bob_i2_replay_scope",
+        "display_name": "Bob I2 Replay Scope",
+        "user_alice_saml1_identity_name": "alice_i2_replay_scope",
+        "user_alice_saml1_display_name": "Alice I2 Replay Scope",
+        "user_alice_saml1_meta": "{'sub': '8120655e-a222-4e76-9724-9d4339b51ca9', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'alice_i2_replay_scope', 'name': 'Alice I2 Replay Scope'}",
+        "user_alice_saml1_identity_id": "8120655e-a222-4e76-9724-9d4339b51ca9",
+        "user_alice_saml1_metadata": "{'sub': '8120655e-a222-4e76-9724-9d4339b51ca9', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'alice_i2_replay_scope', 'name': 'Alice I2 Replay Scope'}",
+        "user_bob_saml2_replay_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImJvYl9pMl9yZXBsYXlfc2NvcGUiLCJjcmVhdGVkVGltZSI6IjIwMjYtMDQtMDlUMTc6MjY6NTdaIiwidXBkYXRlZFRpbWUiO",
+        "user_bob_saml2_replay_http_status": "200",
+        "user_bob_saml2_replay_entity_id": "8ec5aca4-a626-4933-8a56-44ca7567915f",
+        "user_bob_saml2_replay_email": "bob_i2_replay_scope@test.org",
+        "user_bob_saml2_replay_login_success": "True",
+        "user_bob_saml2_replay_login_status": "200",
+        "user_bob_saml2_replay_login_http_status": "200",
+        "user_bob_saml2_replay_identity_name": "bob_i2_replay_scope",
+        "user_bob_saml2_replay_display_name": "Bob I2 Replay Scope",
+        "user_bob_saml2_replay_meta": "{'sub': '8ec5aca4-a626-4933-8a56-44ca7567915f', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'bob_i2_replay_scope', 'name': 'Bob I2 Replay Scope'}",
+        "user_bob_saml2_replay_identity_id": "8ec5aca4-a626-4933-8a56-44ca7567915f",
+        "user_bob_saml2_replay_metadata": "{'sub': '8ec5aca4-a626-4933-8a56-44ca7567915f', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'bob_i2_replay_scope', 'name': 'Bob I2 Replay Scope'}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "7437877a4f41d132",
+      "sequence_id": "seq_I2_saml_expired_assertion_after_config_change",
+      "sequence_description": "Test whether an application config change (exclusive sign-in enabled) causes SAML NotOnOrAfter enforcement to regress, allowing expired assertions to be accepted on subsequent logins.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_victim_cfg_saml2_expired_login_status >= 400\nEvaluation: user_victim_cfg_saml2_expired_login_status=200 >= 400 \u2192 False\nImplication: SP accepted an expired SAML assertion after application config change (NotOnOrAfter not enforced)",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_victim_cfg_saml2_expired_login_status >= 400",
+        "evaluation": "user_victim_cfg_saml2_expired_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_victim_cfg_saml2_expired_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_saml_expired_assertion_after_config_change",
+      "description": "Test whether an application config change (exclusive sign-in enabled) causes SAML NotOnOrAfter enforcement to regress, allowing expired assertions to be accepted on subsequent logins.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: SAML assertions with NotOnOrAfter in the past must be rejected consistently across configuration changes; enabling exclusive sign-in must not disable time validity checks.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 6,
+      "events_failed": 0,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "victim_i2_expired_cfg",
+            "display_name": "Victim I2 Expired Cfg",
+            "email": "victim_i2_expired_cfg@test.org",
+            "phone": "12025550121",
+            "password": "Passw0rd!234",
+            "type": "normal",
+            "tag": "i2-test",
+            "is_admin": false,
+            "is_global_admin": false,
+            "is_forbidden": false,
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_cfg_user_metadata": "metadata"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state_i2_expired_cfg_1",
+            "redirect_uri": "http://localhost:8000/callback",
+            "fixed_assertion_id": "_i2_expired_cfg_control",
+            "target_identity": "victim_i2_expired_cfg",
+            "email": "victim_i2_expired_cfg@test.org",
+            "realm": "test-org"
+          },
+          "auth_as": "user_victim_cfg_saml1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_cfg_saml1_session_token": "session_token",
+            "user_victim_cfg_saml1_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_victim_cfg_saml1_session_token}}"
+          },
+          "auth_as": "session_user_victim_cfg_saml1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_cfg_saml1_entity_id": "sub",
+            "user_victim_cfg_saml1_identity_name": "preferred_username",
+            "user_victim_cfg_saml1_display_name": "name",
+            "user_victim_cfg_saml1_meta": "$",
+            "user_victim_cfg_saml1_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "update_application",
+          "params": {
+            "owner": "admin",
+            "name": "app-test",
+            "display_name": "app-test",
+            "organization": "test-org",
+            "client_id": "app-test",
+            "client_secret": "app-test",
+            "redirect_uris": [
+              "http://localhost:8000/callback"
+            ],
+            "grant_types": [
+              "password",
+              "authorization_code"
+            ],
+            "token_format": "JWT",
+            "expire_in_hours": 1,
+            "refresh_expire_in_hours": 24,
+            "category": "OAuth",
+            "type": "webapp",
+            "providers": [
+              "provider-saml-test"
+            ],
+            "enable_password": true,
+            "enable_sign_up": true,
+            "enable_signin_session": true,
+            "enable_code_signin": true,
+            "enable_exclusive_signin": true,
+            "enable_webauthn": false,
+            "tags": [
+              "i2-test"
+            ],
+            "saml_reply_url": "http://localhost:8000/callback",
+            "enable_saml_post_binding": true,
+            "disable_saml_attributes": false,
+            "enable_saml_assertion_signature": false,
+            "use_email_as_saml_nameid": true,
+            "cert": "cert-built-in",
+            "code_resend_timeout": 0
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state_i2_expired_cfg_2",
+            "redirect_uri": "http://localhost:8000/callback",
+            "fixed_assertion_id": "_i2_expired_cfg_attack",
+            "expired_assertion": true,
+            "target_identity": "victim_i2_expired_cfg",
+            "email": "victim_i2_expired_cfg@test.org",
+            "realm": "test-org"
+          },
+          "auth_as": "user_victim_cfg_saml2_expired",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_cfg_saml2_expired_session_token": "session_token",
+            "user_victim_cfg_saml2_expired_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_victim_cfg_saml2_expired_session_token}}"
+          },
+          "auth_as": "session_user_victim_cfg_saml2_expired",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_cfg_saml2_expired_entity_id": "sub",
+            "user_victim_cfg_saml2_expired_identity_name": "preferred_username",
+            "user_victim_cfg_saml2_expired_display_name": "name",
+            "user_victim_cfg_saml2_expired_meta": "$",
+            "user_victim_cfg_saml2_expired_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_valid_login_before_change",
+          "invariant": "I2",
+          "assertion": "user_victim_cfg_saml1_login_status < 400",
+          "violation_description": "Control SAML login failed before config change; cannot evaluate expired assertion enforcement",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_assertion_rejected_after_change",
+          "invariant": "I2",
+          "assertion": "user_victim_cfg_saml2_expired_login_status >= 400",
+          "violation_description": "SP accepted an expired SAML assertion after application config change (NotOnOrAfter not enforced)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "{'sub': '50b7934b-c5e8-4bd7-a8a4-78099078f31d', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'victim_i2_expired_cfg', 'name': 'Victim I2 Expired Cfg'}",
+        "victim_cfg_user_metadata": "{'status': 'ok', 'msg': '', 'sub': '', 'name': '', 'data': 'Affected', 'data2': None, 'data3': None}",
+        "session_token": "dd7f62e7466db9b8d68e",
+        "user_victim_cfg_saml1_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6InZpY3RpbV9pMl9leHBpcmVkX2NmZyIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wOVQxNzoyNjo1OFoiLCJ1cGRhdGVkVGltZ",
+        "user_victim_cfg_saml1_http_status": "200",
+        "user_victim_cfg_saml1_entity_id": "50b7934b-c5e8-4bd7-a8a4-78099078f31d",
+        "user_victim_cfg_saml1_email": "victim_i2_expired_cfg@test.org",
+        "user_victim_cfg_saml1_login_success": "True",
+        "user_victim_cfg_saml1_login_status": "200",
+        "user_victim_cfg_saml1_login_http_status": "200",
+        "identity_id": "50b7934b-c5e8-4bd7-a8a4-78099078f31d",
+        "identity_name": "victim_i2_expired_cfg",
+        "display_name": "Victim I2 Expired Cfg",
+        "user_victim_cfg_saml1_identity_name": "victim_i2_expired_cfg",
+        "user_victim_cfg_saml1_display_name": "Victim I2 Expired Cfg",
+        "user_victim_cfg_saml1_meta": "{'sub': '50b7934b-c5e8-4bd7-a8a4-78099078f31d', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'victim_i2_expired_cfg', 'name': 'Victim I2 Expired Cfg'}",
+        "user_victim_cfg_saml1_identity_id": "50b7934b-c5e8-4bd7-a8a4-78099078f31d",
+        "user_victim_cfg_saml1_metadata": "{'sub': '50b7934b-c5e8-4bd7-a8a4-78099078f31d', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'victim_i2_expired_cfg', 'name': 'Victim I2 Expired Cfg'}",
+        "user_victim_cfg_saml2_expired_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6InZpY3RpbV9pMl9leHBpcmVkX2NmZyIsImNyZWF0ZWRUaW1lIjoiMjAyNi0wNC0wOVQxNzoyNjo1OFoiLCJ1cGRhdGVkVGltZ",
+        "user_victim_cfg_saml2_expired_http_status": "200",
+        "user_victim_cfg_saml2_expired_entity_id": "50b7934b-c5e8-4bd7-a8a4-78099078f31d",
+        "user_victim_cfg_saml2_expired_email": "victim_i2_expired_cfg@test.org",
+        "user_victim_cfg_saml2_expired_login_success": "True",
+        "user_victim_cfg_saml2_expired_login_status": "200",
+        "user_victim_cfg_saml2_expired_login_http_status": "200",
+        "user_victim_cfg_saml2_expired_identity_name": "victim_i2_expired_cfg",
+        "user_victim_cfg_saml2_expired_display_name": "Victim I2 Expired Cfg",
+        "user_victim_cfg_saml2_expired_meta": "{'sub': '50b7934b-c5e8-4bd7-a8a4-78099078f31d', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'victim_i2_expired_cfg', 'name': 'Victim I2 Expired Cfg'}",
+        "user_victim_cfg_saml2_expired_identity_id": "50b7934b-c5e8-4bd7-a8a4-78099078f31d",
+        "user_victim_cfg_saml2_expired_metadata": "{'sub': '50b7934b-c5e8-4bd7-a8a4-78099078f31d', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'victim_i2_expired_cfg', 'name': 'Victim I2 Expired Cfg'}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "724f26df9a0704a3",
+      "sequence_id": "seq_I2_saml_onetimeuse_replay_cross_principal",
+      "sequence_description": "Replay a OneTimeUse SAML assertion ID across two different upstream principals (victim then attacker) to test whether OneTimeUse/replay cache is incorrectly scoped to principal/session and allows reuse.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_replay_onetimeuse_login_status >= 400\nEvaluation: user_attacker_replay_onetimeuse_login_status=200 >= 400 \u2192 False\nImplication: SP accepted replayed OneTimeUse assertion ID for a different principal; OneTimeUse/replay cache may be incorrectly scoped.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_replay_onetimeuse_login_status >= 400",
+        "evaluation": "user_attacker_replay_onetimeuse_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_replay_onetimeuse_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_saml_onetimeuse_replay_cross_principal",
+      "description": "Replay a OneTimeUse SAML assertion ID across two different upstream principals (victim then attacker) to test whether OneTimeUse/replay cache is incorrectly scoped to principal/session and allows reuse.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A SAML assertion containing <OneTimeUse/> must not be accepted more than once, even if replayed for a different upstream principal.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 4,
+      "events_succeeded": 2,
+      "events_failed": 2,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state_victim_1",
+            "redirect_uri": "http://localhost:8000/callback",
+            "include_onetimeuse": true,
+            "fixed_assertion_id": "_replay_onetimeuse_cross_principal",
+            "target_identity": "victimA",
+            "email": "victimA@test-org.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_victim_onetimeuse",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_victim_onetimeuse.session_token}}"
+          },
+          "auth_as": "session_user_victim_onetimeuse",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_onetimeuse_entity_id": "sub",
+            "user_victim_onetimeuse_identity_name": "preferred_username",
+            "user_victim_onetimeuse_display_name": "name",
+            "user_victim_onetimeuse_meta": "$",
+            "user_victim_onetimeuse_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state_attacker_2",
+            "redirect_uri": "http://localhost:8000/callback",
+            "include_onetimeuse": true,
+            "fixed_assertion_id": "_replay_onetimeuse_cross_principal",
+            "target_identity": "attackerB",
+            "email": "attackerB@test-org.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_attacker_replay_onetimeuse",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attacker_replay_onetimeuse.session_token}}"
+          },
+          "auth_as": "session_user_attacker_replay_onetimeuse",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_replay_onetimeuse_entity_id": "sub",
+            "user_attacker_replay_onetimeuse_identity_name": "preferred_username",
+            "user_attacker_replay_onetimeuse_display_name": "name",
+            "user_attacker_replay_onetimeuse_meta": "$",
+            "user_attacker_replay_onetimeuse_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_victim_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_victim_onetimeuse_login_status == 200",
+          "violation_description": "Control SAML login with OneTimeUse did not succeed; replay test is inconclusive due to setup/flow failure.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_onetimeuse_replay_rejected_even_cross_principal",
+          "invariant": "I2",
+          "assertion": "user_attacker_replay_onetimeuse_login_status >= 400",
+          "violation_description": "SP accepted replayed OneTimeUse assertion ID for a different principal; OneTimeUse/replay cache may be incorrectly scoped.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "session_token": "79a4b14e7d3a4474a165",
+        "user_victim_onetimeuse_entity_id": "victimA",
+        "user_victim_onetimeuse_email": "victimA@test-org.local",
+        "user_victim_onetimeuse_session_token": "6b8fde56b637d60be8ee",
+        "user_victim_onetimeuse_login_success": "True",
+        "user_victim_onetimeuse_login_status": "200",
+        "user_victim_onetimeuse_login_http_status": "200",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_victim_onetimeuse_identity_name": "None",
+        "user_victim_onetimeuse_display_name": "None",
+        "user_victim_onetimeuse_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_attacker_replay_onetimeuse_entity_id": "attackerB",
+        "user_attacker_replay_onetimeuse_email": "attackerB@test-org.local",
+        "user_attacker_replay_onetimeuse_session_token": "79a4b14e7d3a4474a165",
+        "user_attacker_replay_onetimeuse_login_success": "True",
+        "user_attacker_replay_onetimeuse_login_status": "200",
+        "user_attacker_replay_onetimeuse_login_http_status": "200",
+        "user_attacker_replay_onetimeuse_identity_name": "None",
+        "user_attacker_replay_onetimeuse_display_name": "None",
+        "user_attacker_replay_onetimeuse_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "fc78477fe91a4ba0",
+      "sequence_id": "seq_I2_saml_expired_assertion_after_provider_metadata_rotation",
+      "sequence_description": "Control valid SAML login, then rotate SAML provider metadata (simulating IdP key rollover) and attempt an expired assertion. Tests whether time validity checks regress or are bypassed after provider metadata update.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_expired_post_rotation_login_status >= 400\nEvaluation: user_expired_post_rotation_login_status=200 >= 400 \u2192 False\nImplication: SP accepted an expired SAML assertion after provider metadata rotation; NotOnOrAfter enforcement may be bypassed/regressed.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_expired_post_rotation_login_status >= 400",
+        "evaluation": "user_expired_post_rotation_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_expired_post_rotation_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_saml_expired_assertion_after_provider_metadata_rotation",
+      "description": "Control valid SAML login, then rotate SAML provider metadata (simulating IdP key rollover) and attempt an expired assertion. Tests whether time validity checks regress or are bypassed after provider metadata update.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: SAML assertions with NotOnOrAfter in the past must be rejected, including after provider metadata changes (key rollover).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 2,
+      "events_failed": 3,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state_control_pre",
+            "redirect_uri": "http://localhost:8000/callback",
+            "target_identity": "controlPre",
+            "email": "controlPre@test-org.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_control_valid_pre",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_control_valid_pre.session_token}}"
+          },
+          "auth_as": "session_user_control_valid_pre",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_valid_pre_entity_id": "sub",
+            "user_control_valid_pre_identity_name": "preferred_username",
+            "user_control_valid_pre_display_name": "name",
+            "user_control_valid_pre_meta": "$",
+            "user_control_valid_pre_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "create_provider",
+          "params": {
+            "owner": "admin",
+            "name": "provider-saml-test",
+            "display_name": "provider-saml-test",
+            "category": "SAML",
+            "type": "SAML",
+            "metadata": "<EntityDescriptor entityID=\"https://idp-rotated.example/saml\"><IDPSSODescriptor><KeyDescriptor use=\"signing\"><KeyInfo xmlns=\"http://www.w3.org/2000/09/xmldsig#\"><X509Data><X509Certificate>MIIF...ROTATED...</X509Certificate></X509Data></KeyInfo></KeyDescriptor><SingleSignOnService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect\" Location=\"https://idp-rotated.example/sso\"/></IDPSSODescriptor></EntityDescriptor>",
+            "idp": "https://idp-rotated.example/sso",
+            "issuer_url": "https://idp-rotated.example/saml"
+          },
+          "auth_as": "admin_rotate_provider",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state_expired_post",
+            "redirect_uri": "http://localhost:8000/callback",
+            "expired_assertion": true,
+            "target_identity": "expiredPost",
+            "email": "expiredPost@test-org.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_expired_post_rotation",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_expired_post_rotation.session_token}}"
+          },
+          "auth_as": "session_user_expired_post_rotation",
+          "expected_outcome": "any",
+          "captures": {
+            "user_expired_post_rotation_entity_id": "sub",
+            "user_expired_post_rotation_identity_name": "preferred_username",
+            "user_expired_post_rotation_display_name": "name",
+            "user_expired_post_rotation_meta": "$",
+            "user_expired_post_rotation_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_valid_login_succeeds_pre_rotation",
+          "invariant": "I2",
+          "assertion": "user_control_valid_pre_login_status == 200",
+          "violation_description": "Control valid SAML login failed; expired-assertion result after rotation is not attributable to freshness enforcement.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_assertion_rejected_post_rotation",
+          "invariant": "I2",
+          "assertion": "user_expired_post_rotation_login_status >= 400",
+          "violation_description": "SP accepted an expired SAML assertion after provider metadata rotation; NotOnOrAfter enforcement may be bypassed/regressed.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "session_token": "51b5cd3e397a8e277321",
+        "user_control_valid_pre_entity_id": "controlPre",
+        "user_control_valid_pre_email": "controlPre@test-org.local",
+        "user_control_valid_pre_session_token": "f417310682f7b0de79f4",
+        "user_control_valid_pre_login_success": "True",
+        "user_control_valid_pre_login_status": "200",
+        "user_control_valid_pre_login_http_status": "200",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_control_valid_pre_identity_name": "None",
+        "user_control_valid_pre_display_name": "None",
+        "user_control_valid_pre_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_expired_post_rotation_entity_id": "expiredPost",
+        "user_expired_post_rotation_email": "expiredPost@test-org.local",
+        "user_expired_post_rotation_session_token": "51b5cd3e397a8e277321",
+        "user_expired_post_rotation_login_success": "True",
+        "user_expired_post_rotation_login_status": "200",
+        "user_expired_post_rotation_login_http_status": "200",
+        "user_expired_post_rotation_identity_name": "None",
+        "user_expired_post_rotation_display_name": "None",
+        "user_expired_post_rotation_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "f0b2d363e0a6cfce",
+      "sequence_id": "seq_I2_saml_assertion_id_replay_after_app_cookie_expire_change",
+      "sequence_description": "Control SAML login, then change application CookieExpireInHours (sentinel/TTL-related config) and attempt replay of the same Assertion/@ID. Tests whether replay cache is incorrectly tied to cookie/session TTL config and becomes ineffective after change.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_replay_after_change_login_status >= 400\nEvaluation: user_replay_after_change_login_status=200 >= 400 \u2192 False\nImplication: SP accepted replay of the same SAML Assertion/@ID after application TTL/cookie config change; replay cache may be reset or improperly scoped.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_replay_after_change_login_status >= 400",
+        "evaluation": "user_replay_after_change_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_replay_after_change_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_saml_assertion_id_replay_after_app_cookie_expire_change",
+      "description": "Control SAML login, then change application CookieExpireInHours (sentinel/TTL-related config) and attempt replay of the same Assertion/@ID. Tests whether replay cache is incorrectly tied to cookie/session TTL config and becomes ineffective after change.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: SAML assertion IDs must not be accepted more than once; replay detection must remain effective across application TTL/cookie configuration changes.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 3,
+      "events_failed": 2,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state_first",
+            "redirect_uri": "http://localhost:8000/callback",
+            "fixed_assertion_id": "_replay_after_cookie_change",
+            "target_identity": "firstLogin",
+            "email": "firstLogin@test-org.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_control_first",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_control_first.session_token}}"
+          },
+          "auth_as": "session_user_control_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_first_entity_id": "sub",
+            "user_control_first_identity_name": "preferred_username",
+            "user_control_first_display_name": "name",
+            "user_control_first_meta": "$",
+            "user_control_first_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "update_application",
+          "params": {
+            "owner": "admin",
+            "name": "app-test",
+            "display_name": "app-test",
+            "organization": "test-org",
+            "client_id": "app-test",
+            "client_secret": "app-test",
+            "redirect_uris": [
+              "http://localhost:8000/callback"
+            ],
+            "grant_types": [
+              "password",
+              "authorization_code"
+            ],
+            "token_format": "JWT",
+            "expire_in_hours": 1,
+            "refresh_expire_in_hours": 1,
+            "category": "application",
+            "type": "webapp",
+            "providers": [
+              "provider-saml-test"
+            ],
+            "enable_password": true,
+            "enable_sign_up": false,
+            "enable_signin_session": true,
+            "enable_code_signin": true,
+            "enable_exclusive_signin": false,
+            "enable_webauthn": false,
+            "tags": [],
+            "saml_reply_url": "http://localhost:8000/callback",
+            "enable_saml_post_binding": true,
+            "disable_saml_attributes": false,
+            "enable_saml_assertion_signature": false,
+            "use_email_as_saml_nameid": true,
+            "cert": "cert-built-in",
+            "code_resend_timeout": 60
+          },
+          "auth_as": "admin_update_app",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state_replay",
+            "redirect_uri": "http://localhost:8000/callback",
+            "fixed_assertion_id": "_replay_after_cookie_change",
+            "target_identity": "secondLogin",
+            "email": "secondLogin@test-org.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_replay_after_change",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_replay_after_change.session_token}}"
+          },
+          "auth_as": "session_user_replay_after_change",
+          "expected_outcome": "any",
+          "captures": {
+            "user_replay_after_change_entity_id": "sub",
+            "user_replay_after_change_identity_name": "preferred_username",
+            "user_replay_after_change_display_name": "name",
+            "user_replay_after_change_meta": "$",
+            "user_replay_after_change_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_first_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_control_first_login_status == 200",
+          "violation_description": "Control SAML login (first use of assertion ID) failed; replay result is inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_assertion_id_replay_rejected_after_cookie_change",
+          "invariant": "I2",
+          "assertion": "user_replay_after_change_login_status >= 400",
+          "violation_description": "SP accepted replay of the same SAML Assertion/@ID after application TTL/cookie config change; replay cache may be reset or improperly scoped.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "session_token": "a3a06e3d244dff751073",
+        "user_control_first_entity_id": "firstLogin",
+        "user_control_first_email": "firstLogin@test-org.local",
+        "user_control_first_session_token": "89550c086d12997c080d",
+        "user_control_first_login_success": "True",
+        "user_control_first_login_status": "200",
+        "user_control_first_login_http_status": "200",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_control_first_identity_name": "None",
+        "user_control_first_display_name": "None",
+        "user_control_first_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_replay_after_change_entity_id": "secondLogin",
+        "user_replay_after_change_email": "secondLogin@test-org.local",
+        "user_replay_after_change_session_token": "a3a06e3d244dff751073",
+        "user_replay_after_change_login_success": "True",
+        "user_replay_after_change_login_status": "200",
+        "user_replay_after_change_login_http_status": "200",
+        "user_replay_after_change_identity_name": "None",
+        "user_replay_after_change_display_name": "None",
+        "user_replay_after_change_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "aecc32446a4d85f2",
+      "sequence_id": "seq_I3_saml_state_skip_direct_post",
+      "sequence_description": "Attempt to skip the required SP-initiated SAML flow by directly POSTing a forged SAMLResponse to Casdoor login endpoint without first initiating an auth flow (no state/RelayState context). Flow coherence requires rejection.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_direct_saml_login_status >= 400\nEvaluation: user_attacker_direct_saml_login_status=200 >= 400 \u2192 False\nImplication: Flow coherence violated: Casdoor accepted a SAMLResponse without an SP-initiated flow context (step skipping / missing state/RelayState binding).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_direct_saml_login_status >= 400",
+        "evaluation": "user_attacker_direct_saml_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_direct_saml_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I3_saml_state_skip_direct_post",
+      "description": "Attempt to skip the required SP-initiated SAML flow by directly POSTing a forged SAMLResponse to Casdoor login endpoint without first initiating an auth flow (no state/RelayState context). Flow coherence requires rejection.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: Casdoor must require an SP-initiated flow context (state/RelayState) before consuming a SAMLResponse; direct SAMLResponse submission without prior initiation should be rejected (no step skipping).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 5,
+      "events_failed": 0,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "victim_i3_state_skip",
+            "display_name": "Victim I3 State Skip",
+            "email": "victim_i3_state_skip@example.com",
+            "phone": "12000000001",
+            "password": "Passw0rd!Victim",
+            "type": "normal",
+            "tag": "i3-test",
+            "is_admin": false,
+            "is_global_admin": false,
+            "is_forbidden": false,
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_user_create_meta": "metadata"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "attacker_i3_state_skip",
+            "display_name": "Attacker I3 State Skip",
+            "email": "attacker_i3_state_skip@example.com",
+            "phone": "12000000002",
+            "password": "Passw0rd!Attacker",
+            "type": "normal",
+            "tag": "i3-test",
+            "is_admin": false,
+            "is_global_admin": false,
+            "is_forbidden": false,
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "attacker_user_create_meta": "metadata"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "app-test",
+            "redirect_uri": "http://localhost:8000/callback",
+            "response_type": "code",
+            "scope": "openid profile email",
+            "state": "state_control_123",
+            "resource": "http://localhost:8000/callback",
+            "code_challenge_method": "S256",
+            "code_challenge": "challenge_control_abc"
+          },
+          "auth_as": "user_victim_flow_control",
+          "expected_outcome": "any",
+          "captures": {
+            "control_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO_FORGE",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "",
+            "redirect_uri": "http://localhost:8000/callback"
+          },
+          "auth_as": "user_attacker_direct_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "attacker_direct_saml_session_token": "session_token",
+            "attacker_direct_saml_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{attacker_direct_saml_session_token}}"
+          },
+          "auth_as": "session_user_attacker_direct_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_direct_saml_entity_id": "sub",
+            "user_attacker_direct_saml_identity_name": "preferred_username",
+            "user_attacker_direct_saml_display_name": "name",
+            "user_attacker_direct_saml_meta": "$",
+            "user_attacker_direct_saml_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I3_saml_state_skip_direct_post_0",
+          "invariant": "I3",
+          "assertion": "user_attacker_direct_saml_login_status >= 400",
+          "violation_description": "Flow coherence violated: Casdoor accepted a SAMLResponse without an SP-initiated flow context (step skipping / missing state/RelayState binding).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "{'sub': 'admin', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'admin', 'name': 'admin'}",
+        "victim_user_create_meta": "{'status': 'ok', 'msg': '', 'sub': '', 'name': '', 'data': 'Affected', 'data2': None, 'data3': None}",
+        "attacker_user_create_meta": "{'status': 'ok', 'msg': '', 'sub': '', 'name': '', 'data': 'Affected', 'data2': None, 'data3': None}",
+        "control_auth_http_status": "200",
+        "session_token": "1b4a804c8628bddf9580",
+        "attacker_direct_saml_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImFkbWluIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTA5VDE3OjI2OjM0WiIsInVwZGF0ZWRUaW1lIjoiMjAyNi0wNC0wOVQxN",
+        "attacker_direct_saml_http_status": "200",
+        "user_attacker_direct_saml_entity_id": "admin",
+        "user_attacker_direct_saml_email": "admin",
+        "user_attacker_direct_saml_session_token": "1b4a804c8628bddf9580",
+        "user_attacker_direct_saml_login_success": "True",
+        "user_attacker_direct_saml_login_status": "200",
+        "user_attacker_direct_saml_login_http_status": "200",
+        "identity_id": "admin",
+        "identity_name": "admin",
+        "display_name": "admin",
+        "user_attacker_direct_saml_identity_name": "admin",
+        "user_attacker_direct_saml_display_name": "admin",
+        "user_attacker_direct_saml_meta": "{'sub': 'admin', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'admin', 'name': 'admin'}",
+        "user_attacker_direct_saml_identity_id": "admin",
+        "user_attacker_direct_saml_metadata": "{'sub': 'admin', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'admin', 'name': 'admin'}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "b8502b688ee8b715",
+      "sequence_id": "seq_I3_saml_provider_switch_mid_flow",
+      "sequence_description": "Create a second SAML provider and attempt to initiate an auth flow expecting provider-saml-test, then submit a SAMLResponse via saml_login referencing a different provider (provider-saml-alt-i3). Flow coherence requires binding to the selected provider.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_provider_switch_login_status >= 400\nEvaluation: user_attacker_provider_switch_login_status=200 >= 400 \u2192 False\nImplication: Flow coherence violated: Casdoor accepted a SAMLResponse under a different provider than the one implied/selected by the initiated flow (cross-provider splicing).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_provider_switch_login_status >= 400",
+        "evaluation": "user_attacker_provider_switch_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_provider_switch_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I3_saml_provider_switch_mid_flow",
+      "description": "Create a second SAML provider and attempt to initiate an auth flow expecting provider-saml-test, then submit a SAMLResponse via saml_login referencing a different provider (provider-saml-alt-i3). Flow coherence requires binding to the selected provider.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: The SAML consumption step must be bound to the provider selected/expected by the initiated flow; switching providers mid-flow should be rejected (no cross-provider splicing).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 5,
+      "events_failed": 0,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_provider",
+          "params": {
+            "owner": "admin",
+            "name": "provider-saml-alt-i3",
+            "display_name": "Provider SAML Alt I3",
+            "category": "SAML",
+            "type": "SAML",
+            "client_id": "",
+            "client_secret": "",
+            "client_id_2": "",
+            "client_secret_2": "",
+            "host": "",
+            "port": 0,
+            "title": "",
+            "content": "",
+            "region_id": "",
+            "sign_name": "",
+            "template_code": "",
+            "app_id": "",
+            "endpoint": "",
+            "intranet_endpoint": "",
+            "domain": "",
+            "bucket": "",
+            "metadata": "<EntityDescriptor entityID=\"https://idp-alt-i3.example.com/metadata\"><IDPSSODescriptor protocolSupportEnumeration=\"urn:oasis:names:tc:SAML:2.0:protocol\"><KeyDescriptor use=\"signing\"><KeyInfo xmlns=\"http://www.w3.org/2000/09/xmldsig#\"><X509Data><X509Certificate>MIID...ALT...CERT...==</X509Certificate></X509Data></KeyInfo></KeyDescriptor><SingleSignOnService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\" Location=\"https://idp-alt-i3.example.com/sso\"/></IDPSSODescriptor></EntityDescriptor>",
+            "idp": "",
+            "issuer_url": "https://idp-alt-i3.example.com/metadata",
+            "enable_sign_authn_request": false,
+            "provider_url": ""
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "provider_alt_meta": "metadata"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "update_application",
+          "params": {
+            "owner": "admin",
+            "name": "app-test",
+            "display_name": "app-test",
+            "organization": "test-org",
+            "client_id": "app-test",
+            "client_secret": "app-test",
+            "redirect_uris": [
+              "http://localhost:8000/callback"
+            ],
+            "grant_types": [
+              "password",
+              "authorization_code"
+            ],
+            "token_format": "JWT",
+            "expire_in_hours": 1,
+            "refresh_expire_in_hours": 0,
+            "category": "application",
+            "type": "webapp",
+            "providers": [
+              "provider-saml-test",
+              "provider-saml-alt-i3"
+            ],
+            "enable_password": true,
+            "enable_sign_up": true,
+            "enable_signin_session": true,
+            "enable_code_signin": true,
+            "enable_exclusive_signin": false,
+            "enable_webauthn": false,
+            "tags": [],
+            "saml_reply_url": "http://localhost:8000/callback",
+            "enable_saml_post_binding": true,
+            "disable_saml_attributes": false,
+            "enable_saml_assertion_signature": true,
+            "use_email_as_saml_nameid": true,
+            "cert": "cert-built-in",
+            "code_resend_timeout": 0
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "app_update_meta": "metadata"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "app-test",
+            "redirect_uri": "http://localhost:8000/callback",
+            "response_type": "code",
+            "scope": "openid profile email",
+            "state": "state_provider_expected_001",
+            "resource": "http://localhost:8000/callback",
+            "code_challenge_method": "S256",
+            "code_challenge": "challenge_provider_expected_001"
+          },
+          "auth_as": "user_flow_provider_expected",
+          "expected_outcome": "any",
+          "captures": {
+            "flow_provider_expected_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO_FORGE",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-alt-i3",
+            "state": "state_provider_expected_001",
+            "redirect_uri": "http://localhost:8000/callback"
+          },
+          "auth_as": "user_attacker_provider_switch",
+          "expected_outcome": "any",
+          "captures": {
+            "provider_switch_session_token": "session_token",
+            "provider_switch_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{provider_switch_session_token}}"
+          },
+          "auth_as": "session_user_attacker_provider_switch",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_provider_switch_entity_id": "sub",
+            "user_attacker_provider_switch_identity_name": "preferred_username",
+            "user_attacker_provider_switch_display_name": "name",
+            "user_attacker_provider_switch_meta": "$",
+            "user_attacker_provider_switch_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I3_saml_provider_switch_mid_flow_0",
+          "invariant": "I3",
+          "assertion": "user_attacker_provider_switch_login_status >= 400",
+          "violation_description": "Flow coherence violated: Casdoor accepted a SAMLResponse under a different provider than the one implied/selected by the initiated flow (cross-provider splicing).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "provider_alt_meta": "None",
+        "app_update_meta": "None",
+        "flow_provider_expected_http_status": "200",
+        "session_token": "93e55c87aafed1a98742",
+        "provider_switch_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImFkbWluIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTA5VDE3OjI2OjM0WiIsInVwZGF0ZWRUaW1lIjoiMjAyNi0wNC0wOVQxN",
+        "provider_switch_http_status": "200",
+        "user_attacker_provider_switch_entity_id": "admin",
+        "user_attacker_provider_switch_email": "admin",
+        "user_attacker_provider_switch_session_token": "93e55c87aafed1a98742",
+        "user_attacker_provider_switch_login_success": "True",
+        "user_attacker_provider_switch_login_status": "200",
+        "user_attacker_provider_switch_login_http_status": "200",
+        "identity_id": "admin",
+        "identity_name": "admin",
+        "display_name": "admin",
+        "metadata": "{'sub': 'admin', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'admin', 'name': 'admin'}",
+        "user_attacker_provider_switch_identity_name": "admin",
+        "user_attacker_provider_switch_display_name": "admin",
+        "user_attacker_provider_switch_meta": "{'sub': 'admin', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'admin', 'name': 'admin'}",
+        "user_attacker_provider_switch_identity_id": "admin",
+        "user_attacker_provider_switch_metadata": "{'sub': 'admin', 'iss': 'http://localhost:8000', 'aud': 'valence_53d0aa1e75f04f21', 'preferred_username': 'admin', 'name': 'admin'}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "faf005576eb15cb4",
+      "sequence_id": "seq_I5_saml_expired_assertion_then_token_exchange_audience_confusion",
+      "sequence_description": "Attack: Control SAML login with valid assertion, then attempt SAML login with expired assertion. If accepted, try token_exchange requesting a different audience via resource indicator-like behavior (modeled as exchanging at a second client). Expectation: expired assertion rejected; if not, exchange should still not allow cross-client audience confusion.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_expired_saml_login_status >= 400\nEvaluation: user_attacker_expired_saml_login_status=200 >= 400 \u2192 False\nImplication: SP accepted expired SAML assertion, violating time-bound upstream intent (I5).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_expired_saml_login_status >= 400",
+        "evaluation": "user_attacker_expired_saml_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_expired_saml_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I5_saml_expired_assertion_then_token_exchange_audience_confusion",
+      "description": "Attack: Control SAML login with valid assertion, then attempt SAML login with expired assertion. If accepted, try token_exchange requesting a different audience via resource indicator-like behavior (modeled as exchanging at a second client). Expectation: expired assertion rejected; if not, exchange should still not allow cross-client audience confusion.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: If Casdoor accepts expired SAML assertions and then allows exchanging that token at another client, effective permissions can exceed upstream intent and broker policy time/audience constraints.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 3,
+      "events_failed": 5,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "i5_saml_exp_user",
+            "display_name": "I5 SAML Expired User",
+            "email": "i5_saml_exp_user@test.local",
+            "phone": "",
+            "password": "Passw0rd!123",
+            "type": "normal-user",
+            "tag": "",
+            "is_admin": false,
+            "is_global_admin": false,
+            "is_forbidden": false,
+            "signup_application": "app-test",
+            "id_card_type": "",
+            "id_card": "",
+            "language": "en",
+            "region": "",
+            "created_time": "",
+            "updated_time": "",
+            "identity_id": "",
+            "password_salt": "",
+            "password_type": "",
+            "first_name": "I5",
+            "last_name": "Expired",
+            "avatar": "",
+            "permanent_avatar": "",
+            "location": "",
+            "address": "",
+            "affiliation": "",
+            "title": "",
+            "real_name": "",
+            "homepage": "",
+            "bio": "",
+            "gender": "",
+            "birthday": "",
+            "education": "",
+            "score": 0,
+            "ranking": 0,
+            "is_default_avatar": false,
+            "is_online": false,
+            "is_deleted": false,
+            "hash": "",
+            "pre_hash": "",
+            "created_ip": "",
+            "last_signin_time": "",
+            "last_signin_ip": "",
+            "github": "",
+            "google": "",
+            "qq": "",
+            "wechat": "",
+            "facebook": "",
+            "dingtalk": "",
+            "weibo": "",
+            "gitee": "",
+            "linked_in": "",
+            "wecom": "",
+            "lark": "",
+            "gitlab": "",
+            "apple": "",
+            "azure_ad": "",
+            "slack": "",
+            "ldap": "",
+            "properties": {}
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_application",
+          "params": {
+            "owner": "admin",
+            "name": "app-test-c",
+            "display_name": "app-test-c",
+            "organization": "test-org",
+            "client_id": "client-app-test-c",
+            "client_secret": "secret-app-test-c",
+            "redirect_uris": [
+              "http://localhost:8000/callback"
+            ],
+            "grant_types": [
+              "password",
+              "authorization_code"
+            ],
+            "token_format": "JWT",
+            "expire_in_hours": 1,
+            "refresh_expire_in_hours": 0,
+            "category": "OAuth",
+            "type": "webapp",
+            "providers": [
+              "provider-saml-test"
+            ],
+            "enable_password": true,
+            "enable_sign_up": false,
+            "enable_signin_session": true,
+            "enable_code_signin": true,
+            "enable_exclusive_signin": false,
+            "enable_webauthn": false,
+            "tags": [],
+            "saml_reply_url": "http://localhost:8000/callback",
+            "enable_saml_post_binding": true,
+            "disable_saml_attributes": false,
+            "enable_saml_assertion_signature": true,
+            "use_email_as_saml_nameid": false,
+            "cert": "cert-built-in",
+            "code_resend_timeout": 0
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state-control-valid2",
+            "redirect_uri": "http://localhost:8000/callback",
+            "target_identity": "i5_saml_exp_user",
+            "email": "i5_saml_exp_user@test.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_control_valid_saml2",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{user_control_valid_saml2.session_token}}",
+            "token_type_hint": "access_token",
+            "client_id": "{{env.app_test_client_id}}",
+            "client_secret": "{{env.app_test_client_secret}}",
+            "token": "{{user_control_valid_saml2.session_token}}"
+          },
+          "auth_as": "session_user_control_valid_saml2",
+          "expected_outcome": "any",
+          "captures": {
+            "active": "user_control_valid_saml2_active",
+            "aud": "user_control_valid_saml2_aud",
+            "sub": "user_control_valid_saml2_sub",
+            "http_status": "user_control_valid_saml2_http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state-attack-expired",
+            "redirect_uri": "http://localhost:8000/callback",
+            "expired_assertion": true,
+            "target_identity": "i5_saml_exp_user",
+            "email": "i5_saml_exp_user@test.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_attacker_expired_saml",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attacker_expired_saml.session_token}}"
+          },
+          "auth_as": "session_user_attacker_expired_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_expired_saml_entity_id": "sub",
+            "user_attacker_expired_saml_identity_name": "preferred_username",
+            "user_attacker_expired_saml_display_name": "name",
+            "user_attacker_expired_saml_meta": "$",
+            "user_attacker_expired_saml_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "client_id": "client-app-test-c",
+            "client_secret": "secret-app-test-c",
+            "subject_token": "{{user_attacker_expired_saml.session_token}}",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "scope": "openid email profile"
+          },
+          "auth_as": "user_exchanged_from_expired_at_c",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{user_exchanged_from_expired_at_c.session_token}}",
+            "token_type_hint": "access_token",
+            "client_id": "client-app-test-c",
+            "client_secret": "secret-app-test-c",
+            "token": "{{user_exchanged_from_expired_at_c.session_token}}"
+          },
+          "auth_as": "session_user_exchanged_from_expired_at_c",
+          "expected_outcome": "any",
+          "captures": {
+            "active": "user_exchanged_from_expired_at_c_active",
+            "aud": "user_exchanged_from_expired_at_c_aud",
+            "sub": "user_exchanged_from_expired_at_c_sub",
+            "http_status": "user_exchanged_from_expired_at_c_http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I5_saml_expired_assertion_then_token_exchange_audience_confusion_0",
+          "invariant": "I5",
+          "assertion": "user_control_valid_saml2_login_success == true AND user_control_valid_saml2_active == true",
+          "violation_description": "Control SAML login failed; cannot interpret expired assertion behavior (setup error).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I5_saml_expired_assertion_then_token_exchange_audience_confusion_1",
+          "invariant": "I5",
+          "assertion": "user_attacker_expired_saml_login_status >= 400",
+          "violation_description": "SP accepted expired SAML assertion, violating time-bound upstream intent (I5).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I5_saml_expired_assertion_then_token_exchange_audience_confusion_2",
+          "invariant": "I5",
+          "assertion": "user_exchanged_from_expired_at_c_login_status >= 400 OR user_exchanged_from_expired_at_c_active != true",
+          "violation_description": "Token exchange produced an active token from a subject_token derived from an expired SAML assertion (I5).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "session_token": "f8005d3fada3d8c5c3a8",
+        "user_control_valid_saml2_entity_id": "c7ab8b05-3da7-440c-98b1-ee04fb7f000a",
+        "user_control_valid_saml2_email": "i5_saml_exp_user@test.local",
+        "user_control_valid_saml2_session_token": "e2be8d2f7bc76e1969a2",
+        "user_control_valid_saml2_login_success": "True",
+        "user_control_valid_saml2_login_status": "200",
+        "user_control_valid_saml2_login_http_status": "200",
+        "active": "None",
+        "aud": "None",
+        "sub": "None",
+        "http_status": "None",
+        "user_attacker_expired_saml_entity_id": "c7ab8b05-3da7-440c-98b1-ee04fb7f000a",
+        "user_attacker_expired_saml_email": "i5_saml_exp_user@test.local",
+        "user_attacker_expired_saml_session_token": "f8005d3fada3d8c5c3a8",
+        "user_attacker_expired_saml_login_success": "True",
+        "user_attacker_expired_saml_login_status": "200",
+        "user_attacker_expired_saml_login_http_status": "200",
+        "user_attacker_expired_saml_identity_name": "None",
+        "user_attacker_expired_saml_display_name": "None",
+        "user_attacker_expired_saml_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_exchanged_from_expired_at_c_login_success": "False",
+        "user_exchanged_from_expired_at_c_login_status": "401",
+        "user_exchanged_from_expired_at_c_login_http_status": "401"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "732f63cac58367a4",
+      "sequence_id": "seq_I5_config_change_tags_then_saml_bypass",
+      "sequence_description": "I5 attack: tighten broker policy by changing application tags to exclude a user, verify password login is blocked, then attempt SAML login for same user to see if external SAML bypasses tag-based authorization policy.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_saml_tag_bypass_login_status >= 400\nEvaluation: user_saml_tag_bypass_login_status=200 >= 400 \u2192 False\nImplication: SAML login bypassed application tag restriction that blocks password login; broker policy not bound across auth methods (I5).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_saml_tag_bypass_login_status >= 400",
+        "evaluation": "user_saml_tag_bypass_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_saml_tag_bypass_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I5_config_change_tags_then_saml_bypass",
+      "description": "I5 attack: tighten broker policy by changing application tags to exclude a user, verify password login is blocked, then attempt SAML login for same user to see if external SAML bypasses tag-based authorization policy.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Application tag restrictions (broker policy) must apply consistently across auth methods; if password login is denied due to tag mismatch, SAML login should also be denied for the same user/app.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 2,
+      "events_failed": 4,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "user_i5_tag_policy",
+            "display_name": "User I5 Tag Policy",
+            "email": "user_i5_tag_policy@test.org",
+            "phone": "10000000003",
+            "password": "Passw0rd!123",
+            "type": "normal",
+            "tag": "i5-allowed",
+            "is_admin": false,
+            "is_global_admin": false,
+            "is_forbidden": false,
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "metadata": "user_tagged_meta"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "update_application",
+          "params": {
+            "owner": "admin",
+            "name": "app-test",
+            "display_name": "app-test",
+            "organization": "test-org",
+            "client_id": "app-test",
+            "client_secret": "app-test",
+            "redirect_uris": [
+              "http://localhost:8000/callback"
+            ],
+            "grant_types": [
+              "password",
+              "authorization_code"
+            ],
+            "token_format": "JWT",
+            "expire_in_hours": 1,
+            "refresh_expire_in_hours": 1,
+            "category": "OAuth",
+            "type": "webapp",
+            "providers": [
+              "provider-saml-test"
+            ],
+            "enable_password": true,
+            "enable_sign_up": true,
+            "enable_signin_session": true,
+            "enable_code_signin": true,
+            "enable_exclusive_signin": false,
+            "enable_webauthn": false,
+            "tags": [
+              "i5-deny"
+            ],
+            "saml_reply_url": "http://localhost:8000/callback",
+            "enable_saml_post_binding": true,
+            "disable_saml_attributes": false,
+            "enable_saml_assertion_signature": true,
+            "use_email_as_saml_nameid": true,
+            "cert": "cert-built-in",
+            "code_resend_timeout": 60
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "metadata": "app_test_update_meta"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "app-test",
+            "client_secret": "app-test",
+            "username": "user_i5_tag_policy",
+            "password": "Passw0rd!123",
+            "scope": "openid email profile"
+          },
+          "auth_as": "user_pwd_denied",
+          "expected_outcome": "any",
+          "captures": {
+            "session_token": "pwd_denied_access_token",
+            "metadata": "pwd_denied_meta",
+            "http_status": "pwd_denied_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{pwd_denied_access_token}}"
+          },
+          "auth_as": "session_user_pwd_denied",
+          "expected_outcome": "any",
+          "captures": {
+            "user_pwd_denied_entity_id": "sub",
+            "user_pwd_denied_identity_name": "preferred_username",
+            "user_pwd_denied_display_name": "name",
+            "user_pwd_denied_meta": "$",
+            "user_pwd_denied_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "post",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state-tag-bypass-1",
+            "redirect_uri": "http://localhost:8000/callback",
+            "target_identity": "user_i5_tag_policy",
+            "email": "user_i5_tag_policy@test.org",
+            "realm": "test-org"
+          },
+          "auth_as": "user_saml_tag_bypass",
+          "expected_outcome": "any",
+          "captures": {
+            "session_token": "saml_tag_bypass_access_token",
+            "http_status": "saml_tag_bypass_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{saml_tag_bypass_access_token}}"
+          },
+          "auth_as": "session_user_saml_tag_bypass",
+          "expected_outcome": "any",
+          "captures": {
+            "user_saml_tag_bypass_entity_id": "sub",
+            "user_saml_tag_bypass_identity_name": "preferred_username",
+            "user_saml_tag_bypass_display_name": "name",
+            "user_saml_tag_bypass_meta": "$",
+            "user_saml_tag_bypass_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I5_config_change_tags_then_saml_bypass_0",
+          "invariant": "I5",
+          "assertion": "user_pwd_denied_login_status >= 400",
+          "violation_description": "Password login unexpectedly succeeded despite restrictive application tags; policy control failed, cannot interpret SAML bypass.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I5_config_change_tags_then_saml_bypass_1",
+          "invariant": "I5",
+          "assertion": "user_saml_tag_bypass_login_status >= 400",
+          "violation_description": "SAML login bypassed application tag restriction that blocks password login; broker policy not bound across auth methods (I5).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "session_token": "f4d5178c13a3d6841af9",
+        "http_status": "None",
+        "user_pwd_denied_login_success": "False",
+        "user_pwd_denied_login_status": "400",
+        "user_pwd_denied_login_http_status": "400",
+        "user_pwd_denied_entity_id": "None",
+        "user_pwd_denied_identity_name": "None",
+        "user_pwd_denied_display_name": "None",
+        "user_pwd_denied_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_pwd_denied_email": "None",
+        "user_saml_tag_bypass_entity_id": "user_i5_tag_policy",
+        "user_saml_tag_bypass_email": "user_i5_tag_policy@test.org",
+        "user_saml_tag_bypass_session_token": "f4d5178c13a3d6841af9",
+        "user_saml_tag_bypass_login_success": "True",
+        "user_saml_tag_bypass_login_status": "200",
+        "user_saml_tag_bypass_login_http_status": "200",
+        "user_saml_tag_bypass_identity_name": "None",
+        "user_saml_tag_bypass_display_name": "None",
+        "user_saml_tag_bypass_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "51e797af8b64fcd7",
+      "sequence_id": "seq_I5_saml_onetimeuse_replay_policy_bypass",
+      "sequence_description": "Test whether replaying a OneTimeUse SAML assertion yields a second valid session (authorization binding broken because a one-time upstream intent is accepted multiple times). Includes control login then replay with identical Assertion/@ID.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_saml_replay_login_status >= 400\nEvaluation: user_attacker_saml_replay_login_status=200 >= 400 \u2192 False\nImplication: SP accepted a replayed OneTimeUse SAML assertion, granting a second session beyond upstream one-time intent",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_saml_replay_login_status >= 400",
+        "evaluation": "user_attacker_saml_replay_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_saml_replay_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I5_saml_onetimeuse_replay_policy_bypass",
+      "description": "Test whether replaying a OneTimeUse SAML assertion yields a second valid session (authorization binding broken because a one-time upstream intent is accepted multiple times). Includes control login then replay with identical Assertion/@ID.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: A SAML assertion marked OneTimeUse must not be accepted more than once; otherwise the broker grants effective permissions beyond the upstream intent (single-use authentication) and broker policy.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 4,
+      "events_succeeded": 2,
+      "events_failed": 2,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state-onetimeuse-1",
+            "redirect_uri": "http://localhost:8000/callback",
+            "include_onetimeuse": true,
+            "fixed_assertion_id": "ASSERTION-ONETIMEUSE-REPLAY-001",
+            "target_identity": "attacker-saml-control",
+            "email": "attacker-onetimeuse@test.invalid",
+            "realm": "test-org"
+          },
+          "auth_as": "user_attacker_saml_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attacker_saml_control.session_token}}"
+          },
+          "auth_as": "session_user_attacker_saml_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_saml_control_entity_id": "sub",
+            "user_attacker_saml_control_identity_name": "preferred_username",
+            "user_attacker_saml_control_display_name": "name",
+            "user_attacker_saml_control_meta": "$",
+            "user_attacker_saml_control_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state-onetimeuse-2",
+            "redirect_uri": "http://localhost:8000/callback",
+            "include_onetimeuse": true,
+            "fixed_assertion_id": "ASSERTION-ONETIMEUSE-REPLAY-001",
+            "target_identity": "attacker-saml-control",
+            "email": "attacker-onetimeuse@test.invalid",
+            "realm": "test-org"
+          },
+          "auth_as": "user_attacker_saml_replay",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attacker_saml_replay.session_token}}"
+          },
+          "auth_as": "session_user_attacker_saml_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_saml_replay_entity_id": "sub",
+            "user_attacker_saml_replay_identity_name": "preferred_username",
+            "user_attacker_saml_replay_display_name": "name",
+            "user_attacker_saml_replay_meta": "$",
+            "user_attacker_saml_replay_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I5_saml_onetimeuse_replay_policy_bypass_0",
+          "invariant": "I5",
+          "assertion": "user_attacker_saml_replay_login_status >= 400",
+          "violation_description": "SP accepted a replayed OneTimeUse SAML assertion, granting a second session beyond upstream one-time intent",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I5_saml_onetimeuse_replay_policy_bypass_1",
+          "invariant": "I5",
+          "assertion": "user_attacker_saml_control_login_status == 200 AND user_attacker_saml_control_http_status == 200",
+          "violation_description": "Control SAML login failed; replay result would be uninterpretable for authorization-binding analysis",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "session_token": "b2da8acec0b8f35c4ec7",
+        "user_attacker_saml_control_entity_id": "attacker-saml-control",
+        "user_attacker_saml_control_email": "attacker-onetimeuse@test.invalid",
+        "user_attacker_saml_control_session_token": "b547b40ca9a3861a3c2a",
+        "user_attacker_saml_control_login_success": "True",
+        "user_attacker_saml_control_login_status": "200",
+        "user_attacker_saml_control_login_http_status": "200",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_attacker_saml_control_identity_name": "None",
+        "user_attacker_saml_control_display_name": "None",
+        "user_attacker_saml_control_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_attacker_saml_replay_entity_id": "attacker-saml-control",
+        "user_attacker_saml_replay_email": "attacker-onetimeuse@test.invalid",
+        "user_attacker_saml_replay_session_token": "b2da8acec0b8f35c4ec7",
+        "user_attacker_saml_replay_login_success": "True",
+        "user_attacker_saml_replay_login_status": "200",
+        "user_attacker_saml_replay_login_http_status": "200",
+        "user_attacker_saml_replay_identity_name": "None",
+        "user_attacker_saml_replay_display_name": "None",
+        "user_attacker_saml_replay_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "879801e3d67b644c",
+      "sequence_id": "seq_I5_saml_issuer_mismatch_cross_provider_policy",
+      "sequence_description": "Create a second SAML provider with different metadata/issuer, then attempt to authenticate through provider-A while forging Issuer to provider-B (issuer confusion). Expect rejection; acceptance could grant permissions under the wrong broker policy/provider trust context.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_issuer_mismatch_login_status >= 400\nEvaluation: user_attacker_issuer_mismatch_login_status=200 >= 400 \u2192 False\nImplication: SP accepted an assertion whose Issuer corresponds to a different provider, risking cross-provider authorization/policy confusion",
+      "cve_analog": "CVE-2017-11427",
+      "evidence": {
+        "assertion": "user_attacker_issuer_mismatch_login_status >= 400",
+        "evaluation": "user_attacker_issuer_mismatch_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_issuer_mismatch_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I5_saml_issuer_mismatch_cross_provider_policy",
+      "description": "Create a second SAML provider with different metadata/issuer, then attempt to authenticate through provider-A while forging Issuer to provider-B (issuer confusion). Expect rejection; acceptance could grant permissions under the wrong broker policy/provider trust context.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Effective permissions must be bound to the correct upstream IdP intent and broker policy; an assertion with Issuer mismatching the selected provider must be rejected to prevent cross-provider authorization confusion.",
+      "cve_analog": "CVE-2017-11427",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 3,
+      "events_failed": 3,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_provider",
+          "params": {
+            "owner": "admin",
+            "name": "provider-saml-test-b",
+            "display_name": "provider-saml-test-b",
+            "category": "SAML",
+            "type": "SAML",
+            "client_id": "",
+            "client_secret": "",
+            "client_id_2": "",
+            "client_secret_2": "",
+            "host": "",
+            "port": "",
+            "title": "",
+            "content": "",
+            "region_id": "",
+            "sign_name": "",
+            "template_code": "",
+            "app_id": "",
+            "endpoint": "",
+            "intranet_endpoint": "",
+            "domain": "",
+            "bucket": "",
+            "metadata": "<EntityDescriptor entityID=\"https://idp-b.test.invalid/metadata\"><IDPSSODescriptor protocolSupportEnumeration=\"urn:oasis:names:tc:SAML:2.0:protocol\"><KeyDescriptor use=\"signing\"><KeyInfo xmlns=\"http://www.w3.org/2000/09/xmldsig#\"><X509Data><X509Certificate>MIIB...FAKE...CERT...B</X509Certificate></X509Data></KeyInfo></KeyDescriptor><SingleSignOnService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect\" Location=\"https://idp-b.test.invalid/sso\"/></IDPSSODescriptor></EntityDescriptor>",
+            "idp": "",
+            "issuer_url": "",
+            "enable_sign_authn_request": false,
+            "provider_url": ""
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "update_application",
+          "params": {
+            "owner": "admin",
+            "name": "app-test",
+            "display_name": "app-test",
+            "organization": "test-org",
+            "client_id": "{{app_test.client_id}}",
+            "client_secret": "{{app_test.client_secret}}",
+            "redirect_uris": [
+              "http://localhost:8000/callback"
+            ],
+            "grant_types": [
+              "password",
+              "authorization_code"
+            ],
+            "token_format": "JWT",
+            "expire_in_hours": 1,
+            "refresh_expire_in_hours": 24,
+            "category": "application",
+            "type": "webapp",
+            "providers": [
+              "provider-saml-test",
+              "provider-saml-test-b"
+            ],
+            "enable_password": true,
+            "enable_sign_up": true,
+            "enable_signin_session": true,
+            "enable_code_signin": true,
+            "enable_exclusive_signin": false,
+            "enable_webauthn": false,
+            "tags": [],
+            "saml_reply_url": "http://localhost:8000/callback",
+            "enable_saml_post_binding": true,
+            "disable_saml_attributes": false,
+            "enable_saml_assertion_signature": true,
+            "use_email_as_saml_nameid": true,
+            "cert": "cert-built-in",
+            "code_resend_timeout": 0
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state-prov-a-ctl",
+            "redirect_uri": "http://localhost:8000/callback",
+            "target_identity": "attacker-prov-a",
+            "email": "attacker-prov-a@test.invalid",
+            "realm": "test-org"
+          },
+          "auth_as": "user_attacker_provider_a_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attacker_provider_a_control.session_token}}"
+          },
+          "auth_as": "session_user_attacker_provider_a_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_provider_a_control_entity_id": "sub",
+            "user_attacker_provider_a_control_identity_name": "preferred_username",
+            "user_attacker_provider_a_control_display_name": "name",
+            "user_attacker_provider_a_control_meta": "$",
+            "user_attacker_provider_a_control_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "saml_response": "AUTO",
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state-issuer-mismatch",
+            "redirect_uri": "http://localhost:8000/callback",
+            "idp_entity_id": "https://idp-b.test.invalid/metadata",
+            "target_identity": "attacker-prov-a",
+            "email": "attacker-prov-a@test.invalid",
+            "realm": "test-org"
+          },
+          "auth_as": "user_attacker_issuer_mismatch",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attacker_issuer_mismatch.session_token}}"
+          },
+          "auth_as": "session_user_attacker_issuer_mismatch",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_issuer_mismatch_entity_id": "sub",
+            "user_attacker_issuer_mismatch_identity_name": "preferred_username",
+            "user_attacker_issuer_mismatch_display_name": "name",
+            "user_attacker_issuer_mismatch_meta": "$",
+            "user_attacker_issuer_mismatch_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I5_saml_issuer_mismatch_cross_provider_policy_0",
+          "invariant": "I5",
+          "assertion": "user_attacker_issuer_mismatch_login_status >= 400",
+          "violation_description": "SP accepted an assertion whose Issuer corresponds to a different provider, risking cross-provider authorization/policy confusion",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I5_saml_issuer_mismatch_cross_provider_policy_1",
+          "invariant": "I5",
+          "assertion": "user_attacker_provider_a_control_login_status == 200 AND user_attacker_provider_a_control_http_status == 200",
+          "violation_description": "Control login via provider A failed; issuer-mismatch result is not attributable to authorization binding enforcement",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "session_token": "1204c33ef5a374b6f319",
+        "user_attacker_provider_a_control_entity_id": "attacker-prov-a",
+        "user_attacker_provider_a_control_email": "attacker-prov-a@test.invalid",
+        "user_attacker_provider_a_control_session_token": "05b9a80ea8cb3c27c03f",
+        "user_attacker_provider_a_control_login_success": "True",
+        "user_attacker_provider_a_control_login_status": "200",
+        "user_attacker_provider_a_control_login_http_status": "200",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_attacker_provider_a_control_identity_name": "None",
+        "user_attacker_provider_a_control_display_name": "None",
+        "user_attacker_provider_a_control_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_attacker_issuer_mismatch_entity_id": "attacker-prov-a",
+        "user_attacker_issuer_mismatch_email": "attacker-prov-a@test.invalid",
+        "user_attacker_issuer_mismatch_session_token": "1204c33ef5a374b6f319",
+        "user_attacker_issuer_mismatch_login_success": "True",
+        "user_attacker_issuer_mismatch_login_status": "200",
+        "user_attacker_issuer_mismatch_login_http_status": "200",
+        "user_attacker_issuer_mismatch_identity_name": "None",
+        "user_attacker_issuer_mismatch_display_name": "None",
+        "user_attacker_issuer_mismatch_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}"
+      }
+    }
+  }
+]

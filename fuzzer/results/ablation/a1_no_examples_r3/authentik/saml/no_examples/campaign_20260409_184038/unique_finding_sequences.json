@@ -1,0 +1,157 @@
+[
+  {
+    "finding": {
+      "finding_id": "51fae8b91e2d94c1",
+      "sequence_id": "seq_I5_saml_expired_assertion_acceptance",
+      "sequence_description": "I5 attack: Use a control SAML login, then attempt SAML login with an expired assertion (NotOnOrAfter in the past). If accepted, authentik grants a session beyond upstream temporal intent constraints.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_expired_login_status >= 400\nEvaluation: user_attacker_expired_login_status=200 >= 400 \u2192 False\nImplication: authentik accepted an expired SAML assertion, granting a session beyond upstream temporal intent (NotOnOrAfter not enforced).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_expired_login_status >= 400",
+        "evaluation": "user_attacker_expired_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_expired_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I5_saml_expired_assertion_acceptance",
+      "description": "I5 attack: Use a control SAML login, then attempt SAML login with an expired assertion (NotOnOrAfter in the past). If accepted, authentik grants a session beyond upstream temporal intent constraints.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: An expired SAML assertion must not yield an authenticated session; accepting it would grant permissions beyond UpstreamIntent(time-bounded) \u2229 BrokerPolicy.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 3,
+      "events_failed": 2,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "i5_saml_expired_victim",
+            "email": "i5_saml_expired_victim@example.com",
+            "name": "I5 SAML Expired Victim",
+            "password": "VictimPassw0rd!",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "identity_id": "victim_identity_id",
+            "username": "victim_username",
+            "http_status": "victim_create_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "saml",
+            "saml_response": "{\"target_identity\":\"i5_saml_expired_victim\",\"email\":\"i5_saml_expired_victim@example.com\",\"provider\":\"saml\",\"realm\":\"default\"}",
+            "relay_state": "control-valid"
+          },
+          "auth_as": "user_control_valid",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "control_valid_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_valid",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_valid_entity_id": "sub",
+            "user_control_valid_display_name": "name",
+            "user_control_valid_email": "email",
+            "user_control_valid_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "source_slug": "saml",
+            "saml_response": "{\"target_identity\":\"i5_saml_expired_victim\",\"email\":\"i5_saml_expired_victim@example.com\",\"provider\":\"saml\",\"realm\":\"default\",\"expired_assertion\":true}",
+            "relay_state": "attack-expired"
+          },
+          "auth_as": "user_attacker_expired",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "attacker_expired_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_expired",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_expired_entity_id": "sub",
+            "user_attacker_expired_display_name": "name",
+            "user_attacker_expired_email": "email",
+            "user_attacker_expired_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I5_saml_expired_assertion_acceptance_0",
+          "invariant": "I5",
+          "assertion": "user_control_valid_login_status < 400 AND control_valid_userinfo_status == 200",
+          "violation_description": "Control SAML login failed; cannot attribute attack outcome to expiry enforcement.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I5_saml_expired_assertion_acceptance_1",
+          "invariant": "I5",
+          "assertion": "user_attacker_expired_login_status >= 400",
+          "violation_description": "authentik accepted an expired SAML assertion, granting a session beyond upstream temporal intent (NotOnOrAfter not enforced).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "identity_id": "37",
+        "username": "i5_saml_expired_victim",
+        "http_status": "None",
+        "user_control_valid_login_success": "True",
+        "user_control_valid_login_status": "200",
+        "user_control_valid_login_http_status": "200",
+        "user_control_valid_entity_id": "None",
+        "user_control_valid_display_name": "None",
+        "user_control_valid_email": "None",
+        "user_control_valid_groups": "None",
+        "user_attacker_expired_login_success": "True",
+        "user_attacker_expired_login_status": "200",
+        "user_attacker_expired_login_http_status": "200",
+        "user_attacker_expired_entity_id": "None",
+        "user_attacker_expired_display_name": "None",
+        "user_attacker_expired_email": "None",
+        "user_attacker_expired_groups": "None"
+      }
+    }
+  }
+]

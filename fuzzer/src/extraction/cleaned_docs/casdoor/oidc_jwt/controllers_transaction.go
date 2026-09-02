@@ -1,0 +1,60 @@
+// Copyright 2024 The Casdoor Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package controllers
+// GetTransactions
+// @Title GetTransactions
+// @Tag Transaction API
+// @Description get transactions
+// @Param   owner     query    string  true        "The owner of transactions"
+// @Success 200 {array} object.Transaction The Response object
+// @router /get-transactions [get]
+func (c *ApiController) GetTransactions() {
+			// If field is "user", filter by that user even for admins
+		// Apply user filter for non-admin users
+// GetTransaction
+// @Title GetTransaction
+// @Tag Transaction API
+// @Description get transaction
+// @Param   id     query    string  true        "The id ( owner/name ) of the transaction"
+// @Success 200 {object} object.Transaction The Response object
+// @router /get-transaction [get]
+func (c *ApiController) GetTransaction() {
+	// Check if non-admin user is trying to access someone else's transaction
+		// Only allow users to view their own transactions
+// UpdateTransaction
+// @Title UpdateTransaction
+// @Tag Transaction API
+// @Description update transaction
+// @Param   id     query    string  true        "The id ( owner/name ) of the transaction"
+// @Param   body    body   object.Transaction  true        "The details of the transaction"
+// @Success 200 {object} controllers.Response The Response object
+// @router /update-transaction [post]
+func (c *ApiController) UpdateTransaction() {
+// AddTransaction
+// @Title AddTransaction
+// @Tag Transaction API
+// @Description add transaction
+// @Param   body    body   object.Transaction  true        "The details of the transaction"
+// @Param   dryRun  query  string  false       "Dry run mode: set to 'true' or '1' to validate without committing"
+// @Success 200 {object} controllers.Response The Response object
+// @router /add-transaction [post]
+func (c *ApiController) AddTransaction() {
+// DeleteTransaction
+// @Title DeleteTransaction
+// @Tag Transaction API
+// @Description delete transaction
+// @Param   body    body   object.Transaction  true        "The details of the transaction"
+// @Success 200 {object} controllers.Response The Response object
+// @router /delete-transaction [post]
+func (c *ApiController) DeleteTransaction() {

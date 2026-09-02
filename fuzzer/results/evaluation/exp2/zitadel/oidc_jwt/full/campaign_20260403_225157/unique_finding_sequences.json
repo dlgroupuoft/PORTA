@@ -1,0 +1,237 @@
+[
+  {
+    "finding": {
+      "finding_id": "e6753d483b8c23eb",
+      "sequence_id": "seq_i5_jwt_idp_wrong_aud_still_grants_roles",
+      "sequence_description": "JWT IdP: mint a control JWT and an attack JWT differing only by aud (wrong-aud). If wrong-aud is accepted, the broker may grant roles/identity despite upstream intent mismatch.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I5",
+      "identified_invariant": "I5",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: aud_atk_login_http_status >= 400\nEvaluation: aud_atk_login_http_status=200 >= 400 \u2192 False\nImplication: JWT IdP accepted a token with wrong aud, potentially granting a session outside the upstream intended audience (authorization binding failure)",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "aud_atk_login_http_status >= 400",
+        "evaluation": "aud_atk_login_http_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "aud_atk_login_http_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_jwt_idp_wrong_aud_still_grants_roles",
+      "description": "JWT IdP: mint a control JWT and an attack JWT differing only by aud (wrong-aud). If wrong-aud is accepted, the broker may grant roles/identity despite upstream intent mismatch.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Authorization must be bound to the intended audience. If a JWT with wrong aud is accepted by the JWT IdP, the resulting session may carry permissions not intended for this broker/client context.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 8,
+      "events_failed": 0,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "mint_custom_jwt",
+          "params": {
+            "sub": "aud-ctrl-user",
+            "iss": "http://mock-idp:9090",
+            "exp": "{{now_epoch_plus_3600}}",
+            "iat": "{{now_epoch}}",
+            "aud": "367019587776020484",
+            "email": "aud-ctrl@test.local",
+            "name": "aud ctrl"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "aud_control_jwt": "minted_token"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "mint_custom_jwt",
+          "params": {
+            "sub": "aud-atk-user",
+            "iss": "http://mock-idp:9090",
+            "exp": "{{now_epoch_plus_3600}}",
+            "iat": "{{now_epoch}}",
+            "aud": "wrong-audience-value",
+            "email": "aud-atk@test.local",
+            "name": "aud atk"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "aud_attack_jwt": "minted_token"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_idp_intent",
+          "params": {
+            "idp_id": "367019588279336964",
+            "success_url": "http://localhost:8085/idp/success",
+            "failure_url": "http://localhost:8085/idp/failure"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "aud_ctrl_auth_url": "auth_url"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "complete_jwt_idp_login",
+          "params": {
+            "auth_request_id": "{{aud_ctrl_auth_url_authRequestID}}",
+            "user_agent_id": "{{aud_ctrl_auth_url_userAgentID}}",
+            "jwt_token": "{{aud_control_jwt}}"
+          },
+          "auth_as": "user_aud_control",
+          "expected_outcome": "any",
+          "captures": {
+            "aud_ctrl_login_http_status": "http_status",
+            "aud_ctrl_idp_intent_id": "idp_intent_id",
+            "aud_ctrl_idp_intent_token": "idp_intent_token"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "retrieve_idp_intent",
+          "params": {
+            "idp_intent_id": "{{aud_ctrl_idp_intent_id}}",
+            "idp_intent_token": "{{aud_ctrl_idp_intent_token}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "aud_ctrl_user_id": "user_id",
+            "aud_ctrl_idp_user_id": "idp_user_id",
+            "aud_ctrl_retrieve_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_idp_intent",
+          "params": {
+            "idp_id": "367019588279336964",
+            "success_url": "http://localhost:8085/idp/success",
+            "failure_url": "http://localhost:8085/idp/failure"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "aud_atk_auth_url": "auth_url"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "complete_jwt_idp_login",
+          "params": {
+            "auth_request_id": "{{aud_atk_auth_url_authRequestID}}",
+            "user_agent_id": "{{aud_atk_auth_url_userAgentID}}",
+            "jwt_token": "{{aud_attack_jwt}}"
+          },
+          "auth_as": "user_aud_attack",
+          "expected_outcome": "any",
+          "captures": {
+            "aud_atk_login_http_status": "http_status",
+            "aud_atk_idp_intent_id": "idp_intent_id",
+            "aud_atk_idp_intent_token": "idp_intent_token"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "retrieve_idp_intent",
+          "params": {
+            "idp_intent_id": "{{aud_atk_idp_intent_id}}",
+            "idp_intent_token": "{{aud_atk_idp_intent_token}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "aud_atk_user_id": "user_id",
+            "aud_atk_idp_user_id": "idp_user_id",
+            "aud_atk_retrieve_http_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_jwt_idp_control_ok",
+          "invariant": "I5",
+          "assertion": "aud_ctrl_login_http_status == 200 AND aud_ctrl_retrieve_http_status == 200 AND aud_ctrl_user_id is not None",
+          "violation_description": "Control JWT IdP login should succeed and produce a resolvable idp_intent user",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_jwt_idp_wrong_aud_rejected",
+          "invariant": "I5",
+          "assertion": "aud_atk_login_http_status >= 400",
+          "violation_description": "JWT IdP accepted a token with wrong aud, potentially granting a session outside the upstream intended audience (authorization binding failure)",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "project_id": "367019587591471108",
+        "client_id": "367019587776020484",
+        "redirect_uri": "http://localhost:8085/callback",
+        "app_id": "367019587759243268",
+        "jwt_idp_id": "367019588279336964",
+        "mock_idp_url": "http://localhost:9090",
+        "jwt_idp_header": "x-jwt-assertion",
+        "saml_metadata_url": "http://mock-idp:9090/saml/metadata",
+        "mock_idp_entity_id": "http://mock-idp:9090",
+        "isolation_strategy": "Zitadel management API uses REST gateway paths under /management/v1/ (org-scoped). Do NOT use gRPC Connect paths. For IdP setup: create_provider creates the IdP, enable_auth_method adds it to the logi",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "jwt_idp_flow_doc": "To test JWT IdP validation: 1) mint_custom_jwt \u2192 captures minted_token. 2) start_idp_intent with idp_id={{jwt_idp_id}} \u2192 captures auth_url, plus auto-parsed auth_url_authRequestID and auth_url_userAge",
+        "minted_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii1kZXhDR1g0THlIdVdkc0IiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJhdWQtYXRrLXVzZXIiLCJpc3MiOiJodHRwOi8vbW9jay1pZHA6OTA5MCIsImVtYWlsIjoiYXVkLWF0a0B0ZXN0LmxvY2FsIiwibmFtZSI6ImF1ZCBhdGsiL",
+        "kid": "-dexCGX4LyHuWdsB",
+        "aud_control_jwt": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii1kZXhDR1g0THlIdVdkc0IiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJhdWQtY3RybC11c2VyIiwiaXNzIjoiaHR0cDovL21vY2staWRwOjkwOTAiLCJlbWFpbCI6ImF1ZC1jdHJsQHRlc3QubG9jYWwiLCJuYW1lIjoiYXVkIGN0c",
+        "aud_attack_jwt": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii1kZXhDR1g0THlIdVdkc0IiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJhdWQtYXRrLXVzZXIiLCJpc3MiOiJodHRwOi8vbW9jay1pZHA6OTA5MCIsImVtYWlsIjoiYXVkLWF0a0B0ZXN0LmxvY2FsIiwibmFtZSI6ImF1ZCBhdGsiL",
+        "auth_url": "http://mock-idp:9090/authorize?authRequestID=367020711883046916&userAgentID=9ZuddVZqItt1KzTf302pppgpYP5ckqfGwAeJAj0kitex3A",
+        "auth_url_authRequestID": "367020711883046916",
+        "auth_url_userAgentID": "9ZuddVZqItt1KzTf302pppgpYP5ckqfGwAeJAj0kitex3A",
+        "idp_intent_id": "367020711883046916",
+        "aud_ctrl_auth_url": "http://mock-idp:9090/authorize?authRequestID=367020711715274756&userAgentID=v2JmnIUMNHvK3uVe_4zV_CzXkOiAc6wpGxRM9SdjnQNciw",
+        "aud_ctrl_auth_url_authRequestID": "367020711715274756",
+        "aud_ctrl_auth_url_userAgentID": "v2JmnIUMNHvK3uVe_4zV_CzXkOiAc6wpGxRM9SdjnQNciw",
+        "idp_intent_token": "WhtTrn9qgaKjLQXTqmA98Qgz3ITGXAxlXy5wEpIctY9oDw",
+        "user_aud_control_idp_intent_id": "367020711715274756",
+        "user_aud_control_idp_intent_token": "-svoeC6gvgQCSHk6e85L_NWA9ld9Xs8nZ8ywXnXvvj9EFw",
+        "aud_ctrl_login_http_status": "200",
+        "aud_ctrl_idp_intent_id": "367020711715274756",
+        "aud_ctrl_idp_intent_token": "-svoeC6gvgQCSHk6e85L_NWA9ld9Xs8nZ8ywXnXvvj9EFw",
+        "idp_user_id": "{'aud': ['wrong-audience-value'], 'email': 'aud-atk@test.local', 'exp': 1775260991, 'iat': 1775257391, 'iss': 'http://mock-idp:9090', 'name': 'aud atk', 'sub': 'aud-atk-user'}",
+        "aud_ctrl_user_id": "None",
+        "aud_ctrl_idp_user_id": "{'aud': ['367019587776020484'], 'email': 'aud-ctrl@test.local', 'exp': 1775260991, 'iat': 1775257391, 'iss': 'http://mock-idp:9090', 'name': 'aud ctrl', 'sub': 'aud-ctrl-user'}",
+        "aud_ctrl_retrieve_http_status": "200",
+        "aud_atk_auth_url": "http://mock-idp:9090/authorize?authRequestID=367020711883046916&userAgentID=9ZuddVZqItt1KzTf302pppgpYP5ckqfGwAeJAj0kitex3A",
+        "aud_atk_auth_url_authRequestID": "367020711883046916",
+        "aud_atk_auth_url_userAgentID": "9ZuddVZqItt1KzTf302pppgpYP5ckqfGwAeJAj0kitex3A",
+        "user_aud_attack_idp_intent_id": "367020711883046916",
+        "user_aud_attack_idp_intent_token": "WhtTrn9qgaKjLQXTqmA98Qgz3ITGXAxlXy5wEpIctY9oDw",
+        "aud_atk_login_http_status": "200",
+        "aud_atk_idp_intent_id": "367020711883046916",
+        "aud_atk_idp_intent_token": "WhtTrn9qgaKjLQXTqmA98Qgz3ITGXAxlXy5wEpIctY9oDw",
+        "aud_atk_user_id": "None",
+        "aud_atk_idp_user_id": "{'aud': ['wrong-audience-value'], 'email': 'aud-atk@test.local', 'exp': 1775260991, 'iat': 1775257391, 'iss': 'http://mock-idp:9090', 'name': 'aud atk', 'sub': 'aud-atk-user'}",
+        "aud_atk_retrieve_http_status": "200",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  }
+]

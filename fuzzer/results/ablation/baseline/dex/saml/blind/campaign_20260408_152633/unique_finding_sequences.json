@@ -1,0 +1,251 @@
+[
+  {
+    "finding": {
+      "finding_id": "b9ae7c4f7df3bf07",
+      "sequence_id": "seq_201",
+      "sequence_description": "Coverage: create a second SAML connector with different issuer/audience settings; run SP-initiated auth through each connector for two identities and verify identity + read behavior for both sessions.",
+      "generation_strategy": "coverage",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "Server returned HTTP 500 on saml_login (auth_as=user_beta): <!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">\n    <title>dex</title>\n    <meta name=\"viewport\" content=\"width=device-wid. Login endpoints must not return 5xx for any input.",
+      "cve_analog": "none",
+      "evidence": {
+        "event_type": "saml_login",
+        "http_status": 500,
+        "error": "<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">\n    <title>dex</title>\n    <meta name=\"viewport\" content=\"width=device-wid",
+        "params_keys": [
+          "connector_id",
+          "saml_response",
+          "relay_state"
+        ]
+      },
+      "detection_source": "L1_syntactic",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_201",
+      "description": "Create a SAML connector with issuer/audience pinned, run two SP-initiated SAML logins with different scopes, verify identity and read-secret for both sessions, then revoke one session and verify both again.",
+      "generation_strategy": "coverage",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "coverage",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 12,
+      "events_succeeded": 4,
+      "events_failed": 8,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_type": "saml",
+            "connector_id": "test-saml",
+            "name": "SAML pinned issuer/audience",
+            "sso_url": "http://localhost:5556/dex/callback",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "entity_issuer": "urn:valence:sp:entity",
+            "sso_issuer": "urn:valence:idp:issuer",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "groups_delim": ";",
+            "insecure_skip_signature_validation": false
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st-alice-201",
+            "nonce": "nonce-alice-201",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "browser_user_alice",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "alice_auth_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "AUTO",
+            "relay_state": "{{st-alice-201}}"
+          },
+          "auth_as": "user_alice_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "alice_saml_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_saml_entity_id": "sub",
+            "user_alice_saml_display_name": "name",
+            "user_alice_saml_policies": "groups",
+            "user_alice_saml_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {},
+          "auth_as": "session_user_alice_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "user_alice_saml_read_http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid groups",
+            "response_type": "code",
+            "state": "st-alice2-201",
+            "nonce": "nonce-alice2-201",
+            "connector_id": "test-saml",
+            "approval_prompt": "force"
+          },
+          "auth_as": "browser_user_alice2",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "alice2_auth_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "AUTO",
+            "relay_state": "{{st-alice2-201}}"
+          },
+          "auth_as": "user_alice2_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "alice2_saml_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice2_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice2_saml_entity_id": "sub",
+            "user_alice2_saml_display_name": "name",
+            "user_alice2_saml_policies": "groups",
+            "user_alice2_saml_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {},
+          "auth_as": "session_user_alice2_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "user_alice2_saml_read_http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "session_token": "{{session_user_alice_saml}}",
+            "token_type_hint": "access_token",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "revoke_alice_http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_saml_entity_id": "sub",
+            "user_alice_saml_display_name": "name",
+            "user_alice_saml_policies": "groups",
+            "user_alice_saml_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice2_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice2_saml_entity_id": "sub",
+            "user_alice2_saml_display_name": "name",
+            "user_alice2_saml_policies": "groups",
+            "user_alice2_saml_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [],
+      "sequence_metadata": {
+        "generation_strategy": "coverage",
+        "used_examples": false,
+        "num_examples": -1
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "http_status": "None",
+        "user_alice_saml_login_success": "True",
+        "user_alice_saml_login_status": "200",
+        "user_alice_saml_login_http_status": "200",
+        "user_alice_saml_entity_id": "None",
+        "user_alice_saml_display_name": "None",
+        "user_alice_saml_policies": "None",
+        "user_alice_saml_identity_policies": "None",
+        "user_alice2_saml_login_success": "True",
+        "user_alice2_saml_login_status": "200",
+        "user_alice2_saml_login_http_status": "200",
+        "user_alice2_saml_entity_id": "None",
+        "user_alice2_saml_display_name": "None",
+        "user_alice2_saml_policies": "None",
+        "user_alice2_saml_identity_policies": "None"
+      }
+    }
+  }
+]

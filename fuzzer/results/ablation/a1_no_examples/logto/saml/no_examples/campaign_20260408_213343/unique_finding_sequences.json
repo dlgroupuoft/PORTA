@@ -1,0 +1,493 @@
+[
+  {
+    "finding": {
+      "finding_id": "ad67ead38535cbcd",
+      "sequence_id": "seq_I2_oidc_sso_nonce_bypass_003",
+      "sequence_description": "Test OIDC SSO nonce enforcement: initiate an auth request with nonce expectation, then attempt SSO where the mock IdP omits nonce; RP must reject.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "OIDC SSO verify accepted id_token without nonce claim. The mock IdP omits nonce by default; per OIDC Core 3.1.3.7 \u00a711, the RP must reject id_tokens with missing nonce when nonce was sent in the authorization request. Nonce validation bypassed.",
+      "cve_analog": "none",
+      "evidence": {
+        "connector_id": "1cq7zr1k0u0x",
+        "mutation_type": "i2_oidc_sso_nonce_bypass"
+      },
+      "detection_source": "L1_syntactic",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_oidc_sso_nonce_bypass_003",
+      "description": "Test OIDC SSO nonce enforcement: initiate an auth request with nonce expectation, then attempt SSO where the mock IdP omits nonce; RP must reject.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: OIDC SSO callback artifacts must be bound to a fresh nonce; an id_token missing nonce when nonce was sent must be rejected (prevents replay/callback injection).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 4,
+      "events_succeeded": 2,
+      "events_failed": 2,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "set_idp_claims",
+          "params": {
+            "sub": "attacker-sub-nonce",
+            "email": "attacker.nonce@example.com",
+            "name": "Attacker Nonce",
+            "groups": "redteam",
+            "email_verified": "true"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "admin_setclaims_nonce_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "{{test_app_client_id}}",
+            "redirect_uri": "{{redirect_uri}}",
+            "scope": "openid profile email",
+            "response_type": "code",
+            "state": "st_nonce_003",
+            "code_challenge": "cc_nonce_003",
+            "code_challenge_method": "S256",
+            "resource": "{{test_api_resource}}",
+            "prompt": "login",
+            "ui_locales": "en",
+            "direct_sign_in": "sso:{{oidc_sso_connector_id}}"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "admin_start_oidc_nonce_http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "saml_response": "AUTO",
+            "relay_state": "rs_oidc_nonce_bypass",
+            "mutation_type": "i2_oidc_sso_nonce_bypass",
+            "target_identity": "attacker_oidc_nonce_bypass",
+            "email": "attacker.nonce@example.com",
+            "provider": "OIDC",
+            "realm": "default"
+          },
+          "auth_as": "session_user_attacker_oidc_nonce_bypass",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "user_attacker_oidc_nonce_bypass_login_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_oidc_nonce_bypass",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_oidc_nonce_bypass_entity_id": "sub",
+            "user_attacker_oidc_nonce_bypass_display_name": "username",
+            "user_attacker_oidc_nonce_bypass_email": "email",
+            "user_attacker_oidc_nonce_bypass_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_oidc_sso_nonce_absent_rejected",
+          "invariant": "I2",
+          "assertion": "user_attacker_oidc_nonce_bypass_login_http_status >= 400",
+          "violation_description": "OIDC SSO accepted id_token without nonce when nonce was expected (OIDC Core 3.1.3.7 \u00a711).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "1cq7zr1k0u0x",
+        "saml_sso_connector_id": "17wvynytq869",
+        "test_app_client_id": "i5k9dwwj0nh9kocy32ejn",
+        "test_app_client_secret": "#internal:KnFfvRnWvBnNVZ2X846GEh2Gp62WScvB",
+        "m2m_app_client_id": "pnldax5wyq8a6sytuclfk",
+        "m2m_app_client_secret": "#internal:W6uCHdUsD7RhQSRJjcfeTvUFbmqp4ahf",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "http_status": "None",
+        "session_user_attacker_oidc_nonce_bypass_session_token": "R9ZhwhyWKX2_vGpJEA2Z5ftpgCSy2pCF0f8Mk-5M3At",
+        "session_user_attacker_oidc_nonce_bypass_login_success": "True",
+        "session_user_attacker_oidc_nonce_bypass_login_status": "200",
+        "session_user_attacker_oidc_nonce_bypass_login_http_status": "200",
+        "user_attacker_oidc_nonce_bypass_entity_id": "None",
+        "user_attacker_oidc_nonce_bypass_display_name": "None",
+        "user_attacker_oidc_nonce_bypass_email": "None",
+        "user_attacker_oidc_nonce_bypass_groups": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "913b19784fedd68b",
+      "sequence_id": "seq_I2_oidc_sso_nonce_bypass_after_successful_pwd_session",
+      "sequence_description": "Establish a valid baseline session via password login, then attempt OIDC SSO login where the IdP omits nonce (mutation). RP must reject nonce-less id_token even if a prior session exists (anti-replay/freshness of OIDC auth response).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_oidc_nonce_bypass_login_status >= 400\nEvaluation: user_attacker_oidc_nonce_bypass_login_status=200 >= 400 \u2192 False\nImplication: OIDC SSO accepted id_token without nonce (OIDC Core 3.1.3.7 \u00a711); freshness/anti-replay binding to nonce is bypassed.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_oidc_nonce_bypass_login_status >= 400",
+        "evaluation": "user_attacker_oidc_nonce_bypass_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_oidc_nonce_bypass_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I2_oidc_sso_nonce_bypass_after_successful_pwd_session",
+      "description": "Establish a valid baseline session via password login, then attempt OIDC SSO login where the IdP omits nonce (mutation). RP must reject nonce-less id_token even if a prior session exists (anti-replay/freshness of OIDC auth response).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: OIDC SSO callback artifacts must be fresh and bound to a nonce; a nonce-less id_token must be rejected even when a user already has an active session.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 5,
+      "events_failed": 0,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "alice_i2_nonce_pwd_first",
+            "password": "Passw0rd!alice_i2_nonce_pwd_first",
+            "name": "Alice I2 Nonce Baseline",
+            "primary_email": "alice_i2_nonce_pwd_first@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "identity_id": "alice_user_id",
+            "http_status": "alice_create_http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "alice_i2_nonce_pwd_first",
+            "password": "Passw0rd!alice_i2_nonce_pwd_first",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "session_token": "alice_pwd_session_token",
+            "http_status": "alice_pwd_login_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_entity_id": "sub",
+            "user_alice_pwd_display_name": "username",
+            "user_alice_pwd_email": "email",
+            "user_alice_pwd_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{oidc_sso_connector_id}}",
+            "saml_response": "mutation_type=i2_oidc_sso_nonce_bypass",
+            "relay_state": "nonce_bypass_after_pwd_session"
+          },
+          "auth_as": "user_attacker_oidc_nonce_bypass",
+          "expected_outcome": "any",
+          "captures": {
+            "session_token": "attacker_oidc_session_token",
+            "http_status": "attacker_oidc_login_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_oidc_nonce_bypass",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_oidc_nonce_bypass_entity_id": "sub",
+            "user_attacker_oidc_nonce_bypass_display_name": "username",
+            "user_attacker_oidc_nonce_bypass_email": "email",
+            "user_attacker_oidc_nonce_bypass_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_baseline_pwd_login_ok",
+          "invariant": "I2",
+          "assertion": "user_alice_pwd_http_status == 200",
+          "violation_description": "Baseline password login failed; cannot evaluate nonce-bypass freshness behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_oidc_nonce_absent_rejected_even_with_existing_session",
+          "invariant": "I2",
+          "assertion": "user_attacker_oidc_nonce_bypass_login_status >= 400",
+          "violation_description": "OIDC SSO accepted id_token without nonce (OIDC Core 3.1.3.7 \u00a711); freshness/anti-replay binding to nonce is bypassed.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "1cq7zr1k0u0x",
+        "saml_sso_connector_id": "17wvynytq869",
+        "test_app_client_id": "i5k9dwwj0nh9kocy32ejn",
+        "test_app_client_secret": "#internal:KnFfvRnWvBnNVZ2X846GEh2Gp62WScvB",
+        "m2m_app_client_id": "pnldax5wyq8a6sytuclfk",
+        "m2m_app_client_secret": "#internal:W6uCHdUsD7RhQSRJjcfeTvUFbmqp4ahf",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "8fd6a86ufpa1",
+        "username": "alice_i2_nonce_pwd_first",
+        "http_status": "None",
+        "session_token": "None",
+        "user_alice_pwd_session_token": "6ZSzmRMKNituwmJT_S13Npu8KN0WCCVMZmXk-K0HMVp",
+        "user_alice_pwd_login_success": "True",
+        "user_alice_pwd_login_status": "200",
+        "user_alice_pwd_login_http_status": "200",
+        "display_name": "alice_i2_nonce_pwd_first",
+        "email": "attackerB@example.com",
+        "user_alice_pwd_entity_id": "d5b0xe91q9tm",
+        "user_alice_pwd_display_name": "alice_i2_nonce_pwd_first",
+        "user_alice_pwd_email": "alice_i2_nonce_pwd_first@example.com",
+        "user_alice_pwd_groups": "None",
+        "user_alice_pwd_identity_id": "d5b0xe91q9tm",
+        "user_attacker_oidc_nonce_bypass_session_token": "ApTD7ZLKvv-7DrcN6ZfX1_brvh4LTpHUoFeCla-iSQP",
+        "user_attacker_oidc_nonce_bypass_login_success": "True",
+        "user_attacker_oidc_nonce_bypass_login_status": "200",
+        "user_attacker_oidc_nonce_bypass_login_http_status": "200",
+        "user_attacker_oidc_nonce_bypass_entity_id": "8fd6a86ufpa1",
+        "user_attacker_oidc_nonce_bypass_display_name": "alice_i2_nonce_pwd_first",
+        "user_attacker_oidc_nonce_bypass_email": "attackerB@example.com",
+        "user_attacker_oidc_nonce_bypass_groups": "None",
+        "user_attacker_oidc_nonce_bypass_identity_id": "8fd6a86ufpa1"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "0bf25d508eff6077",
+      "sequence_id": "seq_I3_mfa_bypass_via_sso_path",
+      "sequence_description": "Test whether enabling MFA on a user is coherently enforced across alternate authentication paths (password vs enterprise SSO). Hypothesis: MFA is enforced for password login but skipped for SSO connector login, indicating step-skipping / non-atomic flow enforcement across auth methods.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_victim_pwd_login_status >= 400 AND user_victim_sso_login_status >= 400\nEvaluation: (user_victim_pwd_login_status=200 >= 400 \u2192 False) AND (user_victim_sso_login_status=200 >= 400 \u2192 False)\nImplication: MFA-required user was able to establish a session via an alternate flow (SSO) or password flow without completing MFA; indicates step skipping / incoherent MFA enforcement across authentication FSM.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_victim_pwd_login_status >= 400 AND user_victim_sso_login_status >= 400",
+        "evaluation": "(user_victim_pwd_login_status=200 >= 400 \u2192 False) AND (user_victim_sso_login_status=200 >= 400 \u2192 False)",
+        "captured_values": {
+          "user_victim_pwd_login_status": 200,
+          "user_victim_sso_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I3_mfa_bypass_via_sso_path",
+      "description": "Test whether enabling MFA on a user is coherently enforced across alternate authentication paths (password vs enterprise SSO). Hypothesis: MFA is enforced for password login but skipped for SSO connector login, indicating step-skipping / non-atomic flow enforcement across auth methods.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: If MFA is required for a principal, all authentication flows that establish a session for that principal must enforce the MFA step; SSO path must not skip MFA-required state transitions.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 4,
+      "events_failed": 1,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "victim_mfa_user",
+            "password": "Str0ngPass!234",
+            "name": "Victim MFA",
+            "primary_email": "victim.mfa.user@valence.local"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "victim_user_id": "identity_id",
+            "victim_username": "username",
+            "victim_create_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "mfa_setup_enable",
+          "params": {
+            "userId": "{{victim_user_id}}",
+            "mfa_verification_factors": [
+              "Totp"
+            ]
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "victim_mfa_user",
+            "password": "Str0ngPass!234",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "user_victim_pwd",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "{{saml_sso_connector_id}}",
+            "saml_response": "AUTO",
+            "relay_state": "flowcoherence-mfa-bypass"
+          },
+          "auth_as": "user_victim_sso",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_victim_sso",
+          "expected_outcome": "any",
+          "captures": {
+            "user_victim_sso_entity_id": "sub",
+            "user_victim_sso_display_name": "username",
+            "user_victim_sso_email": "email",
+            "user_victim_sso_groups": "organizations"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I3_mfa_bypass_via_sso_path_0",
+          "invariant": "I3",
+          "assertion": "user_victim_pwd_login_status >= 400 AND user_victim_sso_login_status >= 400",
+          "violation_description": "MFA-required user was able to establish a session via an alternate flow (SSO) or password flow without completing MFA; indicates step skipping / incoherent MFA enforcement across authentication FSM.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "check_seq_I3_mfa_bypass_via_sso_path_1",
+          "invariant": "I3",
+          "assertion": "user_victim_sso_login_status >= 400 OR session_user_victim_sso_http_status >= 400",
+          "violation_description": "SSO login was rejected but /oidc/me still returned a valid identity, indicating session confusion or non-atomic flow completion.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "1cq7zr1k0u0x",
+        "saml_sso_connector_id": "17wvynytq869",
+        "test_app_client_id": "i5k9dwwj0nh9kocy32ejn",
+        "test_app_client_secret": "#internal:KnFfvRnWvBnNVZ2X846GEh2Gp62WScvB",
+        "m2m_app_client_id": "pnldax5wyq8a6sytuclfk",
+        "m2m_app_client_secret": "#internal:W6uCHdUsD7RhQSRJjcfeTvUFbmqp4ahf",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "8fd6a86ufpa1",
+        "username": "victim_mfa_user",
+        "victim_user_id": "iw2et586vsee",
+        "victim_username": "victim_mfa_user",
+        "victim_create_http_status": "200",
+        "user_victim_pwd_session_token": "OBMCPdD1gbqgtL-BpKzJRPQwcKKP26Mfpw9NAyWq69J",
+        "user_victim_pwd_login_success": "True",
+        "user_victim_pwd_login_status": "200",
+        "user_victim_pwd_login_http_status": "200",
+        "user_victim_sso_session_token": "5CkY_eTUwWK1fHfUGuHn7a61Hp5dSIyEG41qjgUnvNb",
+        "user_victim_sso_login_success": "True",
+        "user_victim_sso_login_status": "200",
+        "user_victim_sso_login_http_status": "200",
+        "email": "attackerB@example.com",
+        "user_victim_sso_entity_id": "8fd6a86ufpa1",
+        "user_victim_sso_display_name": "victim_mfa_user",
+        "user_victim_sso_email": "attackerB@example.com",
+        "user_victim_sso_groups": "None",
+        "user_victim_sso_identity_id": "8fd6a86ufpa1"
+      }
+    }
+  }
+]

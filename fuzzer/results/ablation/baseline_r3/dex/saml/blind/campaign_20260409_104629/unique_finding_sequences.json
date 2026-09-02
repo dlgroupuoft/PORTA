@@ -1,0 +1,275 @@
+[
+  {
+    "finding": {
+      "finding_id": "4102447a91e3ce04",
+      "sequence_id": "seq_302",
+      "sequence_description": "Create a second SAML connector with different entityIssuer/ssoIssuer; authenticate the same upstream identity through both connectors and compare resulting sessions via verify operations.",
+      "generation_strategy": "coverage",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "Server returned HTTP 500 on saml_login (auth_as=user_same_alt): <!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">\n    <title>dex</title>\n    <meta name=\"viewport\" content=\"width=device-wid. Login endpoints must not return 5xx for any input.",
+      "cve_analog": "none",
+      "evidence": {
+        "event_type": "saml_login",
+        "http_status": 500,
+        "error": "<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">\n    <title>dex</title>\n    <meta name=\"viewport\" content=\"width=device-wid",
+        "params_keys": [
+          "connector_id",
+          "saml_response",
+          "relay_state"
+        ]
+      },
+      "detection_source": "L1_syntactic",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_302",
+      "description": "OIDC auth flow coverage with SAML upstream: start auth, complete SAML login, exchange code for token, verify; then revoke session and verify again; repeat for a second identity with different scope.",
+      "generation_strategy": "coverage",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "coverage",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 12,
+      "events_succeeded": 4,
+      "events_failed": 8,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_type": "saml",
+            "connector_id": "test-saml",
+            "name": "test-saml",
+            "sso_url": "http://idp.example/sso",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [],
+            "filter_groups": false,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "dex-sp-entity",
+            "sso_issuer": "http://idp.example/issuer",
+            "groups_delim": ",",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+            "grant_types": [
+              "authorization_code"
+            ],
+            "response_types": [
+              "code"
+            ],
+            "skip_approval_screen": true,
+            "always_show_login_screen": true,
+            "password_connector": ""
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email",
+            "response_type": "code",
+            "state": "st-alpha-1",
+            "nonce": "nn-alpha-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "force"
+          },
+          "auth_as": "user_alpha_init",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "user_alpha_init_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"alpha\",\"email\":\"alpha@example.com\",\"provider\":\"saml\",\"realm\":\"default\"}",
+            "relay_state": "st-alpha-1"
+          },
+          "auth_as": "user_alpha",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "exchange_code_for_token",
+          "params": {
+            "grant_type": "authorization_code",
+            "code": "{{user_alpha_code}}",
+            "redirect_uri": "http://localhost:8080/callback",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret",
+            "code_verifier": ""
+          },
+          "auth_as": "session_user_alpha",
+          "expected_outcome": "any",
+          "captures": {
+            "session_token": "user_alpha_session_token",
+            "identity_id": "user_alpha_identity_id",
+            "granted_policies": "user_alpha_granted_policies",
+            "identity_policies": "user_alpha_identity_policies",
+            "metadata": "user_alpha_metadata",
+            "token_accessor": "user_alpha_token_accessor",
+            "http_status": "user_alpha_token_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alpha",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alpha_entity_id": "sub",
+            "user_alpha_display_name": "name",
+            "user_alpha_policies": "groups",
+            "user_alpha_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {},
+          "auth_as": "session_user_alpha",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "user_alpha_read_http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "session_token": "{{user_alpha_session_token}}",
+            "token_type_hint": "access_token",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret"
+          },
+          "auth_as": "session_user_alpha",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "user_alpha_revoke_http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alpha",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alpha_entity_id": "sub",
+            "user_alpha_display_name": "name",
+            "user_alpha_policies": "groups",
+            "user_alpha_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid profile groups",
+            "response_type": "code",
+            "state": "st-beta-1",
+            "nonce": "nn-beta-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_beta_init",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "user_beta_init_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"beta\",\"email\":\"beta@example.com\",\"provider\":\"saml\",\"realm\":\"default\"}",
+            "relay_state": "st-beta-1"
+          },
+          "auth_as": "user_beta",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_beta",
+          "expected_outcome": "any",
+          "captures": {
+            "user_beta_entity_id": "sub",
+            "user_beta_display_name": "name",
+            "user_beta_policies": "groups",
+            "user_beta_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {},
+          "auth_as": "session_user_beta",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "user_beta_read_http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [],
+      "sequence_metadata": {
+        "generation_strategy": "coverage",
+        "used_examples": false,
+        "num_examples": -1
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "http_status": "None",
+        "user_alpha_login_success": "True",
+        "user_alpha_login_status": "200",
+        "user_alpha_login_http_status": "200",
+        "session_token": "None",
+        "identity_id": "None",
+        "granted_policies": "None",
+        "identity_policies": "None",
+        "metadata": "None",
+        "token_accessor": "None",
+        "user_alpha_entity_id": "None",
+        "user_alpha_display_name": "None",
+        "user_alpha_policies": "None",
+        "user_alpha_identity_policies": "None",
+        "user_beta_login_success": "True",
+        "user_beta_login_status": "200",
+        "user_beta_login_http_status": "200",
+        "user_beta_entity_id": "None",
+        "user_beta_display_name": "None",
+        "user_beta_policies": "None",
+        "user_beta_identity_policies": "None"
+      }
+    }
+  }
+]

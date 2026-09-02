@@ -1,0 +1,557 @@
+{
+  "name": "dex",
+  "base_url": "http://localhost:5556/dex",
+  "admin_auth": {
+    "header": "Authorization",
+    "value": "Bearer {admin_token}"
+  },
+  "supported_protocols": [
+    "saml"
+  ],
+  "api_mapping": {
+    "saml": {
+      "start_oidc_auth": {
+        "method": "GET",
+        "path": "/auth",
+        "body_map": {
+          "client_id": "client_id",
+          "redirect_uri": "redirect_uri",
+          "scope": "scope",
+          "response_type": "response_type",
+          "state": "state",
+          "nonce": "nonce",
+          "approval_prompt": "approval_prompt",
+          "connector_id": "connector_id"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "query",
+        "metadata": {
+          "follow_redirects": false
+        }
+      },
+      "saml_login": {
+        "method": "POST",
+        "path": "/callback/{connector_id}",
+        "body_map": {
+          "saml_response": "SAMLResponse",
+          "relay_state": "RelayState"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form",
+        "metadata": {
+          "initiate_saml_flow": true
+        }
+      },
+      "exchange_code_for_token": {
+        "method": "POST",
+        "path": "/token",
+        "body_map": {
+          "grant_type": "grant_type",
+          "code": "code",
+          "redirect_uri": "redirect_uri",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "code_verifier": "code_verifier"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "metadata": "id_token",
+          "http_status": "_http_status",
+          "refresh_token": "refresh_token",
+          "id_token": "id_token",
+          "token_type": "token_type",
+          "expires_in": "expires_in"
+        },
+        "auth": "none",
+        "content_type": "form"
+      },
+      "login_with_password": {
+        "method": "POST",
+        "path": "/token",
+        "body_map": {
+          "grant_type": "grant_type",
+          "scope": "scope",
+          "username": "username",
+          "password": "password"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "metadata": "id_token",
+          "http_status": "_http_status",
+          "refresh_token": "refresh_token",
+          "id_token": "id_token",
+          "token_type": "token_type",
+          "expires_in": "expires_in"
+        },
+        "auth": "none",
+        "content_type": "form"
+      },
+      "token_exchange": {
+        "method": "POST",
+        "path": "/token",
+        "body_map": {
+          "connector_id": "connector_id",
+          "grant_type": "grant_type",
+          "scope": "scope",
+          "requested_token_type": "requested_token_type",
+          "subject_token": "subject_token",
+          "subject_token_type": "subject_token_type",
+          "audience": "audience"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "metadata": "issued_token_type",
+          "http_status": "_http_status",
+          "issued_token_type": "issued_token_type",
+          "token_type": "token_type",
+          "expires_in": "expires_in"
+        },
+        "auth": "none",
+        "content_type": "form"
+      }
+    }
+  },
+  "known_behaviors": {
+    "saml": [
+      {
+        "id": "dex_i2_7ca8539a",
+        "description": "SAML connector ignores the offline_access scope and does not issue refresh tokens.",
+        "invariants": [
+          "I2"
+        ],
+        "conditions": {
+          "connector.type": "saml"
+        },
+        "source": "connectors/saml.md; configuration/custom-scopes-claims-clients.md",
+        "note": "Do not flag missing refresh_token as a freshness or session-management bug for SAML logins."
+      },
+      {
+        "id": "dex_i4_84e4752a",
+        "description": "Dex uses SAML NameID as the user's unique identifier; mapped email/username attributes are not the principal key.",
+        "invariants": [
+          "I4"
+        ],
+        "conditions": {
+          "connector.type": "saml"
+        },
+        "source": "connectors/saml.md",
+        "note": "Email or username changes without NameID changes should not be treated as cross-user identity collapse."
+      },
+      {
+        "id": "dex_i5_f70cb447",
+        "description": "When filterGroups is true, groups not listed in allowedGroups are excluded from returned groups rather than causing a parsing error.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "connector.type": "saml",
+          "connector.config.filterGroups": true
+        },
+        "source": "connectors/saml.md",
+        "note": "Reduced group claims under this configuration are expected behavior, not silent claim corruption."
+      },
+      {
+        "id": "dex_i1_i3_9820d4ee",
+        "description": "Dex SAML connector does not support signed AuthnRequests or encrypted attributes.",
+        "invariants": [
+          "I1",
+          "I3"
+        ],
+        "conditions": {
+          "connector.type": "saml"
+        },
+        "source": "connectors/saml.md",
+        "note": "Failures involving signed AuthnRequest expectations or encrypted-attribute handling are feature limitations, not necessarily security bugs."
+      },
+      {
+        "id": "dex_i3_1fe377b2",
+        "description": "Dex must send the initial AuthnRequest and validates the response InResponseTo value.",
+        "invariants": [
+          "I3"
+        ],
+        "conditions": {
+          "connector.type": "saml"
+        },
+        "source": "connectors/saml.md",
+        "note": "Unsolicited or out-of-flow SAMLResponses failing are expected behavior, not flow-coherence bugs."
+      },
+      {
+        "id": "dex_i2_i5_da7bb358",
+        "description": "The SAML connector ignores the offline_access scope and does not issue refresh tokens.",
+        "invariants": [
+          "I2",
+          "I5"
+        ],
+        "conditions": {
+          "connector.type": "saml",
+          "request.scope_contains": "offline_access"
+        },
+        "source": "connectors/saml.md caveats; custom-scopes-claims-clients.md scopes",
+        "note": "Do not flag missing refresh_token after SAML login as a bug."
+      },
+      {
+        "id": "dex_i1_2bcc3b11",
+        "description": "The SAML connector does not support signed AuthnRequests.",
+        "invariants": [
+          "I1"
+        ],
+        "conditions": {
+          "feature": "signed_authnrequest"
+        },
+        "source": "connectors/saml.md caveats",
+        "note": "Lack of signed AuthnRequest support is documented behavior, not evidence of response-signature bypass."
+      },
+      {
+        "id": "dex_i1_i4_ac6c11d9",
+        "description": "The SAML connector does not support encrypted attributes.",
+        "invariants": [
+          "I1",
+          "I4"
+        ],
+        "conditions": {
+          "feature": "encrypted_attributes"
+        },
+        "source": "connectors/saml.md caveats",
+        "note": "Failures when encrypted attributes are supplied are expected."
+      }
+    ]
+  },
+  "verification_fields": {
+    "identity_field": "sub",
+    "identity_name_field": "email",
+    "policies_field": "groups",
+    "groups_field": "groups"
+  },
+  "api_constraints": {
+    "saml": [
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For SAML login tests, the executor MUST initiate the SP-initiated flow first and preserve the returned RelayState/InResponseTo linkage before posting the forged SAMLResponse to /callback/{connector_id}. Dex explicitly sends the initial AuthnRequest and validates InResponseTo; a standalone fabricated response will be rejected for flow reasons rather than the security property under test.",
+        "invariants": [
+          "I1",
+          "I3"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I1 default-signature-validation tests, create the SAML connector with insecureSkipSignatureValidation=true if you want Dex to skip signature verification by configuration. The docs state signature validation is normally performed using ca/caData, and skipping it is an explicit insecure testing option. Do NOT interpret acceptance of attacker-signed assertions under insecureSkipSignatureValidation=true as a vulnerability.",
+        "invariants": [
+          "I1"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I1 issuer-mismatch tests, configure ssoIssuer on the SAML connector. The expected Issuer in the SAML response is optional; if ssoIssuer is unset, issuer comparison may be absent and an issuer-mismatch test can pass trivially for the wrong reason.",
+        "invariants": [
+          "I1"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 audience-binding tests, configure entityIssuer when you need a specific expected audience. Dex uses redirectURI as the expected AudienceRestriction when entityIssuer is not specified, and entityIssuer overrides redirectURI for audience evaluation. Tests for wrong or missing audience must account for this exact precedence.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 no-conditions and wrong-audience SAML tests, remember that if the assertion contains a Destination element it must exactly match redirectURI. A failure caused by Destination mismatch is not evidence of correct audience or conditions enforcement; keep Destination valid while varying Conditions/AudienceRestriction.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 principal-binding tests, Dex uses the SAML NameID as the user's unique identifier and assumes it is unique and never changes. Therefore multi-identity collision tests must vary NameID itself; changing only usernameAttr/emailAttr/groupsAttr while keeping NameID constant is by design the same principal, not a collision.",
+        "invariants": [
+          "I4"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 email-binding-collision tests, do NOT assume Dex binds SAML users by email. The docs state NameID is the unique identifier, while emailAttr and usernameAttr are only mapped attributes. A login where NameID=attacker and email=victim@example.com creating or using the attacker principal is expected behavior, not a bug.",
+        "invariants": [
+          "I4"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 stability tests, choose a NameID format that is actually stable and unique. Dex defaults nameIDPolicyFormat to persistent; if the test IdP emits transient or mutable identifiers, identity changes across logins may be caused by upstream identifier instability rather than Dex principal-binding flaws.",
+        "invariants": [
+          "I4"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For group-based I5 tests, allowedGroups is exact list-membership against SAML group values; the docs do not define wildcard, glob, or regex matching for allowedGroups. For multi-identity scenarios requiring different groups to pass the same connector, OMIT allowedGroups rather than setting '*' or pattern-like values, which would be treated as literal group names.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For group-shape tests, groupsAttr semantics depend on groupsDelim. Without groupsDelim, Dex expects multiple attributes with the same name; with groupsDelim, Dex expects a single string and splits it. A string-vs-array test must control groupsDelim or it may measure parser configuration differences instead of authorization behavior.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For freshness/replay tests involving offline_access, do not expect refresh tokens from SAML logins. Dex documents that the SAML connector does not support refresh tokens and ignores offline_access. Any absence of refresh_token in the token response is by design, not a failure of the login flow.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "connectors/saml.md; connectors/_index.md; configuration/custom-scopes-claims-clients.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I2 SAML replay tests, include a control login with a fresh assertion and a separate replay attempt using the same fixed_assertion_id. Dex documentation says it persists state to prevent replays, but the docs do not expose assertion-replay API details; without a control, a failed replay attempt cannot be distinguished from a broken SAML flow setup.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "configuration/storage.md; connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For token-exchange tests in a SAML profile, do NOT use the SAML connector as the upstream exchange source. Dex documents that token exchange currently works only with OIDC connectors. A failed exchange from SAML-derived upstream assumptions is expected and not evidence of audience or scope enforcement.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "guides/token-exchange.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For password-grant setup in SAML profiles, login_with_password only works if oauth2.grantTypes includes 'password' and oauth2.passwordConnector is configured, typically to 'local'. If these are absent, password-grant failures are expected and must not be confused with user credential rejection.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "configuration/oauth2.md; connectors/local.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Dex SAML login is SP-initiated only. The fuzzer MUST start the flow at /auth and preserve the returned state/RelayState so the posted SAMLResponse matches Dex's AuthnRequest InResponseTo. Sending an unsolicited SAMLResponse without first initiating the flow will be rejected by design.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 signature-validation default tests, Dex documentation explicitly exposes insecureSkipSignatureValidation=true to skip SAML signature validation. The fuzzer MUST treat any acceptance under that setting as by-configuration, not a vulnerability. To test secure behavior, leave insecureSkipSignatureValidation unset/false and configure ca or caData.",
+        "invariants": [
+          "I1"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 issuer-validation tests, ssoIssuer is optional. If ssoIssuer is omitted, Dex may not enforce expected SAML response issuer matching. The fuzzer MUST configure ssoIssuer when testing issuer mismatch; otherwise acceptance of a wrong Issuer can be caused by missing configuration rather than a validation flaw.",
+        "invariants": [
+          "I1"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 audience-binding tests, Dex uses redirectURI as the expected SAML AudienceRestriction unless entityIssuer is specified, in which case entityIssuer overrides redirectURI as the required audience. The fuzzer MUST compare the assertion Audience against entityIssuer when configured, otherwise against redirectURI.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 no-audience / wrong-audience tests, if the SAML response contains a Destination element it must exactly match redirectURI. A failure caused by Destination mismatch is not evidence about AudienceRestriction enforcement. The fuzzer MUST keep Destination correct while varying Audience/Conditions.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Dex SAML maps identity from NameID and assumes it is unique and never changes. For I4 multi-identity tests, vary NameID to create distinct principals; changing only usernameAttr/emailAttr while keeping NameID constant will still represent the same Dex user by design.",
+        "invariants": [
+          "I4"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "nameIDPolicyFormat has a documented default sentinel behavior: if unspecified, Dex defaults to urn:oasis:names:tc:SAML:2.0:nameid-format:persistent. The fuzzer MUST NOT assume omission means unconstrained format; omission selects the persistent default.",
+        "invariants": [
+          "I4"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "allowedGroups is exact list-membership filtering, not wildcard/regex matching. filterGroups only controls whether non-allowed groups are excluded from emitted claims; it does not change matching semantics. For I4 multi-user scenarios requiring different groups to pass the same connector, the fuzzer MUST omit allowedGroups rather than set wildcard-like values.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "groupsAttr is an exact attribute-name selector, and groupsDelim only changes splitting of a single returned attribute string. It is not a pattern language. For type-confusion group tests, the fuzzer MUST keep groupsAttr fixed and vary only the assertion attribute representation.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "offline_access is ignored by the SAML connector. The fuzzer MUST NOT expect refresh_token issuance or use refresh-token-based replay/freshness logic for SAML logins; absence of a refresh token is by design.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Dex documentation states the SAML connector does not support signed AuthnRequests or encrypted attributes. The fuzzer MUST NOT interpret lack of those features as a security bug in SAML response validation tests.",
+        "invariants": [
+          "I1"
+        ],
+        "source": "connectors/saml.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 freshness tests on authorization codes, Dex has an authRequests expiry configuration controlling how long a code can be exchanged. The docs specify duration strings only and no disable sentinel. The fuzzer SHOULD include a control code exchange with a fresh code before concluding an expired-code rejection is security-relevant.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "configuration/tokens.md"
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For SAML login tests, the fuzzer MUST model Dex as a SAML-to-OIDC broker, not a pure SAML SP session API. A valid SAML sequence is start_oidc_auth -> saml_login -> exchange_code_for_token. The SAML callback alone does not yield the bearer token used for subsequent API calls."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "Dex SAML requires SP-initiated flow. The fuzzer MUST initiate the login flow first and preserve the resulting request state because Dex sends the initial AuthnRequest and validates the SAML Response InResponseTo value. Unsolicited/unprompted SAMLResponse submissions are expected to fail by design."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I1 saml_cert_substitution default-insecurity testing, create the SAML connector without insecureSkipSignatureValidation=true. If insecureSkipSignatureValidation is explicitly enabled, acceptance of attacker-signed assertions is by configuration and not a vulnerability. If signature validation is left enabled with ca/caData configured, attacker-signed assertions should be rejected."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I1 signature-validation tests, the fuzzer MUST distinguish Dex's documented insecure testing knob insecureSkipSignatureValidation from default behavior. Acceptance under insecureSkipSignatureValidation=true is a known insecure configuration, not proof of a default validation bypass."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I1 saml_issuer_mismatch tests, configure the connector with ssoIssuer. The documentation marks ssoIssuer as optional, so if it is omitted Dex may have no explicit expected issuer value to compare against. A test that omits ssoIssuer cannot conclude issuer validation is broken."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 saml_wrong_audience and saml_no_audience_restriction tests, the expected audience is redirectURI unless entityIssuer is configured, in which case entityIssuer overrides redirectURI as the required audience. The fuzzer MUST compute the attack and control assertions against the correct expected audience source."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 saml_no_conditions tests, remove the entire Conditions element only when testing missing temporal/audience enforcement. Dex documentation states redirectURI/entityIssuer is used as expected audience when evaluating AudienceRestriction elements, so a missing Conditions element removes both audience and time constraints at once; interpret any acceptance accordingly."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I2 replay tests, do not use offline_access as a signal. Dex documents that the SAML connector ignores offline_access and does not support refresh tokens. Missing refresh_token in the token response after SAML login is by design and not a freshness or authorization bug."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I2 SAML replay tests, include a control login with a fresh assertion in the same connector configuration. A failed replay attempt is only meaningful if a normal fresh SAML assertion succeeds; otherwise the failure may be due to broken connector setup, bad CA, or mismatched redirectURI/Destination."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 identity-binding tests, Dex uses the SAML NameID as the user's unique identifier and assumes it is unique and never changes. The fuzzer MUST vary NameID to test principal binding. Changing only usernameAttr/emailAttr/groupsAttr while keeping NameID constant is not a distinct principal to Dex."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 saml_email_binding_collision and cross_protocol_identity_merge tests, do not treat same-email account linking as expected from the SAML connector docs. The documentation states NameID, not email, is the unique identifier. If two different NameID values collapse despite differing NameID, that is security-relevant."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 multi-identity scenarios, nameIDPolicyFormat is not a wildcard or matching parameter; it only requests the upstream NameID format. The fuzzer MUST NOT treat it as a subject constraint. To test multiple identities through one connector, vary the actual NameID value while keeping the requested format fixed."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 group-based authorization tests, allowedGroups is list-membership against SAML group values, not wildcard/regex matching. filterGroups only controls whether non-allowed groups are excluded from claims; it does not change allowedGroups matching semantics. If the fuzzer needs multiple arbitrary groups to pass, it must omit allowedGroups rather than set wildcard-like values."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 group parsing tests, groupsAttr normally expects repeated attributes with the same name. If groupsDelim is configured, Dex instead treats the attribute as a single string and splits on the delimiter. The fuzzer MUST align the assertion encoding with connector config or group-based results will be misinterpreted."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I1 Destination validation tests, if the SAML assertion/response contains a Destination element it must exactly match redirectURI. A failure caused by Destination mismatch is expected and should not be confused with signature or issuer enforcement."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "api_setup",
+        "constraint": "Dex configuration is file- or gRPC-driven in the provided docs; no documented REST admin endpoints exist for creating connectors, users, policies, or applications. The fuzzer MUST treat setup as out-of-band unless a separate gRPC integration is implemented."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "api_setup",
+        "constraint": "Numeric sentinel analysis: no SAML-specific numeric API parameters or sentinel values are documented in the provided Dex SAML/OIDC HTTP docs. Do not assume 0, -1, or empty values disable or tighten validation for SAML connector behavior."
+      }
+    ]
+  },
+  "environment_defaults": {
+    "client_id": "valence-test-client",
+    "client_secret": "valence-test-secret",
+    "redirect_uri": "http://localhost:8080/callback",
+    "connector_id": "mock",
+    "saml_connector_id": "test-saml",
+    "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+    "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+    "saml_sp_acs_url": "http://localhost:5556/dex/callback"
+  }
+}

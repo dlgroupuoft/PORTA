@@ -1,0 +1,260 @@
+[
+  {
+    "finding": {
+      "finding_id": "e9a933ed1035d51d",
+      "sequence_id": "seq_011",
+      "sequence_description": "Create two SAML connectors with different issuer/audience pinning and signature-validation posture; run SP-initiated auth then SAML login for two similar identities across the two connectors; verify identity and read behavior for both sessions.",
+      "generation_strategy": "coverage",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "VIOLATION",
+      "confidence": "HIGH",
+      "description": "Server returned HTTP 500 on saml_login (auth_as=user_alice2_insecure): <!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">\n    <title>dex</title>\n    <meta name=\"viewport\" content=\"width=device-wid. Login endpoints must not return 5xx for any input.",
+      "cve_analog": "none",
+      "evidence": {
+        "event_type": "saml_login",
+        "http_status": 500,
+        "error": "<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">\n    <title>dex</title>\n    <meta name=\"viewport\" content=\"width=device-wid",
+        "params_keys": [
+          "connector_id",
+          "saml_response",
+          "relay_state"
+        ]
+      },
+      "detection_source": "L1_syntactic",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_011",
+      "description": "Create two SAML connectors with different issuer/audience pinning and signature-validation posture; run SP-initiated auth then SAML login for two similar identities across the two connectors; verify identity and read behavior for both sessions.",
+      "generation_strategy": "coverage",
+      "primary_invariant": "I4",
+      "invariant_hypothesis": "coverage: exercise connector provisioning variants (issuer/audience pinning, signature validation toggle), SP-initiated SAML flow initiation, and post-login verification across two identities/sessions.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 13,
+      "events_succeeded": 2,
+      "events_failed": 11,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_provider",
+          "params": {
+            "connector_type": "saml",
+            "connector_id": "test-saml",
+            "name": "SAML Strict (pinned issuer + entityIssuer, validate signatures)",
+            "sso_url": "http://idp.example.com/sso",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "insecure_skip_signature_validation": false,
+            "sso_issuer": "http://idp.example.com/issuer",
+            "entity_issuer": "http://sp.example.com/entity",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "groups_delim": ";"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_provider",
+          "params": {
+            "connector_type": "saml",
+            "connector_id": "test-saml-insecure",
+            "name": "SAML Insecure (no CA, skip signature validation, no issuer pinning)",
+            "sso_url": "http://idp.example.com/sso",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "insecure_skip_signature_validation": true,
+            "username_attr": "uid",
+            "email_attr": "mail",
+            "groups_attr": "memberOf",
+            "groups_delim": ","
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile groups",
+            "response_type": "code",
+            "state": "state-alice-strict",
+            "nonce": "nonce-alice-strict",
+            "connector_id": "test-saml",
+            "approval_prompt": "force"
+          },
+          "auth_as": "user_alice_flow_strict",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "alice_strict_auth_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "AUTO",
+            "relay_state": "{{state-alice-strict}}"
+          },
+          "auth_as": "user_alice_strict",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice_strict",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_strict_entity_id": "sub",
+            "user_alice_strict_display_name": "name",
+            "user_alice_strict_policies": "groups",
+            "user_alice_strict_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {},
+          "auth_as": "session_user_alice_strict",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "user_alice_strict_read_http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-alice2-insecure",
+            "nonce": "nonce-alice2-insecure",
+            "connector_id": "test-saml-insecure",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_alice2_flow_insecure",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "alice2_insecure_auth_http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml-insecure",
+            "saml_response": "AUTO",
+            "relay_state": "{{state-alice2-insecure}}"
+          },
+          "auth_as": "user_alice2_insecure",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice2_insecure",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice2_insecure_entity_id": "sub",
+            "user_alice2_insecure_display_name": "name",
+            "user_alice2_insecure_policies": "groups",
+            "user_alice2_insecure_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {},
+          "auth_as": "session_user_alice2_insecure",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "user_alice2_insecure_read_http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml-insecure"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "cleanup_insecure_http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice_strict",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_strict_entity_id": "sub",
+            "user_alice_strict_display_name": "name",
+            "user_alice_strict_policies": "groups",
+            "user_alice_strict_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_read_secret",
+          "params": {},
+          "auth_as": "session_user_alice_strict",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "user_alice_strict_read_http_status_post_cleanup"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [],
+      "sequence_metadata": {
+        "generation_strategy": "coverage",
+        "used_examples": false,
+        "num_examples": -1
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "http_status": "None",
+        "user_alice_strict_login_success": "True",
+        "user_alice_strict_login_status": "200",
+        "user_alice_strict_login_http_status": "200",
+        "user_alice_strict_entity_id": "None",
+        "user_alice_strict_display_name": "None",
+        "user_alice_strict_policies": "None",
+        "user_alice_strict_identity_policies": "None",
+        "user_alice2_insecure_login_success": "False",
+        "user_alice2_insecure_login_status": "500",
+        "user_alice2_insecure_login_http_status": "500",
+        "user_alice2_insecure_entity_id": "None",
+        "user_alice2_insecure_display_name": "None",
+        "user_alice2_insecure_policies": "None",
+        "user_alice2_insecure_identity_policies": "None"
+      }
+    }
+  }
+]

@@ -1,0 +1,530 @@
+{
+  "name": "dex",
+  "base_url": "http://localhost:5556/dex",
+  "admin_auth": {
+    "header": "Authorization",
+    "value": "Bearer {admin_token}"
+  },
+  "supported_protocols": [
+    "oidc_jwt"
+  ],
+  "api_mapping": {
+    "oidc_jwt": {
+      "start_oidc_auth": {
+        "method": "GET",
+        "path": "/auth",
+        "body_map": {
+          "client_id": "client_id",
+          "redirect_uri": "redirect_uri",
+          "scope": "scope",
+          "response_type": "response_type",
+          "state": "state",
+          "nonce": "nonce",
+          "connector_id": "connector_id",
+          "request": "request",
+          "approval_prompt": "approval_prompt",
+          "acr_values": "acr_values",
+          "login_hint": "login_hint",
+          "id_token_hint": "id_token_hint",
+          "prompt": "prompt",
+          "display": "display",
+          "max_age": "max_age",
+          "ui_locales": "ui_locales",
+          "claims_locales": "claims_locales"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none"
+      },
+      "exchange_code_for_token": {
+        "method": "POST",
+        "path": "/token",
+        "body_map": {
+          "grant_type": "grant_type",
+          "code": "code",
+          "redirect_uri": "redirect_uri",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "code_verifier": "code_verifier",
+          "refresh_token": "refresh_token"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "refresh_token": "refresh_token",
+          "id_token": "id_token",
+          "token_type": "token_type",
+          "expires_in": "expires_in",
+          "http_status": "_http_status"
+        },
+        "auth": "none"
+      },
+      "token_exchange": {
+        "method": "POST",
+        "path": "/token",
+        "body_map": {
+          "connector_id": "connector_id",
+          "grant_type": "grant_type",
+          "scope": "scope",
+          "requested_token_type": "requested_token_type",
+          "subject_token": "subject_token",
+          "subject_token_type": "subject_token_type",
+          "audience": "audience",
+          "client_id": "client_id",
+          "client_secret": "client_secret"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "issued_token_type": "issued_token_type",
+          "token_type": "token_type",
+          "expires_in": "expires_in",
+          "http_status": "_http_status"
+        },
+        "auth": "none"
+      },
+      "verify_granted_identity": {
+        "method": "GET",
+        "path": "/userinfo",
+        "body_map": {},
+        "response_map": {
+          "sub": "sub",
+          "email": "email",
+          "email_verified": "email_verified",
+          "groups": "groups",
+          "name": "name",
+          "preferred_username": "preferred_username",
+          "federated_claims": "federated_claims",
+          "http_status": "_http_status",
+          "identity_id": "sub",
+          "display_name": "name"
+        },
+        "auth": "session"
+      }
+    }
+  },
+  "known_behaviors": {
+    "oidc_jwt": [
+      {
+        "id": "dex_i4_i5_0ca5de45",
+        "description": "When the OIDC connector is configured with getUserInfo=true, claims from the upstream UserInfo endpoint take priority over claims returned in the upstream ID token.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "conditions": {
+          "connector.config.getUserInfo": true
+        },
+        "source": "connectors/oidc.md",
+        "note": "Differences between upstream ID token claims and final granted claims are expected in this mode."
+      },
+      {
+        "id": "dex_i4_i5_e2d59555",
+        "description": "claimMapping only maps a non-standard claim to a standard claim if the standard claim is not already present in the ID token; overrideClaimMapping=false preserves the standard claim.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "conditions": {
+          "connector.config.overrideClaimMapping": false
+        },
+        "source": "connectors/oidc.md",
+        "note": "Tests expecting remapped claims to replace existing standard claims will false-positive unless overrideClaimMapping is enabled."
+      },
+      {
+        "id": "dex_i2_i5_2e2dcfc5",
+        "description": "OIDC connector group claims only refresh when the ID token is refreshed; regular refresh flow does not update groups, and groups are disabled by default unless insecureEnableGroups is set.",
+        "invariants": [
+          "I2",
+          "I5"
+        ],
+        "conditions": {
+          "connector.type": "oidc"
+        },
+        "source": "connectors/oidc.md",
+        "note": "Stale or absent groups are documented behavior and should not be mistaken for authorization confusion."
+      },
+      {
+        "id": "dex_i2_68a88451",
+        "description": "Some connectors such as SAML do not support refresh tokens and ignore offline_access.",
+        "invariants": [
+          "I2"
+        ],
+        "conditions": {
+          "connector.type": "saml"
+        },
+        "source": "connectors/saml.md and connectors/_index.md",
+        "note": "Lack of refresh token issuance is by design for unsupported connectors."
+      },
+      {
+        "id": "dex_i2_fbdbf9a4",
+        "description": "Dex rotates refresh tokens on every refresh by default.",
+        "invariants": [
+          "I2"
+        ],
+        "conditions": {
+          "refresh_token": "*"
+        },
+        "source": "configuration/tokens.md",
+        "note": "Receiving a new refresh token value after refresh is expected and should not be treated as token confusion or replay evidence."
+      },
+      {
+        "id": "dex_i5_bfe72fb0",
+        "description": "In token exchange responses, the issued token is always returned in the access_token field, while the actual token type is indicated by issued_token_type.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange"
+        },
+        "source": "guides/token-exchange.md",
+        "note": "Do not expect a separate id_token field for token exchange responses."
+      },
+      {
+        "id": "dex_i5_e1c63e3e",
+        "description": "OIDC connector does not allow groups claims by default because group data may be stale and only refreshes when the ID token is refreshed.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "connector.config.insecureEnableGroups": false
+        },
+        "source": "connectors/oidc.md",
+        "note": "Missing groups in Dex-issued claims is expected unless insecureEnableGroups is enabled."
+      },
+      {
+        "id": "dex_i3_i5_952004ba",
+        "description": "Token exchange is supported only with the OIDC connector.",
+        "invariants": [
+          "I3",
+          "I5"
+        ],
+        "conditions": {
+          "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange"
+        },
+        "source": "guides/token-exchange.md",
+        "note": "Failures when attempting token exchange through non-OIDC connectors are by design and should not be flagged as security bugs."
+      },
+      {
+        "id": "dex_i1_i5_488ad34f",
+        "description": "Exchanging upstream access tokens requires the OIDC connector to query the upstream UserInfo endpoint via getUserInfo.",
+        "invariants": [
+          "I1",
+          "I5"
+        ],
+        "conditions": {
+          "subject_token_type": "urn:ietf:params:oauth:token-type:access_token"
+        },
+        "source": "guides/token-exchange.md",
+        "note": "A failed exchange of an access token without getUserInfo enabled is expected configuration behavior, not proof of stronger validation."
+      },
+      {
+        "id": "dex_i1_i4_i5_87cab4d8",
+        "description": "When getUserInfo is enabled on the OIDC connector, claims from the upstream UserInfo endpoint take priority over claims returned by the upstream ID token.",
+        "invariants": [
+          "I1",
+          "I4",
+          "I5"
+        ],
+        "conditions": {
+          "connector.config.getUserInfo": true
+        },
+        "source": "connectors/oidc.md",
+        "note": "Claim values observed after exchange may differ from the upstream ID token because Dex intentionally prefers UserInfo."
+      }
+    ]
+  },
+  "verification_fields": {
+    "identity_field": "sub",
+    "identity_name_field": "email",
+    "policies_field": "groups",
+    "groups_field": "groups"
+  },
+  "api_constraints": {
+    "oidc_jwt": [
+      {
+        "severity": "CRITICAL",
+        "constraint": "Dex configuration is file-based for connectors and clients; the provided documentation does not describe HTTP admin endpoints for enable_auth_method, configure_jwt_validation, create_auth_role, create_policy, revoke_session, or cleanup_auth_method. The fuzzer MUST treat these as unsupported over HTTP for Dex in this protocol profile and provision Dex via config file/process setup instead of attempting REST admin setup."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 issuer-validation tests against Dex token exchange with OIDC connectors, the connector config MUST set the upstream OIDC connector 'issuer'. Dex verifies the submitted subject token against that issuer. Without configuring the connector issuer, trust-anchor and issuer-substitution tests are not meaningful."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 access-token token-exchange tests, if the subject_token_type is access_token and the subject token is an upstream access token, the OIDC connector MUST have getUserInfo enabled if identity claims are needed from access tokens. Otherwise Dex may be unable to validate/extract claims from opaque access tokens, causing setup-dependent failures unrelated to the security property under test."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 replay_same_token on plain JWT/OIDC subject tokens submitted to Dex token exchange, do NOT treat successful reuse of the same upstream JWT as a vulnerability by itself. The documentation describes stateless token exchange from upstream OIDC tokens and does not document jti replay tracking; replay resistance is not guaranteed for generic JWT bearer subject tokens."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 expired_token and future_token tests on token exchange, the sequence MUST include a control exchange using a valid upstream token alongside the attack token. Without a successful control, a failed exchange cannot be distinguished from broken connector/client configuration."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Dex auth codes are time-limited by the 'expiry.authRequests' configuration. This is a duration string in config, not an API parameter. The fuzzer MUST complete code exchange promptly within the configured authRequests lifetime or failures may be due to normal code expiry rather than a security issue."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Dex ID/access token lifetime is controlled by config 'expiry.idTokens', and token exchange responses include expires_in. Value semantics are duration-based configuration, not per-request API fields. The fuzzer MUST use the returned expires_in/current config when planning freshness tests and must not assume a fixed default lifetime from the docs."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Dex signing key rotation is controlled by config 'expiry.signingKeys' or signer.keysRotationPeriod. For I3 jwt_signing_key_rotation-style tests against Dex as OP, key rotation is configuration-driven and old public keys may remain available for validation if id token lifetime exceeds the rotation period. The fuzzer MUST distinguish normal overlap/retention of old validation keys from acceptance of newly forged tokens."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 default-role/config-change analogs in Dex, behavior changes after editing config and restarting/reloading Dex are BY DESIGN. A valid coherence test must compare equivalent requests before and after a documented config change and must not report a vulnerability merely because new configuration legitimately changes login behavior."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 state-binding tests in the authorization code flow, the client application MUST bind and verify the state parameter across start_oidc_auth and exchange_code_for_token callback handling. Dex documentation explicitly describes state as the mechanism preventing session mix-up/replay; tests that omit client-side state validation are invalid."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 request-object tests, Dex certification results indicate unsigned request objects may be either supported correctly or rejected as unsupported. The fuzzer MUST treat rejection/unsupported behavior as acceptable and only flag a problem if an unsigned request object is accepted in a way that violates expected request integrity."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 PKCE-related tests, Dex documentation/certification only shows successful handling of valid PKCE and does not state PKCE is universally required. The fuzzer MUST evaluate PKCE tests by HTTP success/failure of the code exchange, not by comparing identities, and MUST NOT assume absence of PKCE enforcement is automatically a vulnerability unless the specific client scenario requires it."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 identity binding in token exchange, Dex OIDC connector uses configurable claim mapping and userIDKey; by default the user identifier is the 'sub' claim, but admins may remap it. The fuzzer MUST know which claim is configured as the effective user identifier before asserting cross-user collision results."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 multi-identity tests, if the OIDC connector config sets allowedGroups, both test identities MUST satisfy membership in at least one allowed group or authentication failure is expected. Do not interpret rejection of a user outside allowedGroups as an identity-binding bug."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 group-based identity observations, if claimModifications.modifyGroupNames, filterGroupClaims, or newGroupFromClaims are configured, returned groups may be transformed relative to upstream claims. The fuzzer MUST compare against post-transformation expectations and not treat group renaming/filtering as identity confusion."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 claim precedence tests, when OIDC connector getUserInfo=true, UserInfo claims take priority over ID Token claims. The fuzzer MUST account for this precedence; differing values between ID token and UserInfo are resolved in favor of UserInfo by design, not evidence of inconsistent identity binding."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 claim mapping tests, claimMapping only maps a non-standard claim to a standard one if the standard claim is not already returned in the ID token, unless overrideClaimMapping=true. The fuzzer MUST set overrideClaimMapping=true when testing whether remapped claims override standard claims; otherwise Dex retaining the standard claim is by design."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 audience-binding tests on Dex-issued tokens, tokens are client-bound. The fuzzer MUST request/exchange tokens for the intended client and verify aud/azp semantics accordingly. Cross-client trust via scope audience:server:client_id:(client-id) only works when the target client explicitly lists the requesting client in trustedPeers; otherwise rejection is expected."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 token_exchange tests, Dex requires connector_id in addition to RFC 8693 parameters, and client credentials are supplied via HTTP Basic Authentication even for public clients in the documented examples. The fuzzer MUST include connector_id and valid client authentication or failures are setup errors, not authorization-binding results."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 scope-escalation tests on token exchange, Dex only supports token exchange with OIDC connectors and the exchanged token claims depend on configured connector scopes and requested downstream scope. The fuzzer MUST establish a baseline with limited requested scope, then request expanded scope, and compare returned claims; missing claims may be due to connector config rather than proper scope restriction."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 audience tests on token exchange, regardless of requested_token_type, Dex returns the issued token in the access_token field and indicates its type in issued_token_type. The fuzzer MUST use access_token as the bearer credential and MUST NOT treat absence of a separate id_token field in token exchange responses as an error."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup",
+        "constraint": "Dex does not expose a documented REST admin API for enabling auth methods, configuring JWT validation, creating auth roles, policies, identity groups, group aliases, mount accessors, seeding protected resources, revoking sessions, or cleaning up auth methods. These canonical setup operations are absent from the provided documentation and MUST be treated as unsupported for this platform/profile."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I1 request-object tests on Dex's authorization endpoint, the fuzzer MUST send the unsigned or attacker-controlled JWT in the standard OIDC 'request' query parameter to GET /auth. Dex documentation and certification results explicitly reference request object handling; testing any other parameter would be invalid."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I3 flow-coherence tests involving authorization code flow, the fuzzer MUST bind the same browser session to the same 'state' value across start_oidc_auth and exchange_code_for_token. Dex documentation states state is returned and should link the user who started the flow to the one who finished it; cross-session state swaps are the relevant attack surface."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I3 PKCE tests, the fuzzer SHOULD test code exchange rejection by HTTP status only. Dex certification results mention valid PKCE success, but the docs do not state PKCE is always required. Do NOT infer identity mismatches from PKCE failures; assert non-200 on exchange without a required verifier."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I2 expired_token and future_token tests against token_exchange, the sequence MUST include a control exchange using a valid upstream token alongside the attack token. Without a successful control, a failed exchange cannot be distinguished from broken connector/client configuration."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I2 replay_same_token against Dex token exchange, do NOT treat successful reuse of the same upstream JWT as a vulnerability unless the documentation explicitly promises one-time semantics. The provided docs describe stateless token exchange of upstream OIDC tokens and do not document jti tracking or one-time use enforcement."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 token exchange tests, the fuzzer MUST include the connector_id parameter in POST /token requests using grant_type=urn:ietf:params:oauth:grant-type:token-exchange. Dex documentation states this parameter is additionally required; omitting it causes invalid setup rather than a security-relevant denial."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 token exchange tests, the fuzzer MUST authenticate the client to /token using HTTP Basic authentication with client id and secret, even for public clients used for token exchange. Dex documentation explicitly requires the client id/secret pair as username:password via Basic Authentication for token exchange."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 access-token subject_token tests, if the upstream subject token is an access token rather than an ID token, the OIDC connector configuration MUST have getUserInfo enabled. Dex documentation states getUserInfo is required if you want to exchange from access tokens to Dex-issued tokens."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I1 issuer-validation tests on token exchange, the OIDC connector's configured issuer MUST be set and must match the issuer of the submitted subject token. Dex documentation states the client submitted subject token will be verified against the configured issuer; changing issuer is the correct way to test trust-anchor substitution and issuer enforcement."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I3 config-change tests on token exchange, only the OIDC connector supports token exchange. Reconfiguration tests such as issuer change or upstream key rotation MUST target the OIDC connector used by token_exchange; testing other connector types is invalid per documentation."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup",
+        "constraint": "Dex token exchange is only available when oauth2.grantTypes includes urn:ietf:params:oauth:grant-type:token-exchange, though this grant is enabled by default if grantTypes is omitted. If grantTypes is explicitly set, the fuzzer MUST ensure token-exchange remains included or all token_exchange tests will fail due to configuration, not security behavior."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup",
+        "constraint": "Dex authorization code flow requires the 'openid' scope for all login requests. The fuzzer MUST include openid in start_oidc_auth scope values; otherwise OIDC behavior and returned identity tokens are not validly requested."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup",
+        "constraint": "Dex refresh tokens are only issued when offline_access scope is requested, and some connectors do not support offline_access. For oidc_jwt tests that depend on refresh behavior, use the OIDC connector and include offline_access explicitly; do not interpret missing refresh_token as a security failure when the scope or connector support is absent."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup",
+        "constraint": "Numeric sentinel analysis: Dex token lifetimes and expiry settings are documented as duration strings (for example 10m, 6h). The provided documentation does not define any special sentinel values such as 0, 0s, or -1 for disabling, strict mode, or default selection. The fuzzer MUST NOT assume 0 or -1 has special meaning for expiry-related settings without out-of-band confirmation."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 scope-escalation tests on token exchange, the fuzzer MUST compare requested scope versus claims actually returned in the exchanged token or userinfo response. Dex documentation allows scopes such as groups and federated:id to control returned claims, so expanded claims must be evaluated relative to the original upstream intent and requested downstream scope."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup",
+        "constraint": "For token exchange, only the OIDC connector supports this flow. The request to POST /token MUST include connector_id naming an OIDC connector; other connector types are not supported for this protocol run."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup",
+        "constraint": "For token exchange from upstream access tokens, the OIDC connector configuration MUST enable getUserInfo=true if the upstream token is an access token. Without getUserInfo, Dex cannot validate opaque access tokens via the upstream UserInfo endpoint."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup",
+        "constraint": "Dex token exchange requires client authentication via HTTP Basic Authentication at /token. The client id/secret pair must be sent as username:password in Basic auth even for public clients used for machine auth."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup",
+        "constraint": "Dex token exchange grant must be enabled in oauth2.grantTypes. If grantTypes is omitted, token exchange is enabled by default; if grantTypes is explicitly set, it MUST include urn:ietf:params:oauth:grant-type:token-exchange or token exchange tests will fail due to configuration, not security behavior."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup",
+        "constraint": "OIDC connector issuer must exactly match the upstream provider discovery issuer. The docs state issuer MUST match the value returned in provider discovery; mismatches cause issuer validation failure unless issuerAlias is explicitly configured."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I1 trust_anchor_substitution and issuer-validation tests against Dex token exchange, configure the OIDC connector issuer to the intended trusted upstream issuer. Dex verifies the submitted subject token against the connector issuer; if issuer is misconfigured or issuerAlias is used to accommodate off-spec providers, test results must be interpreted relative to that configured trust anchor."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I1 alg_none, resign_attacker_key, kid_injection, and trust_anchor_substitution tests, use token_exchange with a forged upstream subject_token. Dex documentation only describes consuming upstream OIDC/OAuth tokens through token exchange for oidc_jwt; do not invent a direct JWT login endpoint."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I2 replay_same_token on oidc_jwt, do NOT report reuse of the same upstream JWT in repeated token_exchange calls as a vulnerability by itself. JWT bearer replay is generally stateless and jti tracking is optional; the provided Dex docs do not claim one-time-use enforcement for exchanged upstream JWTs."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I2 expired_token and future_token tests on token exchange, include a control exchange using a valid upstream token from the same connector and client configuration. Without a control, rejection of the attack token cannot be distinguished from broken connector/client setup."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I3 config-change tests, Dex configuration is file-based. A valid coherence test must compare behavior before and after an intentional Dex reconfiguration/restart or equivalent config reload boundary; do not treat changed behavior after an admin config change as a bug unless the same request is evaluated inconsistently under supposedly unchanged config."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I3 jwt_signing_key_rotation and jwt_bound_issuer_enforce analogs in Dex, rotate the OIDC connector trust by changing issuer/provider discovery or providerDiscoveryOverrides and then perform a fresh token_exchange. Dex does not document a per-request mutable JWT validation role API."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I3 state_swap and authorization-code flow tests, the client MUST bind and verify the state parameter across start_oidc_auth and exchange_code_for_token. Dex documentation explicitly states state prevents session mix-up and replay-style OAuth2 attacks."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For OIDC request object tests, Dex certification results indicate unsigned request objects may be either supported correctly or rejected as unsupported. Treat non-support/rejection as by-design, and only flag a vulnerability if an unsigned request object is accepted and changes security-relevant authorization request parameters."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I5 token_exchange_scope_escalation, request only scopes that the OIDC connector and Dex support. Dex documents supported scopes as openid, email, profile, groups, federated:id, offline_access, and audience:server:client_id:(client-id). Claims outside requested/supported scopes should not be expected."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I5 token_exchange_wrong_audience and token_exchange_ignore_audience, remember Dex-issued tokens are client-bound. The downstream client performing token exchange authenticates to /token, and requested scopes such as audience:server:client_id:(client-id) rely on configured trustedPeers. Cross-client audience tests must account for this explicit trust model."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I5 cross-client or audience expansion tests, the target client must explicitly trust the acting client via trustedPeers. If trustedPeers is absent, failure to mint a token for another audience is expected and not evidence of a security control beyond documented policy."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I4 identity-binding tests on token exchange, the upstream identity source for OIDC connectors is controlled by userIDKey and userNameKey. By default user identity is derived from sub; if userIDKey is changed, collision tests must compare the configured claim rather than assuming sub is always the bound identity."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I4 group-based identity/authorization tests, if getUserInfo=true is enabled on the OIDC connector, UserInfo claims take priority over ID Token claims. Tests that mutate claims must account for this precedence or they may misattribute which upstream claim source Dex consumed."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I5 group claim tests, groups from OIDC connectors are disabled by default because they may become stale and only refresh when the ID token is refreshed. To test groups-based authorization, insecureEnableGroups must be enabled on the connector; otherwise absence of groups is by design."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I5 allowedGroups tests on the OIDC connector, authentication succeeds only if the user is a member of at least one configured allowedGroups entry. This is list-membership against exact configured group values; do not assume wildcard semantics from the docs."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "allowedGroups supports exact list-membership semantics only in the provided docs; no companion type parameter for glob or regex matching is documented. For multi-identity I4 scenarios requiring multiple different group values to pass the same connector, OMIT allowedGroups rather than setting wildcard-like values."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "claimMapping maps non-standard upstream claim names to standard claims only when the standard claim is not already returned in the ID token, unless overrideClaimMapping=true is set. Tests that expect remapping to override an existing standard claim must explicitly enable overrideClaimMapping."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "strategy",
+        "constraint": "For I4/I5 tests involving derived groups, claimModifications.newGroupFromClaims currently supports only string claims; non-string claims are skipped. Do not interpret missing derived groups from numeric/boolean claims as a security rejection bug."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "numeric_sentinel",
+        "constraint": "Dex duration settings are configured as explicit duration strings (for example 10m, 6h). The provided docs do not document numeric sentinels such as 0 or -1 for disabling or selecting defaults for oidc_jwt-relevant token settings; do not assume 0 or -1 has special meaning unless verified in implementation-specific docs."
+      }
+    ]
+  }
+}

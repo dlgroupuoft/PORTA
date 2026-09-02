@@ -1,0 +1,169 @@
+[
+  {
+    "finding": {
+      "finding_id": "6bcb67ddd24c14ea",
+      "sequence_id": "seq_I3_jwt_idp_disable_mid_flow_intent_coherence",
+      "sequence_description": "JWT IdP intent coherence under config change: start an idp_intent, then remove the JWT IdP (cleanup) before completing /idps/jwt. Completion should be rejected if the flow is correctly bound to current policy/config and not cached/stale.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: intentA_complete_http_status >= 400\nEvaluation: intentA_complete_http_status=200 >= 400 \u2192 False\nImplication: JWT IdP login completion succeeded even after the IdP was removed (stale intent/policy-epoch splicing).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "intentA_complete_http_status >= 400",
+        "evaluation": "intentA_complete_http_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "intentA_complete_http_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_I3_jwt_idp_disable_mid_flow_intent_coherence",
+      "description": "JWT IdP intent coherence under config change: start an idp_intent, then remove the JWT IdP (cleanup) before completing /idps/jwt. Completion should be rejected if the flow is correctly bound to current policy/config and not cached/stale.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: An in-progress IdP intent must not be completable after the IdP is removed/disabled; otherwise steps can be spliced across policy epochs (stale intent acceptance).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 4,
+      "events_failed": 1,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "mint_custom_jwt",
+          "params": {
+            "sub": "user-coherence-{{now_epoch}}",
+            "iss": "http://mock-idp:9090",
+            "email": "coherence-{{now_epoch}}@example.com",
+            "name": "Coherence Test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "coherence_minted_token": "minted_token",
+            "coherence_mint_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_idp_intent",
+          "params": {
+            "idp_id": "367717793447018500",
+            "success_url": "http://localhost:8085/callback",
+            "failure_url": "http://localhost:8085/callback?fail=true"
+          },
+          "auth_as": "session_user_intentA",
+          "expected_outcome": "any",
+          "captures": {
+            "intentA_http_status": "http_status",
+            "intentA_idp_intent_id": "idp_intent_id",
+            "intentA_auth_url": "auth_url"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "idp_id": "367717793447018500"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "jwt_idp_cleanup_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "complete_jwt_idp_login",
+          "params": {
+            "auth_request_id": "{{auth_url_authRequestID}}",
+            "user_agent_id": "{{auth_url_userAgentID}}"
+          },
+          "auth_as": "session_user_intentA",
+          "expected_outcome": "any",
+          "captures": {
+            "intentA_complete_http_status": "http_status",
+            "intentA_complete_idp_intent_id": "idp_intent_id",
+            "intentA_complete_idp_intent_token": "idp_intent_token"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "retrieve_idp_intent",
+          "params": {
+            "idp_intent_id": "{{intentA_complete_idp_intent_id}}",
+            "idp_intent_token": "{{intentA_complete_idp_intent_token}}"
+          },
+          "auth_as": "session_user_intentA",
+          "expected_outcome": "any",
+          "captures": {
+            "user_intentA_http_status": "http_status",
+            "user_intentA_entity_id": "user_id",
+            "user_intentA_idp_user_id": "idp_user_id"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "check_seq_I3_jwt_idp_disable_mid_flow_intent_coherence_0",
+          "invariant": "I3",
+          "assertion": "intentA_complete_http_status >= 400",
+          "violation_description": "JWT IdP login completion succeeded even after the IdP was removed (stale intent/policy-epoch splicing).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "project_id": "367717793010810884",
+        "client_id": "367717793111539716",
+        "redirect_uri": "http://localhost:8085/callback",
+        "app_id": "367717793111474180",
+        "jwt_idp_id": "367717793447018500",
+        "mock_idp_url": "http://localhost:9090",
+        "jwt_idp_header": "x-jwt-assertion",
+        "saml_metadata_url": "http://mock-idp:9090/saml/metadata",
+        "mock_idp_entity_id": "http://mock-idp:9090",
+        "isolation_strategy": "Zitadel management API uses REST gateway paths under /management/v1/ (org-scoped). Do NOT use gRPC Connect paths. For IdP setup: create_provider creates the IdP, enable_auth_method adds it to the logi",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "jwt_idp_flow_doc": "To test JWT IdP validation: 1) mint_custom_jwt \u2192 captures minted_token. 2) start_idp_intent with idp_id={{jwt_idp_id}} \u2192 captures auth_url, plus auto-parsed auth_url_authRequestID and auth_url_userAge",
+        "minted_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ik5PMWE3NW84UTJCM3hmTUUiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJ1c2VyLWNvaGVyZW5jZS17e25vd19lcG9jaH19IiwiaXNzIjoiaHR0cDovL21vY2staWRwOjkwOTAiLCJlbWFpbCI6ImNvaGVyZW5jZS17e25vd19lcG9ja",
+        "kid": "NO1a75o8Q2B3xfME",
+        "coherence_minted_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ik5PMWE3NW84UTJCM3hmTUUiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJ1c2VyLWNvaGVyZW5jZS17e25vd19lcG9jaH19IiwiaXNzIjoiaHR0cDovL21vY2staWRwOjkwOTAiLCJlbWFpbCI6ImNvaGVyZW5jZS17e25vd19lcG9ja",
+        "coherence_mint_http_status": "200",
+        "auth_url": "http://mock-idp:9090/authorize?authRequestID=367719019492409348&userAgentID=4sumUSapr-MY5b0DVryE8m2BpoO1GRYWSqvM568NeWmcWA",
+        "auth_url_authRequestID": "367719019492409348",
+        "auth_url_userAgentID": "4sumUSapr-MY5b0DVryE8m2BpoO1GRYWSqvM568NeWmcWA",
+        "idp_intent_id": "367719019492409348",
+        "intentA_http_status": "200",
+        "intentA_idp_intent_id": "367717771150098436",
+        "intentA_auth_url": "http://mock-idp:9090/authorize?authRequestID=367719019492409348&userAgentID=4sumUSapr-MY5b0DVryE8m2BpoO1GRYWSqvM568NeWmcWA",
+        "intentA_auth_url_authRequestID": "367719019492409348",
+        "intentA_auth_url_userAgentID": "4sumUSapr-MY5b0DVryE8m2BpoO1GRYWSqvM568NeWmcWA",
+        "jwt_idp_cleanup_http_status": "404",
+        "idp_intent_token": "jMKK9wxJnzVcDtfn-UnD52mqAIYCQNTaF6Sc2UScG_x1pw",
+        "session_user_intentA_idp_intent_id": "367719019492409348",
+        "session_user_intentA_idp_intent_token": "jMKK9wxJnzVcDtfn-UnD52mqAIYCQNTaF6Sc2UScG_x1pw",
+        "intentA_complete_http_status": "200",
+        "intentA_complete_idp_intent_id": "367719019492409348",
+        "intentA_complete_idp_intent_token": "jMKK9wxJnzVcDtfn-UnD52mqAIYCQNTaF6Sc2UScG_x1pw",
+        "idp_user_id": "{'email': 'coherence-{{now_epoch}}@example.com', 'iss': 'http://mock-idp:9090', 'name': 'Coherence Test', 'sub': 'user-coherence-{{now_epoch}}'}",
+        "user_intentA_http_status": "200",
+        "user_intentA_entity_id": "None",
+        "user_intentA_idp_user_id": "{'email': 'coherence-{{now_epoch}}@example.com', 'iss': 'http://mock-idp:9090', 'name': 'Coherence Test', 'sub': 'user-coherence-{{now_epoch}}'}"
+      }
+    }
+  }
+]

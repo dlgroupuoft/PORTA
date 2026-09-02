@@ -1,0 +1,334 @@
+{
+  "platform": "keycloak",
+  "verification_apis": {
+    "identity_lookup": [
+      {
+        "name": "oidc_userinfo",
+        "description": "Get user identity info from access token (WHO is authenticated)",
+        "method": "GET",
+        "path": "/realms/{realm}/protocol/openid-connect/userinfo",
+        "auth": "session",
+        "path_params": {
+          "realm": "target realm"
+        },
+        "query_params": null,
+        "request_body": null,
+        "response_fields": {
+          "sub": "User unique identifier (UUID)",
+          "preferred_username": "Username of the authenticated user",
+          "email": "User email address",
+          "name": "Full display name",
+          "realm_access.roles": "Realm-level roles granted",
+          "resource_access": "Client-level role mappings",
+          "groups": "Group memberships (if mapper configured)"
+        },
+        "invariant_relevance": [
+          "I4",
+          "I5"
+        ]
+      },
+      {
+        "name": "admin_get_user",
+        "description": "Admin lookup of user by UUID (verify user attributes and metadata)",
+        "method": "GET",
+        "path": "/admin/realms/{realm}/users/{user_id}",
+        "auth": "admin",
+        "path_params": {
+          "realm": "target realm",
+          "user_id": "user UUID"
+        },
+        "query_params": null,
+        "request_body": null,
+        "response_fields": {
+          "id": "User UUID",
+          "username": "Username",
+          "enabled": "Whether user is enabled",
+          "email": "Email address",
+          "attributes": "Custom user attributes",
+          "federationLink": "Link to federated identity provider"
+        },
+        "invariant_relevance": [
+          "I4"
+        ]
+      }
+    ],
+    "permission_check": [
+      {
+        "name": "get_user_realm_role_mappings",
+        "description": "Get effective realm roles assigned to a user",
+        "method": "GET",
+        "path": "/admin/realms/{realm}/users/{user_id}/role-mappings/realm",
+        "auth": "admin",
+        "path_params": {
+          "realm": "target realm",
+          "user_id": "user UUID"
+        },
+        "query_params": null,
+        "request_body": null,
+        "response_fields": {
+          "[].name": "Role name",
+          "[].composite": "Whether role is composite",
+          "[].clientRole": "Whether role is client-scoped"
+        },
+        "invariant_relevance": [
+          "I5"
+        ]
+      },
+      {
+        "name": "get_user_client_role_mappings",
+        "description": "Get client-scoped roles assigned to a user",
+        "method": "GET",
+        "path": "/admin/realms/{realm}/users/{user_id}/role-mappings/clients/{client_uuid}",
+        "auth": "admin",
+        "path_params": {
+          "realm": "target realm",
+          "user_id": "user UUID",
+          "client_uuid": "client internal UUID"
+        },
+        "query_params": null,
+        "request_body": null,
+        "response_fields": {
+          "[].name": "Client role name",
+          "[].composite": "Whether role is composite"
+        },
+        "invariant_relevance": [
+          "I5"
+        ]
+      },
+      {
+        "name": "get_user_group_memberships",
+        "description": "Get groups the user belongs to",
+        "method": "GET",
+        "path": "/admin/realms/{realm}/users/{user_id}/groups",
+        "auth": "admin",
+        "path_params": {
+          "realm": "target realm",
+          "user_id": "user UUID"
+        },
+        "query_params": null,
+        "request_body": null,
+        "response_fields": {
+          "[].id": "Group UUID",
+          "[].name": "Group name",
+          "[].path": "Group hierarchy path"
+        },
+        "invariant_relevance": [
+          "I4",
+          "I5"
+        ]
+      }
+    ],
+    "access_test": [
+      {
+        "name": "entitlement_check",
+        "description": "Check if token holder has access to a specific resource via UMA",
+        "method": "POST",
+        "path": "/realms/{realm}/protocol/openid-connect/token",
+        "auth": "session",
+        "path_params": {
+          "realm": "target realm"
+        },
+        "query_params": null,
+        "request_body": {
+          "grant_type": "urn:ietf:params:oauth:grant-type:uma-ticket",
+          "audience": "resource server client_id"
+        },
+        "response_fields": {
+          "access_token": "RPT (Requesting Party Token) with permissions",
+          "token_type": "Token type (Bearer)"
+        },
+        "invariant_relevance": [
+          "I5"
+        ]
+      }
+    ],
+    "session_token_inspect": [
+      {
+        "name": "introspect_rpt",
+        "description": "Determine whether an RPT is active and inspect permissions and token timestamps for replay/freshness and authorization binding.",
+        "method": "POST",
+        "path": "/realms/{realm-name}/protocol/openid-connect/token/introspect",
+        "auth": "session",
+        "path_params": {
+          "realm-name": "test realm under evaluation"
+        },
+        "query_params": null,
+        "request_body": {
+          "content_type": "application/x-www-form-urlencoded",
+          "fields": {
+            "token_type_hint": "requesting_party_token",
+            "token": "{RPT}"
+          }
+        },
+        "response_fields": {
+          "active": "Whether the RPT is currently valid/active (I2).",
+          "permissions": "Granted permissions list (resource_id/resource_name) for I5 checks.",
+          "exp": "Expiration time for freshness checks (I2).",
+          "iat": "Issued-at time for freshness checks (I2).",
+          "nbf": "Not-before time for freshness checks (I2).",
+          "aud": "Audience binding of the RPT (I5)."
+        },
+        "invariant_relevance": [
+          "I2",
+          "I5",
+          "I1"
+        ]
+      },
+      {
+        "name": "oidc_jwks",
+        "description": "Get realm JWKS keys used for token signature verification (I1 proof integrity)",
+        "method": "GET",
+        "path": "/realms/{realm}/protocol/openid-connect/certs",
+        "auth": "none",
+        "path_params": {
+          "realm": "target realm"
+        },
+        "query_params": null,
+        "request_body": null,
+        "response_fields": {
+          "keys": "Array of JWK public keys used to sign tokens",
+          "keys[].kid": "Key ID used in JWT header",
+          "keys[].kty": "Key type (RSA, EC)",
+          "keys[].alg": "Algorithm (RS256, ES256)",
+          "keys[].use": "Key usage (sig)"
+        },
+        "invariant_relevance": [
+          "I1"
+        ]
+      }
+    ],
+    "admin_audit": [
+      {
+        "name": "query_uma_policy_permissions",
+        "description": "List UMA policy/permission objects to verify what access rules were configured/created for a resource/scope/name.",
+        "method": "GET",
+        "path": "/realms/{realm-name}/authz/protection/uma-policy",
+        "auth": "session",
+        "path_params": {
+          "realm-name": "test realm under evaluation"
+        },
+        "query_params": {
+          "resource": "resource_id under test (optional)",
+          "name": "permission name under test (optional)",
+          "scope": "scope name under test (optional)",
+          "first": "pagination offset (optional)",
+          "max": "pagination limit (optional)"
+        },
+        "request_body": null,
+        "response_fields": {},
+        "invariant_relevance": [
+          "I5"
+        ]
+      },
+      {
+        "name": "list_non_uma_permission_tickets",
+        "description": "Inspect stored permission ticket/grant records to verify asynchronous UMA submit_request flows and owner approvals.",
+        "method": "GET",
+        "path": "/realms/{realm-name}/authz/protection/permission/ticket",
+        "auth": "session",
+        "path_params": {
+          "realm-name": "test realm under evaluation"
+        },
+        "query_params": {
+          "scopeId": "filter by scope id (optional)",
+          "resourceId": "filter by resource id (optional)",
+          "owner": "filter by owner (optional)",
+          "requester": "filter by requester user id (optional)",
+          "granted": "filter by granted boolean (optional)",
+          "returnNames": "include names instead of ids (optional)",
+          "first": "pagination offset (optional)",
+          "max": "pagination limit (optional)"
+        },
+        "request_body": null,
+        "response_fields": {},
+        "invariant_relevance": [
+          "I3",
+          "I5"
+        ]
+      },
+      {
+        "name": "query_registered_resources",
+        "description": "Verify resource registration state (owner, scopes, URIs) used for permission evaluation and principal binding tests.",
+        "method": "GET",
+        "path": "/realms/{realm-name}/authz/protection/resource_set",
+        "auth": "session",
+        "path_params": {
+          "realm-name": "test realm under evaluation"
+        },
+        "query_params": {
+          "name": "resource name filter (optional)",
+          "exactName": "exact match toggle (optional)",
+          "uri": "URI filter (optional)",
+          "owner": "owner filter (optional)",
+          "type": "type filter (optional)",
+          "scope": "scope filter (optional)",
+          "first": "pagination offset (optional)",
+          "max": "pagination limit (optional)"
+        },
+        "request_body": null,
+        "response_fields": {},
+        "invariant_relevance": [
+          "I4",
+          "I5"
+        ]
+      }
+    ]
+  },
+  "extraction_timestamp": "2026-03-15T13:35:19.998897",
+  "extraction_model": "gpt-5.2",
+  "verification_recipes": {
+    "verify_identity_after_login": {
+      "description": "After password login, verify who the platform thinks we are and what roles were granted",
+      "api_sequence": [
+        "oidc_userinfo",
+        "get_user_realm_role_mappings",
+        "get_user_group_memberships"
+      ],
+      "captures": {
+        "granted_identity": "oidc_userinfo.preferred_username",
+        "granted_sub": "oidc_userinfo.sub",
+        "granted_roles": "get_user_realm_role_mappings[].name",
+        "granted_groups": "get_user_group_memberships[].name"
+      },
+      "invariant_relevance": [
+        "I4",
+        "I5"
+      ]
+    },
+    "verify_token_permissions": {
+      "description": "Introspect token and check effective permissions match configuration",
+      "api_sequence": [
+        "introspect_rpt",
+        "get_user_client_role_mappings"
+      ],
+      "captures": {
+        "token_active": "introspect_rpt.active",
+        "token_sub": "introspect_rpt.sub",
+        "token_scope": "introspect_rpt.scope",
+        "client_roles": "get_user_client_role_mappings[].name"
+      },
+      "invariant_relevance": [
+        "I2",
+        "I5"
+      ]
+    },
+    "verify_group_role_inheritance": {
+      "description": "Verify that group membership correctly propagates roles to user identity",
+      "api_sequence": [
+        "admin_get_user",
+        "get_user_group_memberships",
+        "get_user_realm_role_mappings"
+      ],
+      "captures": {
+        "user_id": "admin_get_user.id",
+        "groups": "get_user_group_memberships[].name",
+        "effective_roles": "get_user_realm_role_mappings[].name"
+      },
+      "invariant_relevance": [
+        "I4",
+        "I5"
+      ]
+    }
+  },
+  "extraction_method": "openapi+adoc"
+}

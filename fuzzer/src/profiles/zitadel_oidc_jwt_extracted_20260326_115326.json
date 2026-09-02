@@ -1,0 +1,431 @@
+{
+  "name": "zitadel",
+  "base_url": "http://localhost:8080",
+  "admin_auth": {
+    "header": "Authorization",
+    "value": "Bearer {admin_token}"
+  },
+  "supported_protocols": [
+    "oidc_jwt"
+  ],
+  "api_mapping": {
+    "oidc_jwt": {
+      "start_oidc_auth": {
+        "method": "GET",
+        "path": "/authorize",
+        "body_map": {
+          "client_id": "client_id",
+          "redirect_uri": "redirect_uri",
+          "response_type": "response_type",
+          "scope": "scope",
+          "state": "state",
+          "nonce": "nonce",
+          "code_challenge": "code_challenge",
+          "code_challenge_method": "code_challenge_method"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "query",
+        "metadata": {
+          "follow_redirects": false
+        }
+      },
+      "exchange_code_for_token": {
+        "method": "POST",
+        "path": "/oauth/v2/token",
+        "body_map": {
+          "code": "code",
+          "grant_type": "grant_type",
+          "redirect_uri": "redirect_uri",
+          "client_id": "client_id",
+          "code_verifier": "code_verifier",
+          "client_assertion": "client_assertion",
+          "client_assertion_type": "client_assertion_type"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form"
+      }
+    }
+  },
+  "known_behaviors": {
+    "oidc_jwt": [
+      {
+        "id": "zitadel_i1_i3_70e1516e",
+        "description": "In JWT IdP mode, ZITADEL does not re-authenticate the user; it accepts an externally issued JWT as proof of prior authentication and validates authenticity/validity only.",
+        "invariants": [
+          "I1",
+          "I3"
+        ],
+        "conditions": {
+          "flow": "jwt_idp"
+        },
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx",
+        "note": "Tests must not expect an interactive credential challenge or local primary authentication step."
+      },
+      {
+        "id": "zitadel_i1_i3_db37465b",
+        "description": "JWT IdP expects the upstream JWT in a configured HTTP header, not in URL parameters.",
+        "invariants": [
+          "I1",
+          "I3"
+        ],
+        "conditions": {
+          "request.jwt_transport": "header"
+        },
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx",
+        "note": "Query-parameter token delivery is an invalid test setup."
+      },
+      {
+        "id": "zitadel_i3_9a41113f",
+        "description": "PKCE supports only S256 as code_challenge_method.",
+        "invariants": [
+          "I3"
+        ],
+        "conditions": {
+          "request.code_challenge_method": "S256"
+        },
+        "source": "guides/integrate/login/oidc/authmethods/_pkce.mdx",
+        "note": "Using plain or other methods is rejected by design."
+      },
+      {
+        "id": "zitadel_i3_3c7e3f7c",
+        "description": "Authorization requests recommend state and nonce, but the docs do not mark them as mandatory for all code-flow requests.",
+        "invariants": [
+          "I3"
+        ],
+        "conditions": {
+          "request.state": "absent",
+          "request.nonce": "absent"
+        },
+        "source": "guides/integrate/login/oidc/authmethods/_pkce.mdx; _basic.mdx; _jwtpk.mdx",
+        "note": "Absence alone should not be treated as a vulnerability."
+      },
+      {
+        "id": "zitadel_i3_70705424",
+        "description": "The token request is rejected when redirect_uri does not exactly match the redirect_uri used in the authorization request.",
+        "invariants": [
+          "I3"
+        ],
+        "conditions": {
+          "request.redirect_uri_match": "exact_required"
+        },
+        "source": "guides/integrate/login/oidc/authmethods/_jwtpk.mdx",
+        "note": "This is standard OIDC behavior and should not be flagged as a coherence bug."
+      },
+      {
+        "id": "zitadel_i2_4d5cf2e7",
+        "description": "ZITADEL JWT IdP validates an externally issued JWT's signature, issuer, and expiration, but the JWT is treated as an external ID token and ZITADEL does not re-authenticate the user or document jti replay tracking.",
+        "invariants": [
+          "I2"
+        ],
+        "conditions": {
+          "flow_type": "jwt_idp",
+          "validation_mode": "stateless"
+        },
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx",
+        "note": "Reusing the same valid JWT may succeed by design; do not report replay as a vulnerability without stronger platform evidence."
+      },
+      {
+        "id": "zitadel_i2_9b258909",
+        "description": "The supplied documentation does not promise one-time-use or jti replay protection for JWT IdP upstream JWTs or private_key_jwt client assertions beyond standard validation inputs.",
+        "invariants": [
+          "I2"
+        ],
+        "conditions": {
+          "jwt.jti_tracking": "undocumented"
+        },
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx, guides/integrate/login/oidc/authmethods/_jwtpk.mdx",
+        "note": "Replay acceptance without explicit anti-replay guarantees should be treated as by-design unless a stronger contract is documented."
+      },
+      {
+        "id": "zitadel_i1_i4_81a6347d",
+        "description": "JWT IdP does not re-authenticate the user; it accepts an externally issued JWT as proof of prior authentication after validating signature, issuer, and expiration.",
+        "invariants": [
+          "I1",
+          "I4"
+        ],
+        "conditions": {
+          "flow.type": "jwt_idp",
+          "validation.mode": "external_jwt"
+        },
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx",
+        "note": "Tests should not expect ZITADEL to challenge the user again or to be the issuer of the upstream JWT."
+      }
+    ]
+  },
+  "verification_fields": {
+    "identity_field": "sub",
+    "identity_name_field": "preferred_username",
+    "policies_field": "urn:zitadel:iam:org:project:roles",
+    "groups_field": "urn:zitadel:iam:org:project:roles"
+  },
+  "api_constraints": {
+    "oidc_jwt": [
+      {
+        "severity": "CRITICAL",
+        "constraint": "For exchange_code_for_token, grant_type MUST be authorization_code and redirect_uri MUST match the redirect_uri used in start_oidc_auth exactly; mismatches are expected flow rejection, not I3 bugs.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_pkce.mdx; _basic.mdx; _jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For PKCE-based code exchange tests, code_challenge_method supports only the exact value S256. The fuzzer MUST send code_challenge in start_oidc_auth and the matching plain code_verifier in exchange_code_for_token; missing or wrong verifier causes by-design rejection.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_pkce.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For private_key_jwt client authentication at /oauth/v2/token, exchange_code_for_token MUST send client_assertion plus client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer. Reusing the same client_assertion across calls is a replay test against the client-auth JWT, not against end-user identity.",
+        "invariants": [
+          "I1",
+          "I2"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 freshness tests on OIDC code flow, include a CONTROL authorization+token exchange using a valid request alongside the ATTACK request. Otherwise token endpoint failure cannot be distinguished from broken client setup such as wrong redirect_uri, missing verifier, or wrong client authentication method.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_pkce.mdx; _basic.mdx; _jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "state and nonce are recommended, not mandatory in the documented authorization request. Their absence alone is not evidence of an I3 flaw unless the same authorization response is accepted across sessions inconsistently.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_pkce.mdx; _basic.mdx; _jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "JWT IdP upstream tokens are delivered to ZITADEL via a configured HTTP header on a proxied browser GET to /idps/jwt, never as a URL parameter. Any test that injects the JWT in query parameters is invalid for this platform.",
+        "invariants": [
+          "I1",
+          "I3"
+        ],
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For JWT IdP flow coherence tests, the proxy/WAF MUST forward all original query parameters intact to ZITADEL's JWT receiving endpoint. Dropping or rewriting query parameters breaks OIDC state by design and must not be reported as a broker flaw.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "JWT IdP validation documented by ZITADEL checks signature using the Keys Endpoint, issuer equality against configured issuer, and expiration. The fuzzer MUST vary these exact trust inputs for I1/I2 tests; do not assume undocumented checks such as nbf, aud, jti, or claim-binding on the upstream JWT IdP token.",
+        "invariants": [
+          "I1",
+          "I2",
+          "I5"
+        ],
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 trust-anchor substitution against JWT IdP, the attack must change either the configured issuer or the Keys Endpoint trust context. Because issuer matching is explicitly enforced, a forged token with attacker JWKS but wrong iss should be rejected by design; do not misclassify that as key-validation success alone.",
+        "invariants": [
+          "I1"
+        ],
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 replay_same_token on JWT IdP, the documentation describes the upstream JWT as an externally issued proof token that ZITADEL validates statelessly for signature, issuer, and expiration. Do NOT flag simple reuse of the same still-valid JWT IdP token as a vulnerability unless the tested context is client_assertion replay at the token endpoint.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx; RFC7523 usage in _jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "No documented claim-constraint parameters, audience-binding parameters, subject-binding parameters, or matching-mode toggles are provided in the supplied ZITADEL oidc_jwt docs. The fuzzer MUST NOT invent wildcard/exact-match tests for undocumented parameters in this protocol run.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "source": "supplied documentation corpus"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For exchange_code_for_token, grant_type MUST be literal 'authorization_code'.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_pkce.mdx; _basic.mdx; _jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For exchange_code_for_token, redirect_uri MUST match exactly the redirect_uri used in start_oidc_auth. Any mismatch is expected to fail and is not an identity-binding bug.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_pkce.mdx; _basic.mdx; _jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For PKCE-based tests, start_oidc_auth MUST send code_challenge and code_challenge_method='S256', and exchange_code_for_token MUST send the matching code_verifier. ZITADEL documents S256 as the only supported PKCE method.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_pkce.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For private_key_jwt client authentication tests, exchange_code_for_token MUST send client_assertion plus client_assertion_type='urn:ietf:params:oauth:client-assertion-type:jwt-bearer'. Omitting client_assertion_type or using another value is invalid setup.",
+        "invariants": [
+          "I1",
+          "I3"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 expired_token/future_token conclusions on oidc_jwt, the provided docs only explicitly state JWT IdP validates issuer, signature, and expiration. The fuzzer MUST include a control flow with a valid token alongside any attack token; otherwise a failure may be due to broken upstream/WAF proxy setup rather than freshness enforcement.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "JWT IdP login is browser-redirect mediated, not direct bearer submission. The upstream/WAF proxy MUST forward all original query parameters intact when redirecting/proxying to ZITADEL's JWT receiving endpoint; dropping stateful OIDC parameters breaks flow coherence and can create false I3 results.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For JWT IdP tests, the JWT MUST be delivered in the configured HTTP header (default Authorization if unset), never as a URL parameter. Tests that inject JWTs via query string are invalid for this platform.",
+        "invariants": [
+          "I1",
+          "I3"
+        ],
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For JWT IdP trust-anchor tests (I1), configure the IdP with both Issuer and Keys Endpoint. ZITADEL documents signature verification against keys from the Keys Endpoint and issuer comparison against configured issuer; without both, issuer/key-substitution tests are misconfigured.",
+        "invariants": [
+          "I1"
+        ],
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For JWT IdP replay_same_token, do NOT flag successful reuse as an I2 vulnerability by itself. The documented behavior is stateless validation of external JWT authenticity/validity; no jti replay tracking is documented.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For OIDC authorization requests, state and nonce are recommended, and nonce is used to bind the client session with the id_token and mitigate replay attacks. The fuzzer SHOULD send both on every start_oidc_auth to avoid ambiguous flow failures.",
+        "invariants": [
+          "I2",
+          "I3"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_basic.mdx; _pkce.mdx; _jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 freshness tests against oidc_jwt, the attack sequence MUST include a CONTROL authorization-code exchange using a valid client_assertion JWT alongside the ATTACK assertion. Without a control, token-endpoint failure cannot be distinguished from broken client setup or bad redirect_uri/code handling.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 redirect_uri_mismatch tests, the token request redirect_uri MUST match the authorization request redirect_uri exactly. Any mismatch is documented to fail by design and should be asserted as flow rejection, not identity confusion.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For oidc_jwt client authentication, the token endpoint requires client_assertion plus client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer. Do NOT omit client_assertion_type during I1/I3 tests or failures may reflect malformed OAuth client authentication rather than JWT validation behavior.",
+        "invariants": [
+          "I1",
+          "I3"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 config-change sequences, use the SAME /oauth/v2/token endpoint and vary only the client_assertion or prior authorization request inputs. A valid coherence test must show behavior change caused by config/trust changes, not by changing grant_type or redirect_uri semantics.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_jwtpk.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "ZITADEL recommends state and nonce on /authorize. For state-swap and replay-sensitive OIDC tests, the fuzzer MUST send both and track them per browser session; otherwise failures or successes may be due to missing recommended bindings rather than the targeted attack.",
+        "invariants": [
+          "I2",
+          "I3"
+        ],
+        "source": "guides/integrate/login/oidc/authmethods/_jwtpk.mdx, guides/integrate/login/oidc/authmethods/_basic.mdx, guides/integrate/login/oidc/authmethods/_pkce.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "JWT IdP upstream tokens are delivered to ZITADEL in a configured HTTP header and the proxy must forward all original query parameters intact to /idps/jwt. For I3 state/flow tests involving JWT IdP, dropping or rewriting query parameters is a setup error, not a broker vulnerability.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "JWT IdP validation in ZITADEL explicitly checks signature via Keys Endpoint, issuer equality, and expiration. For I1 trust-anchor-substitution and resign_attacker_key tests, configure the IdP so issuer and keys endpoint are the intended trust anchors; otherwise the test may trivially fail due to unrelated misconfiguration.",
+        "invariants": [
+          "I1"
+        ],
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "JWT IdP documentation only states issuer equality and expiration checks; it does not document nbf, iat, jti, audience, subject-pattern, or claim-constraint validation for the upstream JWT IdP token. Do NOT treat acceptance of replayed JWT IdP tokens without jti tracking as an I2 vulnerability; stateless JWT replay is by design unless the docs explicitly promise one-time use.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "No documented matching-mode companion parameter exists for issuer in JWT IdP setup; issuer comparison is therefore exact-match only. For multi-identity or multi-issuer scenarios, do NOT use wildcard values expecting pattern matching.",
+        "invariants": [
+          "I1",
+          "I4"
+        ],
+        "source": "guides/integrate/identity-providers/jwt_idp.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "No documented numeric TTL/leeway sentinel values are provided for oidc_jwt endpoints or JWT IdP settings in the supplied docs. The fuzzer MUST NOT assume 0, -1, or similar values mean disable/default for any undocumented timing parameter.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "supplied documentation set"
+      }
+    ]
+  }
+}

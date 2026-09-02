@@ -1,0 +1,542 @@
+{
+  "name": "authentik",
+  "base_url": "http://localhost:9000",
+  "admin_auth": {
+    "header": "Authorization",
+    "value": "Bearer {admin_token}"
+  },
+  "supported_protocols": [
+    "oidc_jwt"
+  ],
+  "api_mapping": {
+    "oidc_jwt": {
+      "start_oidc_auth": {
+        "method": "GET",
+        "path": "/application/o/authorize/",
+        "body_map": {
+          "client_id": "client_id",
+          "redirect_uri": "redirect_uri",
+          "scope": "scope",
+          "response_type": "response_type",
+          "state": "state",
+          "nonce": "nonce",
+          "code_challenge": "code_challenge",
+          "code_challenge_method": "code_challenge_method",
+          "request": "request",
+          "request_object": "request"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "query",
+        "metadata": {
+          "follow_redirects": false
+        }
+      },
+      "exchange_code_for_token": {
+        "method": "POST",
+        "path": "/application/o/token/",
+        "body_map": {
+          "grant_type": "grant_type",
+          "code": "code",
+          "redirect_uri": "redirect_uri",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "code_verifier": "code_verifier",
+          "device_code": "device_code",
+          "scope": "scope"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "refresh_token": "refresh_token",
+          "id_token": "id_token",
+          "token_type": "token_type",
+          "expires_in": "expires_in",
+          "scope": "scope",
+          "http_status": "_http_status",
+          "metadata": "id_token"
+        },
+        "auth": "none",
+        "content_type": "form"
+      },
+      "token_exchange": {
+        "method": "POST",
+        "path": "/application/o/token/",
+        "body_map": {
+          "grant_type": "grant_type",
+          "subject_token": "subject_token",
+          "subject_token_type": "subject_token_type",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "audience": "audience",
+          "scope": "scope",
+          "client_assertion_type": "client_assertion_type",
+          "client_assertion": "client_assertion",
+          "username": "username",
+          "password": "password"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "refresh_token": "refresh_token",
+          "id_token": "id_token",
+          "token_type": "token_type",
+          "expires_in": "expires_in",
+          "scope": "scope",
+          "http_status": "_http_status",
+          "metadata": "id_token"
+        },
+        "auth": "none",
+        "content_type": "form"
+      },
+      "verify_granted_identity": {
+        "method": "GET",
+        "path": "/application/o/userinfo/",
+        "body_map": {},
+        "response_map": {
+          "identity_id": "sub",
+          "display_name": "preferred_username",
+          "email": "email",
+          "groups": "groups",
+          "granted_policies": "entitlements",
+          "identity_policies": "entitlements",
+          "metadata": ".",
+          "ttl": "exp",
+          "creation_ttl": "iat",
+          "expire_time": "exp",
+          "num_uses": "",
+          "http_status": "_http_status"
+        },
+        "auth": "session",
+        "content_type": "query"
+      },
+      "revoke_session": {
+        "method": "POST",
+        "path": "/application/o/revoke/",
+        "body_map": {
+          "session_token": "token",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "token_type_hint": "token_type_hint"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form"
+      },
+      "enable_auth_method": {
+        "method": "UI",
+        "path": "",
+        "body_map": {},
+        "response_map": {
+          "issuer": "issuer",
+          "authorization_endpoint": "authorization_endpoint",
+          "token_endpoint": "token_endpoint",
+          "userinfo_endpoint": "userinfo_endpoint",
+          "jwks_uri": "jwks_uri",
+          "end_session_endpoint": "end_session_endpoint"
+        },
+        "auth": "admin",
+        "metadata": {
+          "documented_via_ui_only": true
+        }
+      },
+      "login_with_jwt": {
+        "method": "POST",
+        "path": "/application/o/token/",
+        "body_map": {
+          "grant_type": "grant_type",
+          "client_assertion_type": "client_assertion_type",
+          "jwt": "client_assertion",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "scope": "scope",
+          "username": "username",
+          "password": "password",
+          "client_assertion": "client_assertion"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "metadata": "id_token",
+          "http_status": "_http_status",
+          "refresh_token": "refresh_token",
+          "id_token": "id_token",
+          "token_type": "token_type",
+          "expires_in": "expires_in",
+          "scope": "scope"
+        },
+        "auth": "none",
+        "content_type": "form"
+      }
+    }
+  },
+  "known_behaviors": {
+    "oidc_jwt": [
+      {
+        "id": "authentik_i5_94041465",
+        "description": "If a client requests no scopes, authentik treats the request as if all configured scopes were requested.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "request.scope": ""
+        },
+        "source": "OAuth 2.0 provider docs, Default & special scopes section",
+        "note": "This can look like overbroad authorization if the fuzzer assumes omitted scope means minimal access."
+      },
+      {
+        "id": "authentik_i5_208cccb2",
+        "description": "The email_verified claim defaults to false unless customized by scope mapping.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "userinfo.email_verified": false
+        },
+        "source": "Provider property mappings and OAuth2 provider Email scope verification docs",
+        "note": "Applications expecting email_verified=true may fail login by design; this is not an identity-binding bug."
+      },
+      {
+        "id": "authentik_i5_0c4cb65c",
+        "description": "authentik treats grant_type=password the same as client_credentials for machine-to-machine authentication support.",
+        "invariants": [
+          "I5"
+        ],
+        "conditions": {
+          "request.grant_type": "password"
+        },
+        "source": "Machine-to-Machine (M2M) authentication",
+        "note": "This can look like an unexpected password grant acceptance, but is documented behavior for M2M compatibility."
+      },
+      {
+        "id": "authentik_i2_d7ba6342",
+        "description": "Applications only receive an access token by default; refresh tokens are only issued when offline_access is configured and requested.",
+        "invariants": [
+          "I2"
+        ],
+        "conditions": {
+          "request.scope": "!contains:offline_access"
+        },
+        "source": "OAuth 2.0 provider docs and Create OAuth2 provider docs",
+        "note": "Absence of refresh_token is by design and should not be interpreted as revocation or freshness enforcement."
+      },
+      {
+        "id": "authentik_i2_4fc92ca9",
+        "description": "JWT-based authentication paths are documented as validating signature and expiry, with no documented jti replay tracking for generic JWT bearer login.",
+        "invariants": [
+          "I2"
+        ],
+        "conditions": {
+          "request.grant_type": "client_credentials",
+          "request.client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+        },
+        "source": "providers/oauth2/machine_to_machine.mdx",
+        "note": "Reusing the same still-valid JWT may succeed and is not by itself evidence of a replay vulnerability."
+      },
+      {
+        "id": "authentik_i4_41022529",
+        "description": "For JWT authentication, authentik creates a service account based on the provider name and the token subject claim.",
+        "invariants": [
+          "I4"
+        ],
+        "conditions": {
+          "auth_method": "jwt"
+        },
+        "source": "providers/oauth2/machine_to_machine.mdx",
+        "note": "Identity names may include provider context, so cross-provider identity differences are expected and should not be flagged as mismatches."
+      },
+      {
+        "id": "authentik_i3_353cb3c9",
+        "description": "When logout is initiated from an application, only that application's session ends by default while the authentik session remains active.",
+        "invariants": [
+          "I3"
+        ],
+        "conditions": {
+          "flow": "default-provider-invalidation-flow"
+        },
+        "source": "providers/single-logout/index.md",
+        "note": "Lack of global logout after RP-initiated logout is by design unless the invalidation flow is customized to include User Logout."
+      },
+      {
+        "id": "authentik_i2_i5_5ddc853d",
+        "description": "Applications only receive a refresh token when offline_access is configured in the provider and requested by the client.",
+        "invariants": [
+          "I2",
+          "I5"
+        ],
+        "conditions": {
+          "request.scope": "!contains:offline_access"
+        },
+        "source": "OAuth 2.0 provider docs and Create an OAuth2 provider docs",
+        "note": "Absence of refresh_token is expected unless offline_access is both enabled and requested."
+      }
+    ]
+  },
+  "verification_fields": {
+    "identity_field": "sub",
+    "identity_name_field": "preferred_username",
+    "policies_field": "groups",
+    "groups_field": "groups"
+  },
+  "api_constraints": {
+    "oidc_jwt": [
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I3 redirect_uri_mismatch and general code-flow tests, the redirect_uri used at /application/o/token/ MUST exactly match the redirect URI validated during the authorization request. authentik validates redirect URIs against configured values and treats them as a bound callback.",
+        "source": "OAuth 2.0 provider docs: Redirect URI must be validated by the OP; redirect URI configuration and exact callback semantics."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I3 state_swap and other browser authorization-flow tests, start_oidc_auth MUST be executed with follow_redirects=false and the fuzzer MUST preserve per-session state/nonce/code bindings. Authorization is front-channel and browser-mediated; mixing parameters across sessions will test the client flow, not authentik's endpoint behavior.",
+        "source": "OAuth2/OIDC authorization endpoint documentation and OIDC flow description."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I3 pkce_skip and related code-flow tests, authentik documentation states support for PKCE but does not document a server-side requirement toggle. The fuzzer SHOULD test omission of code_verifier only in sequences where code_challenge was actually sent at authorization time, and MUST judge the result by token-endpoint HTTP status rather than identity comparison.",
+        "source": "OAuth2 provider docs mention PKCE support; authorization and token endpoints are separate."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I2 expired_token and future_token tests against authentik-issued OIDC tokens, include a CONTROL flow using a freshly obtained valid token from the same provider. Without a control, token rejection may be caused by provider misconfiguration, missing scopes, or client mismatch rather than freshness enforcement.",
+        "source": "OAuth2/OIDC provider issues short-lived access tokens and validates tokens at userinfo/revocation/introspection endpoints."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 scope-escalation tests, authentik treats a request with no scopes as if all configured scopes were requested. Therefore the fuzzer MUST explicitly request a narrow scope set in baseline and attack sequences; omitting scope does NOT mean minimal privilege on this platform.",
+        "source": "OAuth2 provider docs: when a client does not request any scopes, authentik treats the request as if all configured scopes were requested."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 refresh/offline-access tests, authentik only returns refresh tokens when offline_access is both configured in the provider and requested by the client. The fuzzer MUST NOT treat absence of refresh_token as a security control unless offline_access was explicitly enabled and requested.",
+        "source": "OAuth2 provider docs: starting with 2024.2, applications only receive an access token; refresh token requires offline_access scope."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I5 token-exchange and audience-binding tests, authentik documentation in the provided corpus does not explicitly document RFC 8693 token exchange support on the OIDC provider token endpoint. The fuzzer MAY probe the token endpoint with token-exchange grant parameters, but any unsupported-grant response must be treated as feature absence, not a passed security check.",
+        "source": "Provided OAuth2/OIDC docs document /application/o/token/ and M2M JWT/client_credentials flows, but not explicit RFC 8693 token exchange semantics."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I1 oidc_request_object_alg_none tests, authentik documentation in the provided corpus does not document support for OIDC request objects beyond the generic authorization endpoint. The fuzzer MAY send a request parameter JWT, but unsupported handling or generic rejection must be treated as unsupported feature behavior, not necessarily a signature-validation pass/fail result.",
+        "source": "Authorization endpoint documented; no explicit request-object validation configuration documented."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "testing_strategy",
+        "constraint": "For I4 identity comparisons, verify_granted_identity returns OIDC claims, and the stable principal is sub. preferred_username/email/groups are scope- and mapping-dependent. The fuzzer MUST use sub as the primary granted identity field when available and treat other claims as auxiliary metadata.",
+        "source": "OIDC UserInfo endpoint semantics and authentik scope mapping documentation."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup_constraint",
+        "constraint": "Redirect URI configuration has special behavior: if the OAuth2 provider's Redirect URI field is left empty, the first URL used to open the app is saved as the redirect URL. The fuzzer MUST preconfigure explicit redirect URIs and MUST NOT rely on first-use auto-learning, or test results may depend on prior traffic/order.",
+        "source": "OAuth2 provider docs: when Redirect URI is empty, first app-open URL is saved."
+      },
+      {
+        "severity": "CRITICAL",
+        "type": "setup_constraint",
+        "constraint": "Redirect URI entries can be configured as regex. When regex is used, '.' is a wildcard and must be escaped as '\\.'. The fuzzer MUST distinguish exact redirect URI entries from regex-based entries; otherwise redirect-mismatch tests may accidentally pass because the configured regex is broader than intended.",
+        "source": "OAuth2 provider docs: advanced use cases allow regex redirect URIs and dots must be escaped."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 freshness tests against /application/o/token/ and /application/o/userinfo/, the fuzzer MUST include a control request using a valid token alongside expired_token and future_token cases. A failed attack token alone is ambiguous because authentik may also reject the request due to unrelated client/provider misconfiguration."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Redirect URI validation is configured on the OAuth2/OIDC provider. If the provider's Redirect URI list is empty, authentik saves the first URL used when a user opens the app. Tests for redirect_uri_mismatch and authorization-code flow coherence MUST preconfigure explicit redirect URIs first; otherwise first-use auto-registration can make setup nondeterministic and invalidate I3 conclusions."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Redirect URI matching supports exact configured URLs and optionally regex patterns configured by the administrator. For exact entries, wildcard-like values are NOT patterns. For I3 redirect_uri_mismatch tests, use either an exact registered URI or a deliberately non-matching URI; do not assume '*' semantics unless the provider was explicitly configured with a regex."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "When testing OIDC request object handling at /application/o/authorize/, the fuzzer MUST send the request JWT in the standard 'request' query parameter and MUST treat any acceptance as meaningful only if the provider/client is actually configured to use OIDC/OAuth2 authorization. The docs do not state any special request-object signature policy defaults, so unsigned-request acceptance should be interpreted cautiously."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 scope escalation and token exchange tests, authentik treats a request with no scopes as if all configured scopes were requested. Therefore the fuzzer MUST always send an explicit scope parameter on baseline and attack requests. Omitting scope can accidentally broaden claims and permissions, causing false positives for over-granting."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "The special scopes openid, profile, email, entitlements, offline_access, and GitHub-compatibility scopes have built-in behavior and are not ordinary configurable scope mappings. I5 tests that compare granted permissions to requested permissions MUST distinguish configured custom scopes from these special scopes; absence of a custom mapping does not mean the scope is unsupported."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Starting with authentik 2024.2, refresh tokens are only returned when both the application and authentik are configured to request the offline_access scope. Tests that expect refresh-token issuance or reuse MUST include offline_access explicitly and ensure the provider has the offline_access scope mapping selected; otherwise missing refresh_token is by design."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For token exchange and JWT federation tests, authentik's token endpoint accepts multiple authentication styles: client_assertion, client_secret carrying a base64(username:token), and client_secret carrying an input JWT for some clients. The fuzzer MUST keep the authentication style constant within a test sequence; switching styles mid-sequence changes the principal derivation path and can confound I3/I4 results."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For JWT-based M2M authentication using external JWTs, authentik verifies that the input JWT is signed by a configured federated OIDC source certificate and that exp is not now or in the past. The fuzzer MUST configure the provider to trust the intended source before running I1 tests such as resign_attacker_key or trust_anchor_substitution; otherwise rejection may simply reflect missing federation configuration."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For JWT-based M2M authentication using authentik-issued JWTs, input JWTs must be valid access tokens issued by configured federated OIDC providers, must not have been revoked, and must not have expired. I1/I2 tests on token reuse or stale trust MUST ensure the provider federation relationship exists first; otherwise failures are setup failures, not security findings."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 replay_same_token against JWT bearer login, do NOT report reuse of the same JWT as a vulnerability by itself. authentik documents stateless JWT-based authentication paths and does not document jti replay tracking for generic JWT bearer login. Reuse of a still-valid JWT is expected unless the specific flow is one-time by design."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 principal-binding tests on JWT-based M2M, authentik creates service accounts based on the provider name and the subject claim of the presented token, and these service accounts expire based on the token's exp claim if set. The fuzzer MUST vary sub values explicitly and compare resulting identities across the same provider; cross-provider comparisons are not equivalent because provider name participates in identity construction."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 cross-mount/cross-provider collision tests, authentik's automatically generated service account naming includes the provider name. Therefore identities derived from the same sub under different providers are expected to differ by provider context. Treat same-sub different-provider separation as by design, and only flag collisions when distinct subs under the same provider collapse unexpectedly."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 email-claim tests, authentik versions prior to 2025.10 set email_verified to True for the email scope, while 2025.10+ defaults email_verified to False unless customized. The fuzzer MUST account for version-dependent defaults and MUST NOT flag email_verified=False on modern versions as a bug, nor assume email_verified reflects real-world verification unless a custom mapping is configured."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 scope-authorization tests, authentik allows any user with access to the application to request any configured scopes by default unless an expression policy bound to the application performs additional checks. The fuzzer MUST configure such a policy before testing scope restriction enforcement; otherwise acceptance of a requested configured scope is by design."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 config-change sequences involving logout behavior or session invalidation, note that RP-initiated logout uses default-provider-invalidation-flow by default and does not include a User Logout stage. Therefore only the application session ends unless the flow is customized. Tests expecting full single logout after RP-initiated logout MUST first add User Logout to that flow or use direct authentik logout."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Back-channel logout is the only documented mechanism that guarantees provider logout when a session is administratively terminated, deleted, revoked, or expires. Tests that infer stale-session behavior from front-channel logout alone are invalid; use back-channel configuration when testing administrative revocation coherence."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 token-freshness tests against /application/o/token/ using JWT client assertions, include a CONTROL request with a valid JWT (for example exp={{now_epoch_plus_3600}} and current issuance timing) alongside the attack JWT. Otherwise a token-endpoint failure cannot be distinguished from broken provider/client configuration.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "Machine-to-Machine (M2M) authentication: input JWTs are checked for signature trust and exp not in the past."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 JWT trust tests, login_with_jwt only works if the OAuth2 provider has been configured to trust either selected Federated OIDC Sources or Federated OIDC Providers. Without that trust configuration, all attacker and control JWTs fail trivially.",
+        "invariants": [
+          "I1"
+        ],
+        "source": "Machine-to-Machine (M2M) authentication: externally issued JWTs require configured OAuth Sources; authentik-issued JWTs require configured Federated OIDC Providers."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 replay_same_token and stateless_jwt_no_jti on login_with_jwt, do NOT treat successful reuse of the same externally issued JWT as a vulnerability by itself. The docs only require signature trust and exp validation for external JWTs; no jti replay tracking is documented.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "Machine-to-Machine (M2M) authentication: externally issued JWTs are checked for trusted signature and exp only."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 replay tests on authentik-issued JWTs used as client assertions, revocation state matters. A reused authentik-issued access token used as input JWT must be considered invalid only if it has been revoked or expired; otherwise reuse behavior is not sufficient evidence of a bug from these docs alone.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "Machine-to-Machine (M2M) authentication: authentik-issued input JWTs must not have been revoked and must not have expired."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 jwt_signing_key_rotation and jwt_bound_issuer_enforce style tests, authentik documentation in this corpus does not expose an admin API endpoint for modifying OAuth provider federated JWT trust or issuer policy. Do not invent config-change operations; limit testing to documented runtime endpoints unless separate admin API docs are provided.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "Provided docs describe UI/provider configuration but no explicit admin REST endpoint for OAuth provider mutation."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 redirect_uri_mismatch tests, the redirect_uri used at exchange_code_for_token must match the redirect URI validated for the authorization request. authentik documents redirect URI validation and exact configured redirect URI behavior; mismatched redirect_uri failures are expected and should be asserted via HTTP status, not identity comparison.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "OAuth 2.0 provider docs: redirect URI must be validated by the OP; redirect URI configuration is explicit."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 state_swap and code_injection tests, start_oidc_auth must be executed with metadata.follow_redirects=false so the fuzzer can capture the redirect and preserve per-session state/code bindings. Automatically following redirects will destroy the evidence needed to test session coherence.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "Authorization endpoint is browser front-channel; docs describe redirect-based authorization flow."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I3 pkce_skip and pkce_not_required_public_client tests, assert rejection at the token endpoint via non-200 HTTP status when code_verifier is omitted after a code_challenge flow. Do not compare identities or claims; this is a flow-binding test.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "OAuth/OIDC docs describe PKCE as part of supported OAuth security features and authorization-code flow handling."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 scope-escalation tests, when no scope is requested authentik treats the request as if all configured scopes were requested. Therefore a missing scope parameter is BY DESIGN broad, not a vulnerability. To test over-granting, always request an explicit narrow scope set and compare returned claims against that set.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "OAuth 2.0 provider docs: when a client does not request any scopes, authentik treats the request as if all configured scopes were requested."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For refresh-token or long-lived-session tests, authentik only returns a refresh token when offline_access is both configured in the provider and requested by the client. Do not treat absence of refresh_token as a bug unless offline_access was configured and requested.",
+        "invariants": [
+          "I2",
+          "I5"
+        ],
+        "source": "OAuth 2.0 provider docs and create-oauth2-provider docs: refresh tokens require offline_access scope mapping and request."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 claim-surface tests using verify_granted_identity, remember that UserInfo returns claims based on requested/configured scopes and scope mappings. Missing email/groups/entitlements claims are not evidence of stripping or confusion unless the corresponding scopes were explicitly requested and allowed.",
+        "invariants": [
+          "I4",
+          "I5"
+        ],
+        "source": "OAuth 2.0 provider docs: scope mappings control claims; default and special scopes determine included data."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 principal-binding tests using login_with_jwt, authentik creates service accounts based on provider name and the subject claim of the input token. Different sub values may legitimately create different service accounts, and service accounts may later expire/delete based on exp. Compare granted identity using stable subject-oriented claims, not assumptions about persistent human users.",
+        "invariants": [
+          "I4"
+        ],
+        "source": "Machine-to-Machine (M2M) authentication: service account is based on provider name and subject claim; expires based on exp."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 multi-identity tests, do not assume display_name equals sub. The docs only guarantee service-account naming scheme ak-<provider_name>-client_credentials for automatic client_secret-based service accounts, while JWT-based service accounts are based on provider name and subject claim. Use UserInfo sub as the primary identity oracle.",
+        "invariants": [
+          "I4"
+        ],
+        "source": "Machine-to-Machine (M2M) authentication: automatic service account naming and JWT-based service account derivation."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 token-exchange style tests, this documentation corpus does not document RFC 8693 token exchange support on /application/o/token/. Do not assume subject_token grant support exists just because the endpoint is generic; only client_credentials, device_code polling, authorization_code exchange, refresh-token behavior, and JWT client assertion M2M are explicitly documented here.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "OAuth2 provider and M2M docs enumerate supported documented requests; no explicit RFC 8693 request schema is documented."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I1 alg_none, kid_injection, resign_attacker_key, and trust_anchor_substitution tests on login_with_jwt, the only documented trust anchor is the configured JWKS/raw JWKS from selected sources/providers. The fuzzer must vary signature material and issuer claims while keeping provider trust configuration fixed; otherwise failures may simply reflect missing trust bootstrap.",
+        "invariants": [
+          "I1"
+        ],
+        "source": "Machine-to-Machine (M2M) authentication: trust is based on configured sources/providers and their certificates/JWKS."
+      }
+    ]
+  }
+}

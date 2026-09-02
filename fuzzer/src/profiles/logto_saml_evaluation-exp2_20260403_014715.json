@@ -1,0 +1,765 @@
+{
+  "name": "logto",
+  "base_url": "http://localhost:3001",
+  "admin_auth": {
+    "header": "Authorization",
+    "value": "Bearer {admin_token}"
+  },
+  "supported_protocols": [
+    "saml"
+  ],
+  "api_mapping": {
+    "saml": {
+      "login_with_password": {
+        "method": "POST",
+        "path": "/api/experience/sign-in",
+        "body_map": {
+          "username": "identifier",
+          "password": "password"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "metadata": {
+          "absent_canonical_login": true
+        },
+        "note": "Logto uses the Experience API for password login. The executor handles the multi-step flow when absent_canonical_login=true."
+      },
+      "create_application": {
+        "method": "POST",
+        "path": "/api/applications",
+        "body_map": {
+          "name": "name",
+          "type": "type",
+          "description": "description",
+          "redirect_uris": "oidcClientMetadata.redirectUris",
+          "post_logout_redirect_uris": "oidcClientMetadata.postLogoutRedirectUris"
+        },
+        "response_map": {
+          "app_id": "id",
+          "client_id": "id",
+          "http_status": "_http_status"
+        },
+        "auth": "admin",
+        "note": "type MUST be one of: Native, SPA, Traditional, MachineToMachine, Protected, SAML. postLogoutRedirectUris MUST be an array (can be empty [])."
+      },
+      "update_application": {
+        "method": "PATCH",
+        "path": "/api/applications/{app_id}",
+        "body_map": {
+          "name": "name",
+          "description": "description",
+          "redirect_uris": "oidcClientMetadata.redirectUris",
+          "allow_token_exchange": "customClientMetadata.allowTokenExchange"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "admin",
+        "note": "customClientMetadata is a TOP-LEVEL field, NOT nested inside oidcClientMetadata. app_id in path must match the captured id from create_application."
+      },
+      "verify_granted_identity": {
+        "method": "GET",
+        "path": "/oidc/me",
+        "body_map": {},
+        "response_map": {
+          "identity_id": "sub",
+          "display_name": "username",
+          "email": "email",
+          "groups": "organizations",
+          "http_status": "_http_status"
+        },
+        "auth": "session",
+        "content_type": "query"
+      },
+      "exchange_code_for_token": {
+        "method": "POST",
+        "path": "/oidc/token",
+        "body_map": {
+          "grant_type": "grant_type",
+          "code": "code",
+          "code_verifier": "code_verifier",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "redirect_uri": "redirect_uri",
+          "resource": "resource",
+          "scope": "scope"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "metadata": "",
+          "http_status": "_http_status",
+          "identity_id": "sub",
+          "granted_policies": "scope"
+        },
+        "auth": "none",
+        "content_type": "form",
+        "metadata": {
+          "token_endpoint": true,
+          "oidc_token_endpoint": true
+        }
+      },
+      "token_exchange": {
+        "method": "POST",
+        "path": "/oidc/token",
+        "body_map": {
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "grant_type": "grant_type",
+          "resource": "resource",
+          "scope": "scope",
+          "subject_token": "subject_token",
+          "subject_token_type": "subject_token_type",
+          "actor_token": "actor_token",
+          "actor_token_type": "actor_token_type",
+          "audience": "audience"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "metadata": "",
+          "http_status": "_http_status",
+          "granted_policies": "scope"
+        },
+        "auth": "none",
+        "content_type": "form",
+        "metadata": {
+          "token_endpoint": true,
+          "grant_type_value": "urn:ietf:params:oauth:grant-type:token-exchange",
+          "rfc8693": true
+        }
+      },
+      "revoke_session": {
+        "method": "POST",
+        "path": "/oidc/token/revocation",
+        "body_map": {
+          "client_id": "client_id",
+          "session_token": "token",
+          "token": "token"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form",
+        "metadata": {
+          "revocation_endpoint": true
+        }
+      },
+      "introspect_token": {
+        "method": "POST",
+        "path": "/oidc/token/introspection",
+        "body_map": {
+          "session_token": "token",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "token": "token"
+        },
+        "response_map": {
+          "metadata": "",
+          "identity_id": "sub",
+          "active": "active",
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form",
+        "metadata": {
+          "client_auth_required": true
+        }
+      },
+      "delete_application": {
+        "method": "DELETE",
+        "path": "/api/applications/{applicationId}",
+        "body_map": {},
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "admin",
+        "metadata": {
+          "documented_via_management_api_reference": true
+        }
+      },
+      "create_user": {
+        "method": "POST",
+        "path": "/api/users",
+        "body_map": {
+          "username": "username",
+          "password": "password",
+          "name": "name",
+          "primary_email": "primaryEmail"
+        },
+        "response_map": {
+          "identity_id": "id",
+          "username": "username",
+          "http_status": "_http_status"
+        },
+        "auth": "admin"
+      },
+      "update_user": {
+        "method": "PATCH",
+        "path": "/api/users/{userId}",
+        "body_map": {
+          "username": "username",
+          "email": "primaryEmail",
+          "phone": "primaryPhone",
+          "name": "name",
+          "avatar": "avatar",
+          "profile": "profile",
+          "custom_data": "customData"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "admin"
+      },
+      "delete_user": {
+        "method": "DELETE",
+        "path": "/api/users/{userId}",
+        "body_map": {},
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "admin"
+      },
+      "create_organization": {
+        "method": "POST",
+        "path": "/api/organizations",
+        "body_map": {
+          "name": "name",
+          "description": "description",
+          "custom_data": "customData"
+        },
+        "response_map": {
+          "organization_id": "id",
+          "http_status": "_http_status"
+        },
+        "auth": "admin"
+      },
+      "create_provider": {
+        "method": "POST",
+        "path": "/api/sso-connectors",
+        "body_map": {
+          "provider_name": "providerName",
+          "connector_name": "connectorName",
+          "domains": "domains",
+          "config": "config"
+        },
+        "response_map": {
+          "connector_id": "id",
+          "http_status": "_http_status"
+        },
+        "auth": "admin",
+        "note": "Creates an enterprise SSO connector (SAML or OIDC). providerName: 'SAML' or 'OIDC'. config contains IdP metadata/endpoints."
+      },
+      "saml_login": {
+        "method": "POST",
+        "path": "/api/authn/saml/{connector_id}",
+        "body_map": {
+          "saml_response": "SAMLResponse",
+          "relay_state": "RelayState"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form",
+        "metadata": {
+          "initiate_saml_flow": true
+        },
+        "note": "connector_id MUST be a valid SSO connector ID from create_provider response. Use the captured connector_id, not a placeholder."
+      },
+      "login_with_jwt": {
+        "method": "POST",
+        "path": "/oidc/token",
+        "body_map": {
+          "grant_type": "grant_type",
+          "client_id": "client_id",
+          "client_secret": "client_secret",
+          "scope": "scope",
+          "resource": "resource"
+        },
+        "response_map": {
+          "session_token": "access_token",
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "form",
+        "note": "M2M client_credentials grant. grant_type MUST be 'client_credentials'. Requires a MachineToMachine application."
+      },
+      "mfa_setup_enable": {
+        "method": "PATCH",
+        "path": "/api/users/{userId}",
+        "body_map": {
+          "mfa_verification_factors": "mfaVerificationFactors"
+        },
+        "response_map": {},
+        "auth": "admin"
+      },
+      "verify_entity_details": {
+        "method": "GET",
+        "path": "/api/users/{userId}",
+        "body_map": {},
+        "response_map": {
+          "identity_id": "id",
+          "metadata": ""
+        },
+        "auth": "admin",
+        "content_type": "query"
+      },
+      "verify_entity_details_by_name": {
+        "method": "GET",
+        "path": "/api/users",
+        "body_map": {
+          "search": "search",
+          "search.name": "search.name",
+          "search.primaryEmail": "search.primaryEmail",
+          "search.username": "search.username",
+          "mode": "mode",
+          "mode.name": "mode.name",
+          "mode.primaryEmail": "mode.primaryEmail",
+          "mode.username": "mode.username",
+          "joint": "joint",
+          "jointMode": "jointMode",
+          "is_case_sensitive": "isCaseSensitive",
+          "page": "page",
+          "page_size": "page_size",
+          "joint_mode": "jointMode",
+          "search_name": "search.name",
+          "search_username": "search.username",
+          "search_primary_email": "search.primaryEmail",
+          "search_primary_phone": "search.primaryPhone",
+          "mode_name": "mode.name",
+          "mode_primary_email": "mode.primaryEmail",
+          "mode_primary_phone": "mode.primaryPhone"
+        },
+        "response_map": {
+          "metadata": ""
+        },
+        "auth": "admin",
+        "content_type": "query"
+      },
+      "start_oidc_auth": {
+        "method": "GET",
+        "path": "/oidc/auth",
+        "body_map": {
+          "client_id": "client_id",
+          "redirect_uri": "redirect_uri",
+          "scope": "scope",
+          "response_type": "response_type",
+          "resource": "resource",
+          "organization_id": "organization_id",
+          "ui_locales": "ui_locales",
+          "prompt": "prompt",
+          "direct_sign_in": "direct_sign_in",
+          "state": "state",
+          "code_challenge": "code_challenge",
+          "code_challenge_method": "code_challenge_method",
+          "request": "request"
+        },
+        "response_map": {
+          "http_status": "_http_status"
+        },
+        "auth": "none",
+        "content_type": "query",
+        "metadata": {
+          "follow_redirects": false
+        }
+      },
+      "enable_auth_method": {
+        "method": "POST",
+        "path": "/applications",
+        "body_map": {
+          "application_type": "type",
+          "integration_protocol": "integrationProtocol",
+          "name": "name",
+          "description": "description"
+        },
+        "response_map": {
+          "application_id": "id"
+        },
+        "auth": "admin",
+        "metadata": {
+          "console_documented": true,
+          "protocol": "saml",
+          "notes": "Creates a SAML application in Logto Console; no explicit REST endpoint for SAML app creation is documented in the provided docs.",
+          "documented_via_console_only": true,
+          "protocol_specific_value": "SAML"
+        }
+      },
+      "create_tenant": {
+        "method": "POST",
+        "path": "/tenants",
+        "body_map": {},
+        "response_map": {},
+        "auth": "none",
+        "metadata": {
+          "documented_via_console_only": true,
+          "absent_http_api_in_docs": true
+        }
+      },
+      "cleanup_auth_method": {
+        "method": "DELETE",
+        "path": "/applications/{application_id}",
+        "body_map": {},
+        "response_map": {},
+        "auth": "admin",
+        "metadata": {
+          "documented_via_console_only": true,
+          "absent_http_api_in_docs": true
+        }
+      }
+    }
+  },
+  "known_behaviors": {
+    "saml": [
+      {
+        "id": "logto_i2_b413cf8a",
+        "description": "Valid unexpired bearer access tokens can be reused across multiple API calls.",
+        "invariants": [
+          "I2"
+        ],
+        "conditions": {
+          "token_type": "Bearer"
+        },
+        "source": "RFC 6750 behavior referenced by platform OIDC usage",
+        "note": "Do not flag ordinary bearer reuse as replay unless the artifact is explicitly documented as one-time-use."
+      },
+      {
+        "id": "logto_i2_5c5249ab",
+        "description": "Refresh tokens issued without offline_access are bound to the user session and become invalid when the 14-day session expires, regardless of refresh token TTL settings.",
+        "invariants": [
+          "I2"
+        ],
+        "conditions": {
+          "authorization.scope_excludes": "offline_access"
+        },
+        "source": "Application data structure - Refresh token TTL in days",
+        "note": "Do not misclassify session-bound refresh token expiry as incorrect refresh token TTL enforcement."
+      },
+      {
+        "id": "logto_i2_2aa8b6f1",
+        "description": "When refresh token rotation is enabled, public clients receive a new refresh token on refresh operations.",
+        "invariants": [
+          "I2"
+        ],
+        "conditions": {
+          "application.rotateRefreshToken": true,
+          "application.type": "SPA|Native"
+        },
+        "source": "integrate-logto/application-data-structure.mdx",
+        "note": "Refresh token reuse assumptions can produce false replay findings."
+      },
+      {
+        "id": "logto_i2_8b1c21be",
+        "description": "The nbf claim is optional and lack of enforcement is spec-compliant.",
+        "invariants": [
+          "I2"
+        ],
+        "conditions": {
+          "claim": "nbf"
+        },
+        "source": "RFC 7519 \u00a74.1.5",
+        "note": "Do not treat acceptance without nbf enforcement as a vulnerability by itself."
+      },
+      {
+        "id": "logto_i2_i3_04b73bc3",
+        "description": "When refresh token rotation is enabled, public clients receive a new refresh token on refresh.",
+        "invariants": [
+          "I2",
+          "I3"
+        ],
+        "conditions": {
+          "application.type": "SPA"
+        },
+        "source": "Application data structure - Rotate refresh token",
+        "note": "Changing refresh token values across refreshes is expected and not a session confusion bug."
+      },
+      {
+        "id": "logto_i4_4a7645a5",
+        "description": "SAML NameID format 'Transient' generates a one-time user ID that changes with each authentication request.",
+        "invariants": [
+          "I4"
+        ],
+        "conditions": {
+          "application.saml.name_id_format": "Transient"
+        },
+        "source": "Basic SAML integration setup - Name ID format",
+        "note": "Different NameID values across logins are expected in transient mode and should not be flagged as identity collision or instability."
+      },
+      {
+        "id": "logto_i4_27b21cd2",
+        "description": "SAML NameID formats 'Persistent' and currently 'Unspecified' use the Logto user ID as NameID.",
+        "invariants": [
+          "I4"
+        ],
+        "conditions": {
+          "application.saml.name_id_format": "Persistent"
+        },
+        "source": "Basic SAML integration setup - Name ID format",
+        "note": "If the SP sees a stable opaque user ID instead of the human-readable username/email sent during setup, that is by design."
+      },
+      {
+        "id": "logto_i4_29ea853b",
+        "description": "Adding SSO identities links to an existing account when the email matches.",
+        "invariants": [
+          "I4"
+        ],
+        "conditions": {
+          "sso_linking.email_match": true
+        },
+        "source": "connectors/enterprise-connectors.mdx",
+        "note": "Same-email account merge is documented behavior and should not be flagged as a collision by itself."
+      },
+      {
+        "id": "logto_i4_2d46155f",
+        "description": "Only verified email addresses from social or enterprise SSO identity providers are synced into primary_email.",
+        "invariants": [
+          "I4"
+        ],
+        "conditions": {
+          "user.primaryEmail_source_requires_verification": true
+        },
+        "source": "user-management/user-data.mdx",
+        "note": "Email-based linking outcomes depend on upstream verification state."
+      },
+      {
+        "id": "logto_i1_i3_9892559d",
+        "description": "Admin-initiated signing key rotation authorizes new signing keys; existing tokens signed by previous keys may remain valid until prior keys are removed.",
+        "invariants": [
+          "I1",
+          "I3"
+        ],
+        "conditions": {
+          "admin_action": "rotate_signing_keys"
+        },
+        "source": "Signing keys",
+        "note": "Acceptance under a newly authorized trust anchor is by design. Only flag old-key acceptance after the previous key should no longer be trusted."
+      },
+      {
+        "id": "logto_i2_i4_d637887e",
+        "description": "SAML NameID format 'Transient' generates a one-time user identifier that changes with each authentication request.",
+        "invariants": [
+          "I2",
+          "I4"
+        ],
+        "conditions": {
+          "application.saml.nameIdFormat": "Transient"
+        },
+        "source": "integrate-logto/saml-app/setup.mdx",
+        "note": "Different identifiers across logins are expected under transient mode."
+      }
+    ]
+  },
+  "verification_fields": {
+    "identity_field": "sub",
+    "identity_name_field": "username",
+    "policies_field": "roles",
+    "groups_field": "organizations"
+  },
+  "api_constraints": {
+    "saml": [
+      {
+        "severity": "CRITICAL",
+        "constraint": "Logto's SAML support in the provided documentation is IdP mode for SAML applications, not SP mode consuming upstream SAML assertions. Do NOT attempt saml_login or SAML ACS forgery tests against Logto itself from these docs; there is no documented SAML assertion consumer endpoint for Logto-as-SP in the provided material."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For SAML protocol testing on Logto from the provided docs, setup is limited to creating and configuring a SAML application (Logto as IdP). The actual authentication flow remains Logto's interactive sign-in/OIDC session flow, so verification must use OIDC endpoints such as /oidc/me and /oidc/token rather than a SAML session API."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Token exchange is disabled by default for applications. Before any token_exchange test, the target application MUST have 'Allow token exchange' enabled or the request will fail with 'token exchange is not allowed for this application'."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Refresh token/session binding: when a refresh token is issued without offline_access, it is bound to the user session, and the session has a fixed TTL of 14 days. Do NOT interpret refresh-token invalidation after session expiry as a token-freshness bug in the refresh token TTL setting."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Rotate refresh token is enabled by default. For public clients, a new refresh token will always be issued on refresh when rotation is enabled. Do NOT treat refresh token value changes across refreshes as replay protection or session confusion; this is by design."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 token-exchange scope escalation tests, Logto requires the application to be explicitly configured for token exchange and uses the standard /oidc/token endpoint. The fuzzer MUST compare the exchanged token's granted scope/claims against the upstream authorization and requested resource rather than assuming all requested scopes are granted."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I4 SAML identity tests on Logto-as-IdP, NameID format materially changes the downstream identifier semantics: Persistent and Unspecified use the Logto user ID, Email address uses the user's email, and Transient generates a one-time identifier per authentication request. Tests comparing identities across logins MUST account for the configured NameID format."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Spec-valid behavior: bearer token reuse is by design. A valid unexpired access token may be reused across multiple API calls and sessions unless the artifact is explicitly one-time (for example, subject tokens used for impersonation are documented as one-time-use). Do NOT flag ordinary bearer reuse as I2."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Spec-valid behavior: nbf is optional under JWT. Acceptance of tokens without nbf, or platform behavior that does not rely on nbf, is not by itself a vulnerability."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For OIDC-based verification calls, /oidc/me is the documented userinfo endpoint. The fuzzer MUST use the access token as Bearer credential; do NOT use id_token as session_token for subsequent API calls."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Wildcard redirect URIs are supported only for SPA and Traditional Web applications, and only in hostname/pathname. They are not standard OIDC and increase attack surface. Do NOT misinterpret successful redirects within an explicitly configured wildcard pattern as an issuer or redirect validation bug."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "SAML in Logto is IdP mode for SAML applications, not a documented SAML Assertion Consumer Service endpoint on Logto itself. Do NOT fabricate a saml_login ACS callback against Logto from these docs; the documented SAML flow is SP-initiated from your external application to Logto, and Logto returns the SAML response to the application's ACS URL."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For SAML testing on Logto, the fuzzer MUST model Logto as the IdP and the test application as the SP. Attack patterns that assume the broker consumes attacker-supplied SAMLResponse objects (forged ACS submissions) are not directly testable from these docs because no Logto SAML ACS endpoint is documented."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Enterprise SSO account linking in Logto is email-based by design: adding SSO identities links to existing accounts if the email matches. For I4 tests such as saml_email_binding_collision and unverified_email_account_linking, a same-email merge is expected behavior unless the upstream email verification semantics are explicitly documented and enforced."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Only verified email addresses from social or enterprise SSO identity providers can be synced and saved as primary_email. When testing email-based account linking or collision scenarios, the fuzzer MUST distinguish verified-email linking from unverified-email takeover; verified-email linking may be by design."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "NameID format affects principal binding semantics for SAML applications. The default Name ID format is Persistent and uses the Logto user ID; Email address uses the user's email; Transient generates a one-time identifier per authentication request; Unspecified currently uses the Logto user ID. I4 tests MUST account for the configured NameID format before treating identity changes as collisions."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "If the SAML application uses Transient NameID format, the identifier is intentionally one-time and changes across authentications. Do NOT flag changing NameID values across sessions as an I4 principal-binding violation in that mode."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Refresh token TTL has sentinel-like session binding behavior: when a refresh token is issued without offline_access, it is bound to the user session, and the session has a fixed TTL of 14 days regardless of the configured refresh token TTL. To test refresh-token lifetime semantics correctly, include offline_access in the authorization request; otherwise apparent early expiry is by design."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Rotate refresh token is effectively always-on for public clients in practice: when enabled, a new refresh token will always be issued for public clients on refresh. Token freshness/replay tests MUST expect refresh token rotation for SPA/native-style clients and must not assume stable refresh token reuse."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Token exchange is disabled by default per application. Before any token_exchange test, the target application MUST have 'Allow token exchange' enabled, otherwise failures are setup errors rather than security outcomes."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I5 token exchange tests, Logto binds exchanged access tokens to the requested resource. The fuzzer MUST set resource/audience explicitly and compare resulting token claims against the requested target; otherwise scope or audience conclusions may be misinterpreted."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Third-party application permission filtering is by design: non-enabled user profile scopes cause an authorization error, while non-enabled API resource scopes and organization scopes are ignored and not shown on the consent screen. I5 tests MUST distinguish 'ignored because not enabled for the app' from 'granted too broadly'."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Organization permissions are ignored unless urn:logto:scope:organizations is also enabled/requested. For organization-scoped I5 tests, the fuzzer MUST request urn:logto:scope:organizations or organization permission results will be invalid due to setup."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Wildcard redirect URIs are supported only for SPA and Traditional Web apps, and only in hostname/pathname. They are not standard OIDC and increase attack surface. For I1/I3 redirect and callback coherence tests, prefer exact redirect URIs unless the test explicitly targets wildcard behavior."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Logto does not support direct password credential submission from the app via ROPC; interactive sign-in is redirect-based. Any 'login_with_password' event for this platform must be implemented as initiation of the OIDC authorization flow, not a password grant API call."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 freshness tests involving expired or future tokens in OIDC-backed flows, the sequence MUST include a control login using a valid token/session configuration. Without a control, a failed interactive or token flow cannot be distinguished from broken application or connector setup."
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "SAML in Logto is documented as SP-initiated only. The fuzzer MUST initiate the SAML flow first and preserve RelayState/InResponseTo context before posting the forged SAMLResponse; unsolicited IdP-initiated assertions are not a valid baseline for this platform.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "integrate-logto/saml-app/README.mdx; understand-authentication-flow.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For SAML signature-validation default tests, Logto documentation only states that Logto signs assertions when acting as IdP and that SP applications should validate them. The provided docs do NOT expose a documented API to disable signature validation or omit trusted IdP entity configuration. Do NOT infer insecure defaults from missing admin knobs in these docs.",
+        "invariants": [
+          "I1"
+        ],
+        "source": "integrate-logto/saml-app/setup.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Enterprise SSO identities are linked to existing accounts if the email matches. For I4 account-collision tests, a same-email SAML/enterprise login merging into an existing account can be BY DESIGN. To test unsafe linking, vary email verification state or use mismatched NameID/email scenarios rather than treating all same-email merges as bugs.",
+        "invariants": [
+          "I4"
+        ],
+        "source": "connectors/enterprise-connectors.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "NameID format is configurable for SAML apps and may be Persistent, Email address, Transient, or Unspecified. For I4 principal-binding tests, the oracle MUST NOT assume the granted identity equals the asserted email or a stable user ID unless the application's Name ID format was explicitly configured that way.",
+        "invariants": [
+          "I4"
+        ],
+        "source": "integrate-logto/saml-app/setup.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Transient NameID intentionally changes on each authentication request. Re-authentication producing a different NameID under Transient format is BY DESIGN and MUST NOT be flagged as replay, freshness, or identity-collapse behavior.",
+        "invariants": [
+          "I2",
+          "I4"
+        ],
+        "source": "integrate-logto/saml-app/setup.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For token exchange tests, the target application MUST have 'Allow token exchange' enabled first. If not enabled, failures are expected setup errors, not security enforcement outcomes.",
+        "invariants": [
+          "I5"
+        ],
+        "source": "developers/fragments/_token-exchange-prerequisites.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Refresh token/session binding sentinel: a refresh token issued without offline_access is bound to the user session, and the session has a fixed TTL of 14 days regardless of the refresh token TTL setting. To test long-lived token behavior, the fuzzer MUST request offline_access; otherwise expiry may be caused by session expiration rather than token policy.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "integrate-logto/application-data-structure.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Rotate refresh token is enabled by default. For public clients, a new refresh token is always issued on refresh when rotation is enabled. Reuse of an older refresh token after rotation may fail by design; freshness tests must track the newest token returned by the token endpoint.",
+        "invariants": [
+          "I2",
+          "I3"
+        ],
+        "source": "integrate-logto/application-data-structure.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Wildcard redirect URIs are supported for SPA and traditional web apps and are not standard OIDC. For flow-coherence tests involving redirect_uri validation, the fuzzer MUST account for configured wildcard patterns; acceptance of a matching wildcard URI is by configuration, not a redirect-validation bypass.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "integrate-logto/application-data-structure.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "Logto does not support direct username/password ROPC-style login in the application; authentication is redirect-based OIDC. Any 'login_with_password' sequence must be modeled as initiating /oidc/auth and completing the browser flow, not as a direct credential POST to a token endpoint.",
+        "invariants": [
+          "I3"
+        ],
+        "source": "concepts/sign-in-experience.mdx"
+      },
+      {
+        "severity": "CRITICAL",
+        "constraint": "For I2 expired/future assertion tests against SAML or OIDC-derived flows, include a control login under the same application and connector configuration. Otherwise a failed attack login may reflect broken redirect/application setup rather than freshness enforcement.",
+        "invariants": [
+          "I2"
+        ],
+        "source": "understand-authentication-flow.mdx; integrate-logto/saml-app/README.mdx"
+      }
+    ]
+  },
+  "environment_defaults": {
+    "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+    "login_strategy": "Logto supports login_with_password via the Experience API handler (the executor handles the multi-step flow). For M2M service login, use login_with_jwt with client_credentials grant.",
+    "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+    "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields."
+  }
+}

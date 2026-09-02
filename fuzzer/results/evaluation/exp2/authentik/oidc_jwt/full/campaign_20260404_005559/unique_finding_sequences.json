@@ -1,0 +1,1005 @@
+[
+  {
+    "finding": {
+      "finding_id": "fca594f4dd64b477",
+      "sequence_id": "seq_i1_jwt_trust_anchor_confusion_two_sources",
+      "sequence_description": "JWT M2M: configure two OAuth Sources (one intended, one attacker-controlled) and test whether JWT login incorrectly accepts attacker-signed tokens due to overly-broad trust anchor selection (jwks_sources confusion).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_other_source_jwt_login_status >= 400\nEvaluation: user_attacker_other_source_jwt_login_status=200 >= 400 \u2192 False\nImplication: JWT login accepted a token signed by a different (attacker-controlled) configured source; verification policy may be broader than the intended semantic trust anchor.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_attacker_other_source_jwt_login_status >= 400",
+        "evaluation": "user_attacker_other_source_jwt_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_other_source_jwt_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_jwt_trust_anchor_confusion_two_sources",
+      "description": "JWT M2M: configure two OAuth Sources (one intended, one attacker-controlled) and test whether JWT login incorrectly accepts attacker-signed tokens due to overly-broad trust anchor selection (jwks_sources confusion).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: JWT verification must be bound to the intended trust anchor(s). If only the intended source should be trusted, attacker-signed JWTs from a different configured source must be rejected; otherwise the broker is verifying a different proof policy than the one semantically intended.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 6,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "src_intended_oidc",
+            "slug": "src_intended_oidc",
+            "provider_type": "openidconnect",
+            "consumer_key": "intended_key",
+            "consumer_secret": "intended_secret",
+            "authorization_url": "https://intended.example/authorize",
+            "access_token_url": "https://intended.example/token",
+            "profile_url": "https://intended.example/userinfo",
+            "oidc_well_known_url": "https://intended.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://intended.example/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_intended_id": "source_id",
+            "source_intended_slug": "slug",
+            "source_intended_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "src_attacker_oidc",
+            "slug": "src_attacker_oidc",
+            "provider_type": "openidconnect",
+            "consumer_key": "attacker_key",
+            "consumer_secret": "attacker_secret",
+            "authorization_url": "https://attacker.example/authorize",
+            "access_token_url": "https://attacker.example/token",
+            "profile_url": "https://attacker.example/userinfo",
+            "oidc_well_known_url": "https://attacker.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://attacker.example/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_attacker_id": "source_id",
+            "source_attacker_slug": "slug",
+            "source_attacker_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "org_i1_jwks_sources_confusion",
+            "authorization_flow": "default-authentication-flow",
+            "client_type": "confidential",
+            "client_id": "client_jwks_sources_confusion",
+            "client_secret": "secret_jwks_sources_confusion",
+            "redirect_uris": "https://example.com/callback",
+            "signing_key": "default",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": "[\"{{source_intended_id}}\",\"{{source_attacker_id}}\"]"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "provider_id_jwks_sources_confusion": "provider_id",
+            "provider_status_jwks_sources_confusion": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_application",
+          "params": {
+            "name": "app_jwks_sources_confusion",
+            "slug": "app_jwks_sources_confusion",
+            "provider": "{{provider_id_jwks_sources_confusion}}",
+            "group": null
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "app_id_jwks_sources_confusion": "app_id",
+            "app_status_jwks_sources_confusion": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_assertion": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImludGVuZGVkLWtleS0xIn0.eyJzdWIiOiJzdmNfY29udHJvbF9pbnRlbmRlZCIsImV4cCI6{{now_epoch_plus_3600}}fQ.signature",
+            "client_id": "client_jwks_sources_confusion",
+            "client_secret": "secret_jwks_sources_confusion",
+            "scope": "openid"
+          },
+          "auth_as": "user_control_intended_jwt",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_intended_jwt_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_assertion": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImF0dGFja2VyLWtleS0xIn0.eyJzdWIiOiJzdmNfYXR0YWNrZXJfb3RoZXJfc291cmNlIiwiZXhwIjp7e25vd19lcG9jaF9wbHVzXzM2MDB9fX0.signature",
+            "client_id": "client_jwks_sources_confusion",
+            "client_secret": "secret_jwks_sources_confusion",
+            "scope": "openid"
+          },
+          "auth_as": "user_attacker_other_source_jwt",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_other_source_jwt_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_intended_jwt",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_intended_jwt_entity_id": "sub",
+            "user_control_intended_jwt_display_name": "name",
+            "user_control_intended_jwt_email": "email",
+            "user_control_intended_jwt_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_other_source_jwt",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_other_source_jwt_entity_id": "sub",
+            "user_attacker_other_source_jwt_display_name": "name",
+            "user_attacker_other_source_jwt_email": "email",
+            "user_attacker_other_source_jwt_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_intended_source_works",
+          "invariant": "I1",
+          "assertion": "user_control_intended_jwt_login_status < 400",
+          "violation_description": "Control JWT login failed; cannot evaluate trust-anchor confusion if intended trust anchor is not functioning.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_reject_attacker_other_source",
+          "invariant": "I1",
+          "assertion": "user_attacker_other_source_jwt_login_status >= 400",
+          "violation_description": "JWT login accepted a token signed by a different (attacker-controlled) configured source; verification policy may be broader than the intended semantic trust anchor.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "1b44027e-2531-4fbf-bd4f-9b2e4dfef701",
+        "slug": "app_jwks_sources_confusion",
+        "source_intended_id": "ed5ddf35-7eb0-4ebe-b2ea-978dc517a69a",
+        "source_intended_slug": "src_intended_oidc",
+        "source_intended_status": "201",
+        "source_attacker_id": "1b44027e-2531-4fbf-bd4f-9b2e4dfef701",
+        "source_attacker_slug": "src_attacker_oidc",
+        "source_attacker_status": "201",
+        "client_id": "client_jwks_sources_confusion",
+        "client_secret": "secret_jwks_sources_confusion",
+        "provider_client_id": "client_jwks_sources_confusion",
+        "provider_client_secret": "secret_jwks_sources_confusion",
+        "provider_id": "6",
+        "provider_id_jwks_sources_confusion": "6",
+        "provider_status_jwks_sources_confusion": "201",
+        "app_id": "3910e525-6118-4a46-b47d-9c056aa8b20b",
+        "app_id_jwks_sources_confusion": "3910e525-6118-4a46-b47d-9c056aa8b20b",
+        "app_status_jwks_sources_confusion": "201",
+        "session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "token_type": "Bearer",
+        "expires_in": "3600",
+        "scope": "",
+        "user_control_intended_jwt_login_status": "200",
+        "user_control_intended_jwt_entity_id": "0120b6e6fdbe4238e77a4fe90c939c12d9da7f0e2753c2d71e8329da25b8b7cd",
+        "user_control_intended_jwt_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_control_intended_jwt_id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_control_intended_jwt_token_type": "Bearer",
+        "user_control_intended_jwt_expires_in": "3600",
+        "user_control_intended_jwt_scope": "",
+        "user_control_intended_jwt_login_success": "True",
+        "user_control_intended_jwt_login_http_status": "200",
+        "user_attacker_other_source_jwt_login_status": "200",
+        "user_attacker_other_source_jwt_entity_id": "0120b6e6fdbe4238e77a4fe90c939c12d9da7f0e2753c2d71e8329da25b8b7cd",
+        "user_attacker_other_source_jwt_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_attacker_other_source_jwt_id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_attacker_other_source_jwt_token_type": "Bearer",
+        "user_attacker_other_source_jwt_expires_in": "3600",
+        "user_attacker_other_source_jwt_scope": "",
+        "user_attacker_other_source_jwt_login_success": "True",
+        "user_attacker_other_source_jwt_login_http_status": "200",
+        "user_control_intended_jwt_display_name": "None",
+        "user_control_intended_jwt_email": "None",
+        "user_control_intended_jwt_groups": "None",
+        "user_attacker_other_source_jwt_display_name": "None",
+        "user_attacker_other_source_jwt_email": "None",
+        "user_attacker_other_source_jwt_groups": "None",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "25276ad7f4dd0947",
+      "sequence_id": "seq_i3_jwt_signing_key_rotation_source_resave",
+      "sequence_description": "JWT trust-anchor rotation coherence: baseline JWT login succeeds with Source A JWKS; then update the OAuth Source JWKS URL (simulating key rotation) and re-save; old-key JWT should be rejected after the update.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: old_key_login_http_status >= 400\nEvaluation: old_key_login_http_status=200 >= 400 \u2192 False\nImplication: After explicit JWKS update/re-save, authentik still accepted a JWT signed by the old key, indicating stale trust-anchor usage (config/runtime incoherence).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "old_key_login_http_status >= 400",
+        "evaluation": "old_key_login_http_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "old_key_login_http_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i3_jwt_signing_key_rotation_source_resave",
+      "description": "JWT trust-anchor rotation coherence: baseline JWT login succeeds with Source A JWKS; then update the OAuth Source JWKS URL (simulating key rotation) and re-save; old-key JWT should be rejected after the update.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: After an explicit trust-anchor configuration update (source re-save), authentication must immediately reflect the new trust set; stale acceptance of old-key proofs indicates incoherent config-to-runtime binding.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 9,
+      "events_succeeded": 6,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "src_i3_jwks_A",
+            "slug": "src-i3-jwks-a",
+            "provider_type": "oidc",
+            "consumer_key": "ck_i3_jwks_a",
+            "consumer_secret": "cs_i3_jwks_a",
+            "authorization_url": "https://upstream.example/authorize",
+            "access_token_url": "https://upstream.example/token",
+            "profile_url": "https://upstream.example/userinfo",
+            "oidc_well_known_url": "https://upstream.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://upstream.example/jwks_A.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_id": "source_id",
+            "source_slug": "slug"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "org_i3_jwt_rotation",
+            "authorization_flow": "default-authz-flow",
+            "client_type": "confidential",
+            "client_id": "client_i3_jwt_rotation",
+            "client_secret": "secret_i3_jwt_rotation",
+            "redirect_uris": "https://rp.example/jwt_cb",
+            "signing_key": "ak-signing-key",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": "[\"{{source_id}}\"]"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "provider_id": "provider_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_application",
+          "params": {
+            "name": "app_i3_jwt_rotation",
+            "slug": "app-i3-jwt-rotation",
+            "provider": "{{provider_id}}",
+            "group": null
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "app_id": "app_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_assertion": "{\"iss\":\"attacker-client\",\"sub\":\"svc-rotation\",\"aud\":\"client_i3_jwt_rotation\",\"exp\":{{now_epoch_plus_3600}},\"kid\":\"keyA\",\"sig\":\"signed_by_keyA\"}",
+            "client_id": "client_i3_jwt_rotation",
+            "client_secret": "secret_i3_jwt_rotation",
+            "scope": "openid"
+          },
+          "auth_as": "user_i3_jwt_rotation_control",
+          "expected_outcome": "any",
+          "captures": {
+            "control_jwt_login_http_status": "http_status",
+            "control_access_token": "session_token"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_i3_jwt_rotation_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_i3_jwt_rotation_control_entity_id": "sub",
+            "user_i3_jwt_rotation_control_display_name": "name",
+            "user_i3_jwt_rotation_control_email": "email",
+            "user_i3_jwt_rotation_control_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "src_i3_jwks_A_resave_to_B",
+            "slug": "src-i3-jwks-a",
+            "provider_type": "oidc",
+            "consumer_key": "ck_i3_jwks_a",
+            "consumer_secret": "cs_i3_jwks_a",
+            "authorization_url": "https://upstream.example/authorize",
+            "access_token_url": "https://upstream.example/token",
+            "profile_url": "https://upstream.example/userinfo",
+            "oidc_well_known_url": "https://upstream.example/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://upstream.example/jwks_B.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "source_id_after_resave": "source_id",
+            "source_slug_after_resave": "slug"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_assertion": "{\"iss\":\"attacker-client\",\"sub\":\"svc-rotation\",\"aud\":\"client_i3_jwt_rotation\",\"exp\":{{now_epoch_plus_3600}},\"kid\":\"keyA\",\"sig\":\"signed_by_keyA\"}",
+            "client_id": "client_i3_jwt_rotation",
+            "client_secret": "secret_i3_jwt_rotation",
+            "scope": "openid"
+          },
+          "auth_as": "user_i3_jwt_rotation_old_key_after_update",
+          "expected_outcome": "any",
+          "captures": {
+            "old_key_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_assertion": "{\"iss\":\"attacker-client\",\"sub\":\"svc-rotation\",\"aud\":\"client_i3_jwt_rotation\",\"exp\":{{now_epoch_plus_3600}},\"kid\":\"keyB\",\"sig\":\"signed_by_keyB\"}",
+            "client_id": "client_i3_jwt_rotation",
+            "client_secret": "secret_i3_jwt_rotation",
+            "scope": "openid"
+          },
+          "auth_as": "user_i3_jwt_rotation_new_key_after_update",
+          "expected_outcome": "any",
+          "captures": {
+            "new_key_login_http_status": "http_status",
+            "new_key_access_token": "session_token"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_i3_jwt_rotation_new_key_after_update",
+          "expected_outcome": "any",
+          "captures": {
+            "user_i3_jwt_rotation_new_key_after_update_entity_id": "sub",
+            "user_i3_jwt_rotation_new_key_after_update_display_name": "name",
+            "user_i3_jwt_rotation_new_key_after_update_email": "email",
+            "user_i3_jwt_rotation_new_key_after_update_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i3_rotation_control_login_ok",
+          "invariant": "I3",
+          "assertion": "control_jwt_login_http_status < 400",
+          "violation_description": "Control failed: baseline JWT login did not succeed with initial JWKS configuration.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i3_rotation_old_key_rejected_after_update",
+          "invariant": "I3",
+          "assertion": "old_key_login_http_status >= 400",
+          "violation_description": "After explicit JWKS update/re-save, authentik still accepted a JWT signed by the old key, indicating stale trust-anchor usage (config/runtime incoherence).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i3_rotation_new_key_accepted_after_update",
+          "invariant": "I3",
+          "assertion": "new_key_login_http_status < 400",
+          "violation_description": "After JWKS update/re-save, JWT signed by the new key was not accepted; rotation test is inconclusive.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "31c9805a-aa98-401c-b9d0-a6dccad40338",
+        "slug": "app-i3-jwt-rotation",
+        "source_slug": "src-i3-jwks-a",
+        "client_id": "client_i3_jwt_rotation",
+        "client_secret": "secret_i3_jwt_rotation",
+        "provider_client_id": "client_i3_jwt_rotation",
+        "provider_client_secret": "secret_i3_jwt_rotation",
+        "provider_id": "23",
+        "app_id": "15f5a53e-3769-452a-aba0-65efe8cbd3b5",
+        "session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "token_type": "Bearer",
+        "expires_in": "3600",
+        "scope": "",
+        "control_jwt_login_http_status": "200",
+        "control_access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_i3_jwt_rotation_control_entity_id": "a76167a40c28cbd59b07c646f5c98da13e4361ba5329a356f2064a827cd7565d",
+        "user_i3_jwt_rotation_control_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_i3_jwt_rotation_control_id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_i3_jwt_rotation_control_token_type": "Bearer",
+        "user_i3_jwt_rotation_control_expires_in": "3600",
+        "user_i3_jwt_rotation_control_scope": "",
+        "user_i3_jwt_rotation_control_login_success": "True",
+        "user_i3_jwt_rotation_control_login_status": "200",
+        "user_i3_jwt_rotation_control_login_http_status": "200",
+        "user_i3_jwt_rotation_control_display_name": "None",
+        "user_i3_jwt_rotation_control_email": "None",
+        "user_i3_jwt_rotation_control_groups": "None",
+        "source_id_after_resave": "31c9805a-aa98-401c-b9d0-a6dccad40338",
+        "source_slug_after_resave": "['source with this slug already exists.']",
+        "old_key_login_http_status": "200",
+        "user_i3_jwt_rotation_old_key_after_update_entity_id": "a76167a40c28cbd59b07c646f5c98da13e4361ba5329a356f2064a827cd7565d",
+        "user_i3_jwt_rotation_old_key_after_update_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_i3_jwt_rotation_old_key_after_update_id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_i3_jwt_rotation_old_key_after_update_token_type": "Bearer",
+        "user_i3_jwt_rotation_old_key_after_update_expires_in": "3600",
+        "user_i3_jwt_rotation_old_key_after_update_scope": "",
+        "user_i3_jwt_rotation_old_key_after_update_login_success": "True",
+        "user_i3_jwt_rotation_old_key_after_update_login_status": "200",
+        "user_i3_jwt_rotation_old_key_after_update_login_http_status": "200",
+        "new_key_login_http_status": "200",
+        "new_key_access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_i3_jwt_rotation_new_key_after_update_entity_id": "a76167a40c28cbd59b07c646f5c98da13e4361ba5329a356f2064a827cd7565d",
+        "user_i3_jwt_rotation_new_key_after_update_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_i3_jwt_rotation_new_key_after_update_id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_i3_jwt_rotation_new_key_after_update_token_type": "Bearer",
+        "user_i3_jwt_rotation_new_key_after_update_expires_in": "3600",
+        "user_i3_jwt_rotation_new_key_after_update_scope": "",
+        "user_i3_jwt_rotation_new_key_after_update_login_success": "True",
+        "user_i3_jwt_rotation_new_key_after_update_login_status": "200",
+        "user_i3_jwt_rotation_new_key_after_update_login_http_status": "200",
+        "user_i3_jwt_rotation_new_key_after_update_display_name": "None",
+        "user_i3_jwt_rotation_new_key_after_update_email": "None",
+        "user_i3_jwt_rotation_new_key_after_update_groups": "None",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "507a678841fdf586",
+      "sequence_id": "seq_i3_config_tighten_scope_then_reauth_password",
+      "sequence_description": "Config-change coherence: obtain a token with broader scope, then tighten the application configuration and re-authenticate requesting the same scope; the tightened config should take effect immediately and reject/limit the flow.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I3",
+      "identified_invariant": "I3",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_tighten_after_login_status >= 400\nEvaluation: user_tighten_after_login_status=200 >= 400 \u2192 False\nImplication: After tightening application policy_engine_mode, re-authentication still succeeded as if old configuration was cached/stale (config-change flow coherence failure).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_tighten_after_login_status >= 400",
+        "evaluation": "user_tighten_after_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_tighten_after_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i3_config_tighten_scope_then_reauth_password",
+      "description": "Config-change coherence: obtain a token with broader scope, then tighten the application configuration and re-authenticate requesting the same scope; the tightened config should take effect immediately and reject/limit the flow.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: Provider/application configuration changes must apply atomically to subsequent authentications; after tightening policy/engine mode, re-auth should not succeed under stale pre-change behavior.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 6,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "org_i3_tighten",
+            "authorization_flow": "default-authentication-flow",
+            "client_type": "confidential",
+            "client_id": "client_i3_tighten",
+            "client_secret": "secret_i3_tighten",
+            "redirect_uris": "https://rp.example.com/tighten",
+            "signing_key": "default",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "global",
+            "jwks_sources": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "tighten_provider_id": "provider_id",
+            "tighten_provider_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_application",
+          "params": {
+            "name": "app_i3_tighten",
+            "slug": "app-i3-tighten",
+            "provider": "{{tighten_provider_id}}",
+            "group": null
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "tighten_app_id": "app_id",
+            "tighten_app_slug": "slug",
+            "tighten_app_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "user_i3_tighten",
+            "email": "user_i3_tighten@example.com",
+            "name": "User I3 Tighten",
+            "password": "Passw0rd!tighten_i3",
+            "is_active": true,
+            "groups": []
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "tighten_user_identity_id": "identity_id",
+            "tighten_user_create_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "client_i3_tighten",
+            "username": "user_i3_tighten",
+            "password": "Passw0rd!tighten_i3",
+            "scope": "openid email",
+            "client_secret": "secret_i3_tighten"
+          },
+          "auth_as": "user_tighten_before",
+          "expected_outcome": "any",
+          "captures": {
+            "before_access_token": "session_token",
+            "before_id_token": "id_token",
+            "before_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{before_access_token}}",
+            "client_id": "client_i3_tighten",
+            "client_secret": "secret_i3_tighten"
+          },
+          "auth_as": "session_user_tighten_before",
+          "expected_outcome": "any",
+          "captures": {
+            "user_tighten_before_active": "active",
+            "user_tighten_before_entity_id": "identity_id",
+            "user_tighten_before_scope": "scope",
+            "user_tighten_before_audience": "audience",
+            "user_tighten_before_expire_time": "expire_time",
+            "user_tighten_before_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "update_application",
+          "params": {
+            "application_id": "{{tighten_app_id}}",
+            "name": "app_i3_tighten",
+            "slug": "app-i3-tighten",
+            "provider": "{{tighten_provider_id}}",
+            "backchannel_providers": [],
+            "policy_engine_mode": "strict",
+            "launch_url": "https://rp.example.com/tighten",
+            "group": null,
+            "meta_publisher": "test",
+            "meta_description": "tighten config mid-test",
+            "open_in_new_tab": false
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "tighten_app_update_status": "http_status",
+            "tighten_app_update_id": "application_id"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "client_i3_tighten",
+            "username": "user_i3_tighten",
+            "password": "Passw0rd!tighten_i3",
+            "scope": "openid email",
+            "client_secret": "secret_i3_tighten"
+          },
+          "auth_as": "user_tighten_after",
+          "expected_outcome": "any",
+          "captures": {
+            "after_access_token": "session_token",
+            "after_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_tighten_after",
+          "expected_outcome": "any",
+          "captures": {
+            "user_tighten_after_entity_id": "sub",
+            "user_tighten_after_display_name": "name",
+            "user_tighten_after_email": "email",
+            "user_tighten_after_groups": "groups"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i3_config_change_applies_no_stale_acceptance",
+          "invariant": "I3",
+          "assertion": "user_tighten_after_login_status >= 400",
+          "violation_description": "After tightening application policy_engine_mode, re-authentication still succeeded as if old configuration was cached/stale (config-change flow coherence failure).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i3_baseline_login_succeeds_control",
+          "invariant": "I3",
+          "assertion": "user_tighten_before_login_status == 200 OR user_tighten_before_login_status == 302",
+          "violation_description": "Control login failed; cannot evaluate whether post-change behavior reflects stale acceptance vs broken setup.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "client_id": "client_i3_tighten",
+        "client_secret": "secret_i3_tighten",
+        "provider_client_id": "client_i3_tighten",
+        "provider_client_secret": "secret_i3_tighten",
+        "provider_id": "28",
+        "tighten_provider_id": "28",
+        "tighten_provider_status": "201",
+        "app_id": "c65fddcc-88a5-47a6-b0bb-d7ba0a3ff35e",
+        "slug": "app-i3-tighten",
+        "tighten_app_id": "c65fddcc-88a5-47a6-b0bb-d7ba0a3ff35e",
+        "tighten_app_slug": "app-i3-tighten",
+        "tighten_app_create_status": "201",
+        "identity_id": "35e1b00365cb9994c4100c471eee33fefc8634e6efbf57ccf1381ee7d321b46d",
+        "username": "user_i3_tighten",
+        "tighten_user_identity_id": "23",
+        "tighten_user_create_status": "201",
+        "_auth_method_bypass_mfa": "true",
+        "session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "token_type": "Bearer",
+        "expires_in": "3600",
+        "scope": "",
+        "before_access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "before_id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "before_http_status": "200",
+        "user_tighten_before_entity_id": "35e1b00365cb9994c4100c471eee33fefc8634e6efbf57ccf1381ee7d321b46d",
+        "user_tighten_before_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_tighten_before_id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_tighten_before_token_type": "Bearer",
+        "user_tighten_before_expires_in": "3600",
+        "user_tighten_before_scope": "",
+        "user_tighten_before_login_success": "True",
+        "user_tighten_before_login_status": "200",
+        "user_tighten_before_login_http_status": "200",
+        "active": "True",
+        "audience": "client_i3_tighten",
+        "expire_time": "1775268475",
+        "user_tighten_before_active": "True",
+        "user_tighten_before_audience": "client_i3_tighten",
+        "user_tighten_before_expire_time": "1775268475",
+        "user_tighten_before_http_status": "200",
+        "tighten_app_update_status": "404",
+        "tighten_app_update_id": "None",
+        "after_access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "after_http_status": "200",
+        "user_tighten_after_entity_id": "35e1b00365cb9994c4100c471eee33fefc8634e6efbf57ccf1381ee7d321b46d",
+        "user_tighten_after_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_tighten_after_id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkJrd0g1bDhQeDg5dUR4QWs3MGpSWFEwc0NuNUNKbndYT3pTbks1RjBrcEhJMWo2NnpXdnM4UXJrVG5leWxRTUI2M3RSR1JzVXdrN3JFUWNJRURYM213IiwidHlwIjoiSldUIn0.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0Ojkw",
+        "user_tighten_after_token_type": "Bearer",
+        "user_tighten_after_expires_in": "3600",
+        "user_tighten_after_scope": "",
+        "user_tighten_after_login_success": "True",
+        "user_tighten_after_login_status": "200",
+        "user_tighten_after_login_http_status": "200",
+        "user_tighten_after_display_name": "None",
+        "user_tighten_after_email": "None",
+        "user_tighten_after_groups": "None",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "90e0fba01a41cb06",
+      "sequence_id": "seq_i5_jwt_expired_token_rejected_control_then_attack",
+      "sequence_description": "JWT M2M exp enforcement as authorization boundary: first a control JWT with exp in the future should succeed, then an expired JWT (exp in the past) should be rejected; acceptance would allow unauthorized continued access beyond intended lifetime.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I1",
+      "identified_invariant": "I1",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "OIDC source login succeeded despite id_token issuer mismatch: the IdP returned an id_token with a different issuer than the source's configured OIDC well-known URL. This indicates the SP does not validate the iss claim per OIDC Core 3.1.3.7 Section 2.",
+      "cve_analog": "none",
+      "evidence": {
+        "oidc_source_issuer_mismatch": true,
+        "captures": {
+          "source_id": "c0c27395-ff22-496f-ac43-43282602755a",
+          "mock_source_id": "c0c27395-ff22-496f-ac43-43282602755a",
+          "mock_source_slug": "mock-oidc-source",
+          "mock_source_status": "201",
+          "_oidc_source_issuer_mismatch": "true"
+        }
+      },
+      "detection_source": "L1_syntactic",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_jwt_expired_token_rejected_control_then_attack",
+      "description": "JWT M2M exp enforcement as authorization boundary: first a control JWT with exp in the future should succeed, then an expired JWT (exp in the past) should be rejected; acceptance would allow unauthorized continued access beyond intended lifetime.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Effective permissions must not exceed upstream intent and broker policy; accepting an expired external JWT would extend authorization beyond its intended validity window (authorization binding to time constraints).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 4,
+      "events_failed": 1,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "name": "mock-oidc-source",
+            "slug": "mock-oidc-source",
+            "provider_type": "oidc",
+            "consumer_key": "mock",
+            "consumer_secret": "mock",
+            "authorization_url": "https://mockidp.example.com/auth",
+            "access_token_url": "https://mockidp.example.com/token",
+            "profile_url": "https://mockidp.example.com/userinfo",
+            "oidc_well_known_url": "https://mockidp.example.com/.well-known/openid-configuration",
+            "oidc_jwks_url": "https://mockidp.example.com/jwks.json"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "mock_source_id": "source_id",
+            "mock_source_slug": "slug",
+            "mock_source_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "create_organization",
+          "params": {
+            "name": "jwt_m2m_provider",
+            "authorization_flow": "default-authz-flow",
+            "client_type": "confidential",
+            "client_id": "jwt-m2m-client",
+            "client_secret": "jwt-m2m-secret",
+            "redirect_uris": "https://rp.example.com/cbJWT",
+            "signing_key": "builtin",
+            "sub_mode": "hashed_user_id",
+            "issuer_mode": "per_provider",
+            "jwks_sources": "[\"mock-oidc-source\"]"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "jwt_m2m_provider_id": "provider_id",
+            "jwt_m2m_provider_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_assertion": "{\"iss\":\"mock-issuer\",\"sub\":\"svc-control\",\"aud\":\"jwt-m2m-client\",\"exp\":{{now_epoch_plus_3600}}}",
+            "client_id": "jwt-m2m-client",
+            "client_secret": "jwt-m2m-secret",
+            "scope": "openid"
+          },
+          "auth_as": "user_jwt_control_validexp",
+          "expected_outcome": "any",
+          "captures": {
+            "jwt_control_access_token": "session_token",
+            "jwt_control_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_jwt_control_validexp",
+          "expected_outcome": "any",
+          "captures": {
+            "user_jwt_control_validexp_entity_id": "sub",
+            "user_jwt_control_validexp_display_name": "name",
+            "user_jwt_control_validexp_email": "email",
+            "user_jwt_control_validexp_groups": "groups"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+            "client_assertion": "{\"iss\":\"mock-issuer\",\"sub\":\"svc-control\",\"aud\":\"jwt-m2m-client\",\"exp\":{{now_epoch_minus_3600}}}",
+            "client_id": "jwt-m2m-client",
+            "client_secret": "jwt-m2m-secret",
+            "scope": "openid"
+          },
+          "auth_as": "user_jwt_attack_expiredexp",
+          "expected_outcome": "any",
+          "captures": {
+            "jwt_attack_login_http_status": "http_status"
+          },
+          "phase": "login"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_control_valid_jwt_succeeds",
+          "invariant": "I5",
+          "assertion": "jwt_control_login_status < 400",
+          "violation_description": "Control case failed: valid exp JWT did not authenticate; setup/trust binding may be broken, making the expired-token result uninterpretable.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_expired_jwt_rejected",
+          "invariant": "I5",
+          "assertion": "jwt_attack_login_status >= 400",
+          "violation_description": "Expired external JWT was accepted, extending authorization beyond intended lifetime and violating authorization binding.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "api_pattern": "authentik REST API follows /api/v3/{app}/{model}/ pattern. All CRUD operations use this pattern with standard HTTP methods (GET/POST/PUT/PATCH/DELETE).",
+        "source_id": "c0c27395-ff22-496f-ac43-43282602755a",
+        "slug": "mock-oidc-source",
+        "mock_source_id": "c0c27395-ff22-496f-ac43-43282602755a",
+        "mock_source_slug": "mock-oidc-source",
+        "mock_source_status": "201",
+        "client_id": "jwt-m2m-client",
+        "client_secret": "jwt-m2m-secret",
+        "provider_client_id": "jwt-m2m-client",
+        "provider_client_secret": "jwt-m2m-secret",
+        "provider_id": "44",
+        "jwt_m2m_provider_id": "44",
+        "jwt_m2m_provider_status": "201",
+        "_oidc_source_issuer_mismatch": "true",
+        "jwt_control_access_token": "None",
+        "jwt_control_login_http_status": "200",
+        "user_jwt_control_validexp_login_success": "True",
+        "user_jwt_control_validexp_login_status": "200",
+        "user_jwt_control_validexp_login_http_status": "200",
+        "user_jwt_control_validexp_entity_id": "None",
+        "user_jwt_control_validexp_display_name": "None",
+        "user_jwt_control_validexp_email": "None",
+        "user_jwt_control_validexp_groups": "None",
+        "jwt_attack_login_http_status": "200",
+        "user_jwt_attack_expiredexp_login_success": "True",
+        "user_jwt_attack_expiredexp_login_status": "200",
+        "user_jwt_attack_expiredexp_login_http_status": "200",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  }
+]

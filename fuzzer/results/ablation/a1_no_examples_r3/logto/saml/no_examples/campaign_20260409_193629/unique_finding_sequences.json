@@ -1,0 +1,475 @@
+[
+  {
+    "finding": {
+      "finding_id": "309773886faf1b85",
+      "sequence_id": "seq_i2_revoked_token_still_active_me",
+      "sequence_description": "I2 attack: verify that a revoked user access token cannot still be used to access /oidc/me (freshness after revocation). Uses two identities: a user session token is revoked, then the same token is used again; additionally introspected by an M2M client for evidence.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: alice_create_http_status == 201\nEvaluation: alice_create_http_status=200 == 201 \u2192 False\nImplication: Test setup failed: could not create user Alice for revocation replay test.",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "alice_create_http_status == 201",
+        "evaluation": "alice_create_http_status=200 == 201 \u2192 False",
+        "captured_values": {
+          "alice_create_http_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_revoked_token_still_active_me",
+      "description": "I2 attack: verify that a revoked user access token cannot still be used to access /oidc/me (freshness after revocation). Uses two identities: a user session token is revoked, then the same token is used again; additionally introspected by an M2M client for evidence.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: After explicit revocation, the previously issued access token must no longer be accepted (no post-revocation replay). If /oidc/me still accepts the revoked token or introspection remains active, revocation is not enforced and freshness is violated.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "alice_i2_revocation",
+            "password": "Passw0rd!23456",
+            "name": "Alice I2 Revocation",
+            "primary_email": "alice_i2_revocation@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "alice_user_id": "identity_id",
+            "alice_username": "username",
+            "alice_create_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "alice_i2_revocation",
+            "password": "Passw0rd!23456",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_session_token": "session_token",
+            "user_alice_pwd_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_entity_id": "sub",
+            "user_alice_pwd_display_name": "username",
+            "user_alice_pwd_email": "email",
+            "user_alice_pwd_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "client_id": "{{test_app_client_id}}",
+            "session_token": "{{user_alice_pwd_session_token}}",
+            "token": "{{user_alice_pwd_session_token}}"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_revoke_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_entity_id": "sub",
+            "user_alice_pwd_display_name": "username",
+            "user_alice_pwd_email": "email",
+            "user_alice_pwd_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_id": "{{m2m_app_client_id}}",
+            "client_secret": "{{m2m_app_client_secret}}",
+            "scope": "",
+            "resource": "{{test_api_resource}}"
+          },
+          "auth_as": "session_app_m2m_introspect",
+          "expected_outcome": "any",
+          "captures": {
+            "app_m2m_introspect_session_token": "session_token",
+            "app_m2m_introspect_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{app_m2m_introspect_session_token}}",
+            "client_id": "{{m2m_app_client_id}}",
+            "client_secret": "{{m2m_app_client_secret}}",
+            "token": "{{user_alice_pwd_session_token}}"
+          },
+          "auth_as": "session_app_m2m_introspect",
+          "expected_outcome": "any",
+          "captures": {
+            "app_m2m_introspect_active": "active",
+            "app_m2m_introspect_entity_id": "identity_id",
+            "app_m2m_introspect_http_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "setup_user_created",
+          "invariant": "I2",
+          "assertion": "alice_create_http_status == 201",
+          "violation_description": "Test setup failed: could not create user Alice for revocation replay test.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "control_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_alice_pwd_login_status == 200",
+          "violation_description": "Control failed: password login did not succeed, cannot evaluate revocation freshness.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "control_me_works_pre_revocation",
+          "invariant": "I2",
+          "assertion": "user_alice_pwd_http_status == 200 AND user_alice_pwd_entity_id is not None",
+          "violation_description": "Control failed: /oidc/me did not return identity before revocation.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_revoked_token_not_accepted_by_me",
+          "invariant": "I2",
+          "assertion": "user_alice_pwd_after_revoke_http_status >= 400",
+          "violation_description": "Freshness violation: /oidc/me still accepted a revoked access token (post-revocation replay succeeded).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_revoked_token_not_active_in_introspection",
+          "invariant": "I2",
+          "assertion": "app_m2m_introspect_active == false",
+          "violation_description": "Freshness violation: introspection reports revoked token as active (revocation not enforced).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "ly30fdwnujy1",
+        "saml_sso_connector_id": "3w83duzverhf",
+        "test_app_client_id": "orj6mnolgrcnnav5fh3us",
+        "test_app_client_secret": "#internal:SRGBuyziChvkevv2KSkXxcx0EYar41bw",
+        "m2m_app_client_id": "73kt4icbag9f5o3gcp0ac",
+        "m2m_app_client_secret": "#internal:STueaXNOzccXc0FUSJOSi29iV5BQYSft",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "3koltogqfm7a",
+        "username": "alice_i2_revocation",
+        "alice_user_id": "3koltogqfm7a",
+        "alice_username": "alice_i2_revocation",
+        "alice_create_http_status": "200",
+        "user_alice_pwd_session_token": "FQdnzx2z_R7AckSa0MfMZTFuuro6VETOSxjYhUxNVTU",
+        "user_alice_pwd_login_http_status": "200",
+        "session_user_alice_pwd_session_token": "FQdnzx2z_R7AckSa0MfMZTFuuro6VETOSxjYhUxNVTU",
+        "session_user_alice_pwd_login_success": "True",
+        "session_user_alice_pwd_login_status": "200",
+        "session_user_alice_pwd_login_http_status": "200",
+        "user_alice_pwd_entity_id": "None",
+        "user_alice_pwd_display_name": "alice_i2_revocation",
+        "user_alice_pwd_email": "None",
+        "user_alice_pwd_groups": "None",
+        "user_alice_pwd_revoke_http_status": "401",
+        "session_token": "eyJhbGciOiJFUzM4NCIsInR5cCI6ImF0K2p3dCIsImtpZCI6Im5OYy1CUzhkSXIyazdhQm1DRWV1aVAxYVF2RGRKZGRyRWgzLWdyNlRBUk0ifQ.eyJqdGkiOiJ3UlowX1lMWVBySDZ0V3NOdGxnWnYiLCJzdWIiOiI3M2t0NGljYmFnOWY1bzNnY3AwYWMiLCJpYXQiO",
+        "app_m2m_introspect_session_token": "eyJhbGciOiJFUzM4NCIsInR5cCI6ImF0K2p3dCIsImtpZCI6Im5OYy1CUzhkSXIyazdhQm1DRWV1aVAxYVF2RGRKZGRyRWgzLWdyNlRBUk0ifQ.eyJqdGkiOiJ3UlowX1lMWVBySDZ0V3NOdGxnWnYiLCJzdWIiOiI3M2t0NGljYmFnOWY1bzNnY3AwYWMiLCJpYXQiO",
+        "app_m2m_introspect_login_http_status": "200",
+        "session_app_m2m_introspect_entity_id": "73kt4icbag9f5o3gcp0ac",
+        "session_app_m2m_introspect_session_token": "eyJhbGciOiJFUzM4NCIsInR5cCI6ImF0K2p3dCIsImtpZCI6Im5OYy1CUzhkSXIyazdhQm1DRWV1aVAxYVF2RGRKZGRyRWgzLWdyNlRBUk0ifQ.eyJqdGkiOiJ3UlowX1lMWVBySDZ0V3NOdGxnWnYiLCJzdWIiOiI3M2t0NGljYmFnOWY1bzNnY3AwYWMiLCJpYXQiO",
+        "session_app_m2m_introspect_login_success": "True",
+        "session_app_m2m_introspect_login_status": "200",
+        "session_app_m2m_introspect_login_http_status": "200",
+        "active": "True",
+        "metadata": "{'active': True, 'sub': '3koltogqfm7a', 'client_id': 'orj6mnolgrcnnav5fh3us', 'exp': 1775767577, 'iat': 1775763977, 'iss': 'http://localhost:3001/oidc', 'scope': 'openid profile email', 'token_type': ",
+        "app_m2m_introspect_active": "True",
+        "app_m2m_introspect_entity_id": "3koltogqfm7a",
+        "app_m2m_introspect_http_status": "200"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "fd742630aafd0233",
+      "sequence_id": "seq_i2_revoked_token_still_active_me",
+      "sequence_description": "I2 attack: verify that a revoked user access token cannot still be used to access /oidc/me (freshness after revocation). Uses two identities: a user session token is revoked, then the same token is used again; additionally introspected by an M2M client for evidence.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: app_m2m_introspect_active == false\nEvaluation: app_m2m_introspect_active=True == False \u2192 False\nImplication: Freshness violation: introspection reports revoked token as active (revocation not enforced).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "app_m2m_introspect_active == false",
+        "evaluation": "app_m2m_introspect_active=True == False \u2192 False",
+        "captured_values": {
+          "active": true,
+          "app_m2m_introspect_active": true
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_revoked_token_still_active_me",
+      "description": "I2 attack: verify that a revoked user access token cannot still be used to access /oidc/me (freshness after revocation). Uses two identities: a user session token is revoked, then the same token is used again; additionally introspected by an M2M client for evidence.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: After explicit revocation, the previously issued access token must no longer be accepted (no post-revocation replay). If /oidc/me still accepts the revoked token or introspection remains active, revocation is not enforced and freshness is violated.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": false,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "username": "alice_i2_revocation",
+            "password": "Passw0rd!23456",
+            "name": "Alice I2 Revocation",
+            "primary_email": "alice_i2_revocation@example.com"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "alice_user_id": "identity_id",
+            "alice_username": "username",
+            "alice_create_http_status": "http_status"
+          },
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "username": "alice_i2_revocation",
+            "password": "Passw0rd!23456",
+            "client_id": "{{test_app_client_id}}",
+            "grant_type": "password"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_session_token": "session_token",
+            "user_alice_pwd_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_entity_id": "sub",
+            "user_alice_pwd_display_name": "username",
+            "user_alice_pwd_email": "email",
+            "user_alice_pwd_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "client_id": "{{test_app_client_id}}",
+            "session_token": "{{user_alice_pwd_session_token}}",
+            "token": "{{user_alice_pwd_session_token}}"
+          },
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_revoke_http_status": "http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_alice_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_alice_pwd_entity_id": "sub",
+            "user_alice_pwd_display_name": "username",
+            "user_alice_pwd_email": "email",
+            "user_alice_pwd_groups": "organizations"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "login_with_jwt",
+          "params": {
+            "grant_type": "client_credentials",
+            "client_id": "{{m2m_app_client_id}}",
+            "client_secret": "{{m2m_app_client_secret}}",
+            "scope": "",
+            "resource": "{{test_api_resource}}"
+          },
+          "auth_as": "session_app_m2m_introspect",
+          "expected_outcome": "any",
+          "captures": {
+            "app_m2m_introspect_session_token": "session_token",
+            "app_m2m_introspect_login_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "session_token": "{{app_m2m_introspect_session_token}}",
+            "client_id": "{{m2m_app_client_id}}",
+            "client_secret": "{{m2m_app_client_secret}}",
+            "token": "{{user_alice_pwd_session_token}}"
+          },
+          "auth_as": "session_app_m2m_introspect",
+          "expected_outcome": "any",
+          "captures": {
+            "app_m2m_introspect_active": "active",
+            "app_m2m_introspect_entity_id": "identity_id",
+            "app_m2m_introspect_http_status": "http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "setup_user_created",
+          "invariant": "I2",
+          "assertion": "alice_create_http_status == 201",
+          "violation_description": "Test setup failed: could not create user Alice for revocation replay test.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "control_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_alice_pwd_login_status == 200",
+          "violation_description": "Control failed: password login did not succeed, cannot evaluate revocation freshness.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "control_me_works_pre_revocation",
+          "invariant": "I2",
+          "assertion": "user_alice_pwd_http_status == 200 AND user_alice_pwd_entity_id is not None",
+          "violation_description": "Control failed: /oidc/me did not return identity before revocation.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_revoked_token_not_accepted_by_me",
+          "invariant": "I2",
+          "assertion": "user_alice_pwd_after_revoke_http_status >= 400",
+          "violation_description": "Freshness violation: /oidc/me still accepted a revoked access token (post-revocation replay succeeded).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_revoked_token_not_active_in_introspection",
+          "invariant": "I2",
+          "assertion": "app_m2m_introspect_active == false",
+          "violation_description": "Freshness violation: introspection reports revoked token as active (revocation not enforced).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": false,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "oidc_sso_connector_id": "ly30fdwnujy1",
+        "saml_sso_connector_id": "3w83duzverhf",
+        "test_app_client_id": "orj6mnolgrcnnav5fh3us",
+        "test_app_client_secret": "#internal:SRGBuyziChvkevv2KSkXxcx0EYar41bw",
+        "m2m_app_client_id": "73kt4icbag9f5o3gcp0ac",
+        "m2m_app_client_secret": "#internal:STueaXNOzccXc0FUSJOSi29iV5BQYSft",
+        "test_api_resource": "https://valence.local/api",
+        "redirect_uri": "http://localhost:9090/callback",
+        "api_pattern": "Logto Management API uses /api/ prefix. User CRUD: /api/users. SSO connectors: /api/sso-connectors. Applications: /api/applications.",
+        "login_strategy": "For user authentication, use login_with_password with username and password. The executor handles the multi-step OIDC Experience API flow transparently. For machine/service tokens, use login_with_jwt ",
+        "app_types": "Logto application types: Native, SPA, Traditional, MachineToMachine, Protected, SAML. Do NOT use TraditionalWeb or WebApp \u2014 use 'Traditional'.",
+        "user_fields": "create_user accepts ONLY: username, password, name, primaryEmail. Do NOT include primaryPhone (format validation is strict \u2014 no + prefix), firstName, lastName, enabled, or other undocumented fields.",
+        "mock_idp_issuer": "http://mock-idp:9090",
+        "mock_idp_host_url": "http://localhost:9090",
+        "sso_connector_setup_note": "SSO connectors (OIDC and SAML) are pre-configured pointing to a mock IdP. The mock IdP is controllable: POST /admin/set-claims to change identity attributes (sub, email, name, groups, email_verified).",
+        "identity_id": "3koltogqfm7a",
+        "username": "alice_i2_revocation",
+        "alice_user_id": "3koltogqfm7a",
+        "alice_username": "alice_i2_revocation",
+        "alice_create_http_status": "200",
+        "user_alice_pwd_session_token": "FQdnzx2z_R7AckSa0MfMZTFuuro6VETOSxjYhUxNVTU",
+        "user_alice_pwd_login_http_status": "200",
+        "session_user_alice_pwd_session_token": "FQdnzx2z_R7AckSa0MfMZTFuuro6VETOSxjYhUxNVTU",
+        "session_user_alice_pwd_login_success": "True",
+        "session_user_alice_pwd_login_status": "200",
+        "session_user_alice_pwd_login_http_status": "200",
+        "user_alice_pwd_entity_id": "None",
+        "user_alice_pwd_display_name": "alice_i2_revocation",
+        "user_alice_pwd_email": "None",
+        "user_alice_pwd_groups": "None",
+        "user_alice_pwd_revoke_http_status": "401",
+        "session_token": "eyJhbGciOiJFUzM4NCIsInR5cCI6ImF0K2p3dCIsImtpZCI6Im5OYy1CUzhkSXIyazdhQm1DRWV1aVAxYVF2RGRKZGRyRWgzLWdyNlRBUk0ifQ.eyJqdGkiOiJ3UlowX1lMWVBySDZ0V3NOdGxnWnYiLCJzdWIiOiI3M2t0NGljYmFnOWY1bzNnY3AwYWMiLCJpYXQiO",
+        "app_m2m_introspect_session_token": "eyJhbGciOiJFUzM4NCIsInR5cCI6ImF0K2p3dCIsImtpZCI6Im5OYy1CUzhkSXIyazdhQm1DRWV1aVAxYVF2RGRKZGRyRWgzLWdyNlRBUk0ifQ.eyJqdGkiOiJ3UlowX1lMWVBySDZ0V3NOdGxnWnYiLCJzdWIiOiI3M2t0NGljYmFnOWY1bzNnY3AwYWMiLCJpYXQiO",
+        "app_m2m_introspect_login_http_status": "200",
+        "session_app_m2m_introspect_entity_id": "73kt4icbag9f5o3gcp0ac",
+        "session_app_m2m_introspect_session_token": "eyJhbGciOiJFUzM4NCIsInR5cCI6ImF0K2p3dCIsImtpZCI6Im5OYy1CUzhkSXIyazdhQm1DRWV1aVAxYVF2RGRKZGRyRWgzLWdyNlRBUk0ifQ.eyJqdGkiOiJ3UlowX1lMWVBySDZ0V3NOdGxnWnYiLCJzdWIiOiI3M2t0NGljYmFnOWY1bzNnY3AwYWMiLCJpYXQiO",
+        "session_app_m2m_introspect_login_success": "True",
+        "session_app_m2m_introspect_login_status": "200",
+        "session_app_m2m_introspect_login_http_status": "200",
+        "active": "True",
+        "metadata": "{'active': True, 'sub': '3koltogqfm7a', 'client_id': 'orj6mnolgrcnnav5fh3us', 'exp': 1775767577, 'iat': 1775763977, 'iss': 'http://localhost:3001/oidc', 'scope': 'openid profile email', 'token_type': ",
+        "app_m2m_introspect_active": "True",
+        "app_m2m_introspect_entity_id": "3koltogqfm7a",
+        "app_m2m_introspect_http_status": "200"
+      }
+    }
+  }
+]

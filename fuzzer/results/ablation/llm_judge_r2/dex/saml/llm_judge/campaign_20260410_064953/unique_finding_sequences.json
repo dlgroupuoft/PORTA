@@ -1,0 +1,2268 @@
+[
+  {
+    "finding": {
+      "finding_id": "d28a645ed114061f",
+      "sequence_id": "seq_i1_saml_cert_substitution_secure_config_rejects_attacker_sig",
+      "sequence_description": "I1 SAML cert substitution: with CA-based signature validation configured, attacker-signed SAMLResponse should be rejected (control: valid flow succeeds).",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I1",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Both control and attacker flows fail post-login with \"Invalid bearer token\", preventing validation of SAML signature enforcement and suggesting a token issuance/session handling problem.",
+      "cve_analog": "none",
+      "evidence": {
+        "user_control_saml_http_status": 200,
+        "user_attacker_saml_http_status": 200,
+        "user_control_entity_id": null,
+        "user_attacker_entity_id": null,
+        "llm_judge_description": "Both control and attacker flows fail post-login with \"Invalid bearer token\", preventing validation of SAML signature enforcement and suggesting a token issuance/session handling problem."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_saml_cert_substitution_secure_config_rejects_attacker_sig",
+      "description": "I1 SAML cert substitution: with CA-based signature validation configured, attacker-signed SAMLResponse should be rejected (control: valid flow succeeds).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: Dex must validate the SAMLResponse signature against the configured trust anchor (CA/caData) and must not accept attacker-signed assertions.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_type": "saml",
+            "connector_id": "test-saml",
+            "name": "test-saml",
+            "sso_url": "https://idp.example/sso",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "http://localhost:5556/dex/callback",
+            "sso_issuer": "https://idp.example/issuer",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-control-1",
+            "nonce": "nonce-control-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"control-nameid-1\",\"email\":\"control1@example.com\",\"provider\":\"saml\",\"realm\":\"default\"}",
+            "relay_state": "state-control-1"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_saml_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_entity_id": "sub",
+            "user_control_display_name": "name",
+            "user_control_policies": "groups",
+            "user_control_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-attack-1",
+            "nonce": "nonce-attack-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_attacker",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"attacker-nameid-1\",\"email\":\"attacker1@example.com\",\"provider\":\"saml\",\"realm\":\"default\"}",
+            "relay_state": "state-attack-1"
+          },
+          "auth_as": "user_attacker",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_saml_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_entity_id": "sub",
+            "user_attacker_display_name": "name",
+            "user_attacker_policies": "groups",
+            "user_attacker_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_flow_succeeds",
+          "invariant": "I1",
+          "assertion": "user_control_saml_http_status < 400",
+          "violation_description": "Control SAML login failed; cannot attribute attacker rejection/acceptance to signature validation behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_reject_attacker_signed_assertion_under_ca_validation",
+          "invariant": "I1",
+          "assertion": "user_attacker_login_status >= 400",
+          "violation_description": "SP accepted attacker-signed SAML assertion even though CA-based signature validation was configured (trust anchor substitution / signature validation bypass).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_auth_http_status": "200",
+        "user_control_saml_http_status": "200",
+        "user_control_login_success": "True",
+        "user_control_login_status": "200",
+        "user_control_login_http_status": "200",
+        "user_control_entity_id": "None",
+        "user_control_display_name": "None",
+        "user_control_policies": "None",
+        "user_control_identity_policies": "None",
+        "user_attacker_auth_http_status": "200",
+        "user_attacker_saml_http_status": "200",
+        "user_attacker_login_success": "True",
+        "user_attacker_login_status": "200",
+        "user_attacker_login_http_status": "200",
+        "user_attacker_entity_id": "None",
+        "user_attacker_display_name": "None",
+        "user_attacker_policies": "None",
+        "user_attacker_identity_policies": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "ee144bc362376a26",
+      "sequence_id": "seq_i1_saml_cert_substitution_secure_config_rejects_attacker_sig",
+      "sequence_description": "I1 SAML cert substitution: with CA-based signature validation configured, attacker-signed SAMLResponse should be rejected (control: valid flow succeeds).",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I1",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "LOW",
+      "description": "[LLM-Judge] Admin configuration step to enable CA-based signature validation failed due to unsupported method, so the test did not actually exercise the intended secure configuration.",
+      "cve_analog": "none",
+      "evidence": {
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "llm_judge_description": "Admin configuration step to enable CA-based signature validation failed due to unsupported method, so the test did not actually exercise the intended secure configuration."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_saml_cert_substitution_secure_config_rejects_attacker_sig",
+      "description": "I1 SAML cert substitution: with CA-based signature validation configured, attacker-signed SAMLResponse should be rejected (control: valid flow succeeds).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: Dex must validate the SAMLResponse signature against the configured trust anchor (CA/caData) and must not accept attacker-signed assertions.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_type": "saml",
+            "connector_id": "test-saml",
+            "name": "test-saml",
+            "sso_url": "https://idp.example/sso",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "http://localhost:5556/dex/callback",
+            "sso_issuer": "https://idp.example/issuer",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-control-1",
+            "nonce": "nonce-control-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"control-nameid-1\",\"email\":\"control1@example.com\",\"provider\":\"saml\",\"realm\":\"default\"}",
+            "relay_state": "state-control-1"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_saml_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_entity_id": "sub",
+            "user_control_display_name": "name",
+            "user_control_policies": "groups",
+            "user_control_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-attack-1",
+            "nonce": "nonce-attack-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_attacker",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"attacker-nameid-1\",\"email\":\"attacker1@example.com\",\"provider\":\"saml\",\"realm\":\"default\"}",
+            "relay_state": "state-attack-1"
+          },
+          "auth_as": "user_attacker",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_saml_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_entity_id": "sub",
+            "user_attacker_display_name": "name",
+            "user_attacker_policies": "groups",
+            "user_attacker_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_flow_succeeds",
+          "invariant": "I1",
+          "assertion": "user_control_saml_http_status < 400",
+          "violation_description": "Control SAML login failed; cannot attribute attacker rejection/acceptance to signature validation behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_reject_attacker_signed_assertion_under_ca_validation",
+          "invariant": "I1",
+          "assertion": "user_attacker_login_status >= 400",
+          "violation_description": "SP accepted attacker-signed SAML assertion even though CA-based signature validation was configured (trust anchor substitution / signature validation bypass).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_auth_http_status": "200",
+        "user_control_saml_http_status": "200",
+        "user_control_login_success": "True",
+        "user_control_login_status": "200",
+        "user_control_login_http_status": "200",
+        "user_control_entity_id": "None",
+        "user_control_display_name": "None",
+        "user_control_policies": "None",
+        "user_control_identity_policies": "None",
+        "user_attacker_auth_http_status": "200",
+        "user_attacker_saml_http_status": "200",
+        "user_attacker_login_success": "True",
+        "user_attacker_login_status": "200",
+        "user_attacker_login_http_status": "200",
+        "user_attacker_entity_id": "None",
+        "user_attacker_display_name": "None",
+        "user_attacker_policies": "None",
+        "user_attacker_identity_policies": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "e35084560311585c",
+      "sequence_id": "seq_i1_saml_issuer_mismatch_rejected_when_ssoIssuer_pinned",
+      "sequence_description": "I1 Issuer mismatch: with ssoIssuer pinned, a SAML assertion with an untrusted Issuer should be rejected (control: correct issuer succeeds).",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I1",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "HIGH",
+      "description": "[LLM-Judge] Test is invalid/indeterminate because provider creation failed, so issuer-pinning behavior was never actually configured or exercised.",
+      "cve_analog": "none",
+      "evidence": {
+        "llm_judge_description": "Test is invalid/indeterminate because provider creation failed, so issuer-pinning behavior was never actually configured or exercised."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_saml_issuer_mismatch_rejected_when_ssoIssuer_pinned",
+      "description": "I1 Issuer mismatch: with ssoIssuer pinned, a SAML assertion with an untrusted Issuer should be rejected (control: correct issuer succeeds).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: Dex must bind verification to the configured IdP issuer (ssoIssuer) and reject assertions whose Issuer does not match the pinned issuer.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_provider",
+          "params": {
+            "connector_type": "saml",
+            "connector_id": "test-saml",
+            "name": "test-saml",
+            "sso_url": "https://idp.example/sso",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "http://localhost:5556/dex/callback",
+            "sso_issuer": "https://idp.example/issuer",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-control-issuer",
+            "nonce": "nonce-control-issuer",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_control_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_issuer_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"control-issuer-nameid\",\"email\":\"control-issuer@example.com\",\"provider\":\"saml\",\"realm\":\"default\",\"idp_entity_id\":\"https://idp.example/issuer\"}",
+            "relay_state": "state-control-issuer"
+          },
+          "auth_as": "user_control_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_issuer_saml_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_issuer_entity_id": "sub",
+            "user_control_issuer_display_name": "name",
+            "user_control_issuer_policies": "groups",
+            "user_control_issuer_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-attack-issuer",
+            "nonce": "nonce-attack-issuer",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_attacker_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_issuer_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"attacker-issuer-nameid\",\"email\":\"attacker-issuer@example.com\",\"provider\":\"saml\",\"realm\":\"default\",\"idp_entity_id\":\"https://wrong-issuer.example/idp\"}",
+            "relay_state": "state-attack-issuer"
+          },
+          "auth_as": "user_attacker_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_issuer_saml_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_issuer_entity_id": "sub",
+            "user_attacker_issuer_display_name": "name",
+            "user_attacker_issuer_policies": "groups",
+            "user_attacker_issuer_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_correct_issuer_succeeds",
+          "invariant": "I1",
+          "assertion": "user_control_issuer_saml_http_status < 400",
+          "violation_description": "Control login with correct Issuer failed; issuer-mismatch result is inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_reject_issuer_mismatch",
+          "invariant": "I1",
+          "assertion": "user_attacker_issuer_login_status >= 400",
+          "violation_description": "SP accepted SAML assertion with Issuer not matching pinned ssoIssuer (issuer validation bypass / proof-policy mismatch).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_issuer_auth_http_status": "200",
+        "user_control_issuer_saml_http_status": "200",
+        "user_control_issuer_login_success": "True",
+        "user_control_issuer_login_status": "200",
+        "user_control_issuer_login_http_status": "200",
+        "user_control_issuer_entity_id": "None",
+        "user_control_issuer_display_name": "None",
+        "user_control_issuer_policies": "None",
+        "user_control_issuer_identity_policies": "None",
+        "user_attacker_issuer_auth_http_status": "200",
+        "user_attacker_issuer_saml_http_status": "200",
+        "user_attacker_issuer_login_success": "True",
+        "user_attacker_issuer_login_status": "200",
+        "user_attacker_issuer_login_http_status": "200",
+        "user_attacker_issuer_entity_id": "None",
+        "user_attacker_issuer_display_name": "None",
+        "user_attacker_issuer_policies": "None",
+        "user_attacker_issuer_identity_policies": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "21feb4acc8e1b24b",
+      "sequence_id": "seq_i1_saml_issuer_mismatch_rejected_when_ssoIssuer_pinned",
+      "sequence_description": "I1 Issuer mismatch: with ssoIssuer pinned, a SAML assertion with an untrusted Issuer should be rejected (control: correct issuer succeeds).",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I1",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Both control and attacker SAML logins returned HTTP 200 but resulted in unusable sessions (Invalid bearer token), suggesting the flow did not mint/propagate a valid access token and preventing verification of issuer-mismatch rejection.",
+      "cve_analog": "none",
+      "evidence": {
+        "llm_judge_description": "Both control and attacker SAML logins returned HTTP 200 but resulted in unusable sessions (Invalid bearer token), suggesting the flow did not mint/propagate a valid access token and preventing verification of issuer-mismatch rejection."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_saml_issuer_mismatch_rejected_when_ssoIssuer_pinned",
+      "description": "I1 Issuer mismatch: with ssoIssuer pinned, a SAML assertion with an untrusted Issuer should be rejected (control: correct issuer succeeds).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: Dex must bind verification to the configured IdP issuer (ssoIssuer) and reject assertions whose Issuer does not match the pinned issuer.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_provider",
+          "params": {
+            "connector_type": "saml",
+            "connector_id": "test-saml",
+            "name": "test-saml",
+            "sso_url": "https://idp.example/sso",
+            "ca_file": "docker/dex/saml_idp_cert.pem",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "http://localhost:5556/dex/callback",
+            "sso_issuer": "https://idp.example/issuer",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-control-issuer",
+            "nonce": "nonce-control-issuer",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_control_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_issuer_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"control-issuer-nameid\",\"email\":\"control-issuer@example.com\",\"provider\":\"saml\",\"realm\":\"default\",\"idp_entity_id\":\"https://idp.example/issuer\"}",
+            "relay_state": "state-control-issuer"
+          },
+          "auth_as": "user_control_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_issuer_saml_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_issuer_entity_id": "sub",
+            "user_control_issuer_display_name": "name",
+            "user_control_issuer_policies": "groups",
+            "user_control_issuer_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-attack-issuer",
+            "nonce": "nonce-attack-issuer",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_attacker_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_issuer_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"attacker-issuer-nameid\",\"email\":\"attacker-issuer@example.com\",\"provider\":\"saml\",\"realm\":\"default\",\"idp_entity_id\":\"https://wrong-issuer.example/idp\"}",
+            "relay_state": "state-attack-issuer"
+          },
+          "auth_as": "user_attacker_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_issuer_saml_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_issuer",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_issuer_entity_id": "sub",
+            "user_attacker_issuer_display_name": "name",
+            "user_attacker_issuer_policies": "groups",
+            "user_attacker_issuer_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_control_correct_issuer_succeeds",
+          "invariant": "I1",
+          "assertion": "user_control_issuer_saml_http_status < 400",
+          "violation_description": "Control login with correct Issuer failed; issuer-mismatch result is inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_reject_issuer_mismatch",
+          "invariant": "I1",
+          "assertion": "user_attacker_issuer_login_status >= 400",
+          "violation_description": "SP accepted SAML assertion with Issuer not matching pinned ssoIssuer (issuer validation bypass / proof-policy mismatch).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_issuer_auth_http_status": "200",
+        "user_control_issuer_saml_http_status": "200",
+        "user_control_issuer_login_success": "True",
+        "user_control_issuer_login_status": "200",
+        "user_control_issuer_login_http_status": "200",
+        "user_control_issuer_entity_id": "None",
+        "user_control_issuer_display_name": "None",
+        "user_control_issuer_policies": "None",
+        "user_control_issuer_identity_policies": "None",
+        "user_attacker_issuer_auth_http_status": "200",
+        "user_attacker_issuer_saml_http_status": "200",
+        "user_attacker_issuer_login_success": "True",
+        "user_attacker_issuer_login_status": "200",
+        "user_attacker_issuer_login_http_status": "200",
+        "user_attacker_issuer_entity_id": "None",
+        "user_attacker_issuer_display_name": "None",
+        "user_attacker_issuer_policies": "None",
+        "user_attacker_issuer_identity_policies": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "358a98e2ccde8d37",
+      "sequence_id": "seq_i1_saml_insecure_skip_sig_validation_accepts_attacker_signed",
+      "sequence_description": "I1 SAML cert substitution under intentionally insecure connector config: if insecureSkipSignatureValidation=true, Dex may accept attacker-signed assertions (proof integrity depends on correct policy configuration). Includes control and attack logins with two identities.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I1",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Both control and attacker SAML logins report success (HTTP 200) but subsequent identity verification fails with \"Invalid bearer token\", indicating the broker may be issuing unusable/invalid tokens or the test is not actually completing a valid OIDC code/token exchange.",
+      "cve_analog": "none",
+      "evidence": {
+        "user_control_login_success": true,
+        "user_control_login_http_status": 200,
+        "user_attacker_login_success": true,
+        "user_attacker_login_http_status": 200,
+        "llm_judge_description": "Both control and attacker SAML logins report success (HTTP 200) but subsequent identity verification fails with \"Invalid bearer token\", indicating the broker may be issuing unusable/invalid tokens or the test is not actually completing a valid OIDC code/token exchange."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_saml_insecure_skip_sig_validation_accepts_attacker_signed",
+      "description": "I1 SAML cert substitution under intentionally insecure connector config: if insecureSkipSignatureValidation=true, Dex may accept attacker-signed assertions (proof integrity depends on correct policy configuration). Includes control and attack logins with two identities.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: When signature validation is intended (secure baseline), Dex must reject attacker-signed SAML assertions; acceptance indicates authenticity checks are not applied under the intended verification policy (or policy is dangerously bypassable).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 4,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_type": "saml",
+            "connector_id": "test-saml",
+            "name": "test-saml-insecure-skip-sig",
+            "sso_url": "https://idp.example/sso",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "insecure_skip_signature_validation": true,
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "entity_issuer": "http://localhost:5556/dex/callback",
+            "sso_issuer": "https://idp.example/issuer",
+            "groups_delim": ";",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+            "grant_types": [
+              "authorization_code"
+            ],
+            "response_types": [
+              "code"
+            ],
+            "skip_approval_screen": true,
+            "always_show_login_screen": true,
+            "password_connector": ""
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-control-1",
+            "nonce": "nonce-control-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"control-nameid-1\",\"email\":\"control1@example.com\",\"provider\":\"saml\",\"realm\":\"default\"}",
+            "relay_state": "state-control-1"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_entity_id": "sub",
+            "user_control_display_name": "name",
+            "user_control_policies": "groups",
+            "user_control_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-attacker-1",
+            "nonce": "nonce-attacker-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_attacker",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"attacker-nameid-1\",\"email\":\"attacker1@example.com\",\"provider\":\"saml\",\"realm\":\"default\"}",
+            "relay_state": "state-attacker-1"
+          },
+          "auth_as": "user_attacker",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_entity_id": "sub",
+            "user_attacker_display_name": "name",
+            "user_attacker_policies": "groups",
+            "user_attacker_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "cleanup_http_status": "http_status"
+          },
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_insecure_skip_sig_validation_should_not_be_default_secure",
+          "invariant": "I1",
+          "assertion": "user_attacker_login_status >= 400",
+          "violation_description": "Dex accepted an attacker-signed SAML assertion (login succeeded) even though proof integrity requires rejecting untrusted signatures under a secure verification policy.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_control_flow_succeeds_for_baseline",
+          "invariant": "I1",
+          "assertion": "user_control_login_status == 200 OR user_control_login_status == 302",
+          "violation_description": "Control SAML login did not succeed; cannot distinguish proof-integrity failure from broken SAML flow setup.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_auth_http_status": "200",
+        "user_control_login_success": "True",
+        "user_control_login_status": "200",
+        "user_control_login_http_status": "200",
+        "user_control_entity_id": "None",
+        "user_control_display_name": "None",
+        "user_control_policies": "None",
+        "user_control_identity_policies": "None",
+        "user_attacker_auth_http_status": "200",
+        "user_attacker_login_success": "True",
+        "user_attacker_login_status": "200",
+        "user_attacker_login_http_status": "200",
+        "user_attacker_entity_id": "None",
+        "user_attacker_display_name": "None",
+        "user_attacker_policies": "None",
+        "user_attacker_identity_policies": "None",
+        "cleanup_http_status": "404"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "adeac4f8ca30d475",
+      "sequence_id": "seq_i1_saml_insecure_skip_sig_validation_accepts_attacker_signed",
+      "sequence_description": "I1 SAML cert substitution under intentionally insecure connector config: if insecureSkipSignatureValidation=true, Dex may accept attacker-signed assertions (proof integrity depends on correct policy configuration). Includes control and attack logins with two identities.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I1",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "LOW",
+      "description": "[LLM-Judge] Admin connector enable/cleanup operations failed (unsupported CREATECONNECTOR and 404 on cleanup), so the intended insecureSkipSignatureValidation test condition may not have been applied; results cannot substantiate attacker-signed assertion acceptance.",
+      "cve_analog": "none",
+      "evidence": {
+        "cleanup_http_status": 404,
+        "llm_judge_description": "Admin connector enable/cleanup operations failed (unsupported CREATECONNECTOR and 404 on cleanup), so the intended insecureSkipSignatureValidation test condition may not have been applied; results cannot substantiate attacker-signed assertion acceptance."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i1_saml_insecure_skip_sig_validation_accepts_attacker_signed",
+      "description": "I1 SAML cert substitution under intentionally insecure connector config: if insecureSkipSignatureValidation=true, Dex may accept attacker-signed assertions (proof integrity depends on correct policy configuration). Includes control and attack logins with two identities.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I1",
+      "invariant_hypothesis": "I1: When signature validation is intended (secure baseline), Dex must reject attacker-signed SAML assertions; acceptance indicates authenticity checks are not applied under the intended verification policy (or policy is dangerously bypassable).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 4,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_type": "saml",
+            "connector_id": "test-saml",
+            "name": "test-saml-insecure-skip-sig",
+            "sso_url": "https://idp.example/sso",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "insecure_skip_signature_validation": true,
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "entity_issuer": "http://localhost:5556/dex/callback",
+            "sso_issuer": "https://idp.example/issuer",
+            "groups_delim": ";",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+            "grant_types": [
+              "authorization_code"
+            ],
+            "response_types": [
+              "code"
+            ],
+            "skip_approval_screen": true,
+            "always_show_login_screen": true,
+            "password_connector": ""
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-control-1",
+            "nonce": "nonce-control-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"control-nameid-1\",\"email\":\"control1@example.com\",\"provider\":\"saml\",\"realm\":\"default\"}",
+            "relay_state": "state-control-1"
+          },
+          "auth_as": "user_control",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_entity_id": "sub",
+            "user_control_display_name": "name",
+            "user_control_policies": "groups",
+            "user_control_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-attacker-1",
+            "nonce": "nonce-attacker-1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_attacker",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_auth_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"attacker-nameid-1\",\"email\":\"attacker1@example.com\",\"provider\":\"saml\",\"realm\":\"default\"}",
+            "relay_state": "state-attacker-1"
+          },
+          "auth_as": "user_attacker",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_entity_id": "sub",
+            "user_attacker_display_name": "name",
+            "user_attacker_policies": "groups",
+            "user_attacker_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "test-saml"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "cleanup_http_status": "http_status"
+          },
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i1_insecure_skip_sig_validation_should_not_be_default_secure",
+          "invariant": "I1",
+          "assertion": "user_attacker_login_status >= 400",
+          "violation_description": "Dex accepted an attacker-signed SAML assertion (login succeeded) even though proof integrity requires rejecting untrusted signatures under a secure verification policy.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i1_control_flow_succeeds_for_baseline",
+          "invariant": "I1",
+          "assertion": "user_control_login_status == 200 OR user_control_login_status == 302",
+          "violation_description": "Control SAML login did not succeed; cannot distinguish proof-integrity failure from broken SAML flow setup.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I1"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_auth_http_status": "200",
+        "user_control_login_success": "True",
+        "user_control_login_status": "200",
+        "user_control_login_http_status": "200",
+        "user_control_entity_id": "None",
+        "user_control_display_name": "None",
+        "user_control_policies": "None",
+        "user_control_identity_policies": "None",
+        "user_attacker_auth_http_status": "200",
+        "user_attacker_login_success": "True",
+        "user_attacker_login_status": "200",
+        "user_attacker_login_http_status": "200",
+        "user_attacker_entity_id": "None",
+        "user_attacker_display_name": "None",
+        "user_attacker_policies": "None",
+        "user_attacker_identity_policies": "None",
+        "cleanup_http_status": "404"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "9fe80a263da80972",
+      "sequence_id": "seq_i2_saml_expired_then_replay_same_assertion_id",
+      "sequence_description": "Attempt to use an expired SAML assertion (NotOnOrAfter in the past). If accepted, immediately replay the same expired assertion ID in a new SP-initiated session to test both expiry enforcement and replay resistance.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I2",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Expired SAML assertions (including a replay of the same assertion) appear to be accepted at the SAML login/ACS step (HTTP 200), suggesting missing NotOnOrAfter enforcement and/or replay detection at that layer.",
+      "cve_analog": "none",
+      "evidence": {
+        "user_attacker_expired_saml_http_status": 200,
+        "user_attacker_expired_saml_login_success": true,
+        "user_attacker_expired_replay_saml_http_status": 200,
+        "user_attacker_expired_replay_saml_login_success": true,
+        "user_attacker_init_1_http_status": 200,
+        "user_attacker_init_2_http_status": 200,
+        "llm_judge_description": "Expired SAML assertions (including a replay of the same assertion) appear to be accepted at the SAML login/ACS step (HTTP 200), suggesting missing NotOnOrAfter enforcement and/or replay detection at that layer."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_saml_expired_then_replay_same_assertion_id",
+      "description": "Attempt to use an expired SAML assertion (NotOnOrAfter in the past). If accepted, immediately replay the same expired assertion ID in a new SP-initiated session to test both expiry enforcement and replay resistance.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: Expired SAML assertions must be rejected; additionally, even if an expired assertion were mistakenly accepted once, it must not be reusable (replay must be rejected).",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 9,
+      "events_succeeded": 6,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_exp_ctl",
+            "nonce": "nz_exp_ctl",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_control_init",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_init_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": {
+              "target_identity": "control-expiry",
+              "email": "control-expiry@example.com",
+              "provider": "saml",
+              "realm": "dex"
+            },
+            "relay_state": "st_exp_ctl"
+          },
+          "auth_as": "user_control_valid_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_valid_saml_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "exchange_code_for_token",
+          "params": {
+            "grant_type": "authorization_code",
+            "code": "{{user_control_valid_saml_code}}",
+            "redirect_uri": "http://localhost:8080/callback",
+            "client_id": "valence-test-client",
+            "client_secret": "valence-test-secret",
+            "code_verifier": "{{user_control_valid_saml_code_verifier}}"
+          },
+          "auth_as": "user_control_code_exchange",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_code_exchange_http_status": "http_status",
+            "user_control_code_exchange_session_token": "session_token"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_code_exchange",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_code_exchange_entity_id": "sub",
+            "user_control_code_exchange_display_name": "name",
+            "user_control_code_exchange_policies": "groups",
+            "user_control_code_exchange_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_exp_1",
+            "nonce": "nz_exp_1",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_attacker_init_1",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_init_1_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": {
+              "target_identity": "attacker-expired",
+              "email": "attacker-expired@example.com",
+              "provider": "saml",
+              "realm": "dex",
+              "expired_assertion": true,
+              "fixed_assertion_id": "_expired_then_replay"
+            },
+            "relay_state": "st_exp_1"
+          },
+          "auth_as": "user_attacker_expired_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_expired_saml_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "st_exp_2",
+            "nonce": "nz_exp_2",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_attacker_init_2",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_init_2_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": {
+              "target_identity": "attacker-expired",
+              "email": "attacker-expired@example.com",
+              "provider": "saml",
+              "realm": "dex",
+              "expired_assertion": true,
+              "fixed_assertion_id": "_expired_then_replay"
+            },
+            "relay_state": "st_exp_2"
+          },
+          "auth_as": "user_attacker_expired_replay_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_expired_replay_saml_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_code_exchange",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_code_exchange_entity_id": "sub",
+            "user_control_code_exchange_display_name": "name",
+            "user_control_code_exchange_policies": "groups",
+            "user_control_code_exchange_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_valid_saml_succeeds",
+          "invariant": "I2",
+          "assertion": "user_control_valid_saml_http_status < 400 AND user_control_code_exchange_http_status == 200",
+          "violation_description": "Control valid SAML login failed; expired-assertion results are inconclusive.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_assertion_rejected",
+          "invariant": "I2",
+          "assertion": "user_attacker_expired_saml_http_status >= 400",
+          "violation_description": "Dex accepted an expired SAML assertion (NotOnOrAfter in the past); expiry must be enforced (SAML Core 2.5.1.2).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_assertion_replay_rejected",
+          "invariant": "I2",
+          "assertion": "user_attacker_expired_replay_saml_http_status >= 400",
+          "violation_description": "Dex accepted a replay of the same expired SAML assertion ID; replay must be rejected even across sessions.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_init_http_status": "200",
+        "user_control_valid_saml_http_status": "200",
+        "user_control_valid_saml_login_success": "True",
+        "user_control_valid_saml_login_status": "200",
+        "user_control_valid_saml_login_http_status": "200",
+        "user_control_code_exchange_http_status": "400",
+        "user_control_code_exchange_session_token": "None",
+        "user_control_code_exchange_entity_id": "None",
+        "user_control_code_exchange_display_name": "None",
+        "user_control_code_exchange_policies": "None",
+        "user_control_code_exchange_identity_policies": "None",
+        "user_attacker_init_1_http_status": "200",
+        "user_attacker_expired_saml_http_status": "200",
+        "user_attacker_expired_saml_login_success": "True",
+        "user_attacker_expired_saml_login_status": "200",
+        "user_attacker_expired_saml_login_http_status": "200",
+        "user_attacker_init_2_http_status": "200",
+        "user_attacker_expired_replay_saml_http_status": "200",
+        "user_attacker_expired_replay_saml_login_success": "True",
+        "user_attacker_expired_replay_saml_login_status": "200",
+        "user_attacker_expired_replay_saml_login_http_status": "200"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "85a05dcf2b27a052",
+      "sequence_id": "seq_i2_saml_relaystate_replay_same_flow",
+      "sequence_description": "Replay the exact same SAMLResponse (same Assertion/@ID) against the SAME SP-initiated RelayState/InResponseTo context to test whether Dex enforces one-time consumption of the SAML response/artifact within a single flow.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I2",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Both the original SAML login and the replayed SAML login returned HTTP 200 (success), which is suspicious for a same-flow SAMLResponse replay test, though no usable session/token was ultimately issued (bearer token invalid).",
+      "cve_analog": "none",
+      "evidence": {
+        "user_attacker_first_login_status": 200,
+        "user_attacker_first_login_success": true,
+        "user_attacker_replay_same_context_login_status": 200,
+        "user_attacker_replay_same_context_login_success": true,
+        "llm_judge_description": "Both the original SAML login and the replayed SAML login returned HTTP 200 (success), which is suspicious for a same-flow SAMLResponse replay test, though no usable session/token was ultimately issued (bearer token invalid)."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i2_saml_relaystate_replay_same_flow",
+      "description": "Replay the exact same SAMLResponse (same Assertion/@ID) against the SAME SP-initiated RelayState/InResponseTo context to test whether Dex enforces one-time consumption of the SAML response/artifact within a single flow.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A SAMLResponse/Assertion must not be accepted more than once; replaying the same assertion against the same RelayState/InResponseTo should be rejected on the second submission.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 3,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state_relay_replay_1",
+            "nonce": "nonce_relay_replay_1",
+            "connector_id": "test-saml",
+            "approval_prompt": "force"
+          },
+          "auth_as": "user_attacker_flow",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_flow_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": {
+              "target_identity": "attacker_relay_replay",
+              "email": "attacker_relay_replay@example.com",
+              "provider": "saml",
+              "realm": "dex",
+              "fixed_assertion_id": "_relaystate_replay_assertion",
+              "include_onetimeuse": false
+            },
+            "relay_state": "state_relay_replay_1"
+          },
+          "auth_as": "user_attacker_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_first_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": {
+              "target_identity": "attacker_relay_replay",
+              "email": "attacker_relay_replay@example.com",
+              "provider": "saml",
+              "realm": "dex",
+              "fixed_assertion_id": "_relaystate_replay_assertion",
+              "include_onetimeuse": false
+            },
+            "relay_state": "state_relay_replay_1"
+          },
+          "auth_as": "user_attacker_replay_same_context",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_replay_same_context_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_first_entity_id": "sub",
+            "user_attacker_first_display_name": "name",
+            "user_attacker_first_policies": "groups",
+            "user_attacker_first_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_replay_same_context",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_replay_same_context_entity_id": "sub",
+            "user_attacker_replay_same_context_display_name": "name",
+            "user_attacker_replay_same_context_policies": "groups",
+            "user_attacker_replay_same_context_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_saml_replay_same_relaystate_rejected",
+          "invariant": "I2",
+          "assertion": "user_attacker_first_login_status < 400 AND user_attacker_replay_same_context_login_status >= 400",
+          "violation_description": "Dex accepted the same SAML assertion twice within the same SP-initiated RelayState/InResponseTo context (replay not prevented).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_attacker_flow_http_status": "200",
+        "user_attacker_first_login_status": "200",
+        "user_attacker_first_login_success": "True",
+        "user_attacker_first_login_http_status": "200",
+        "user_attacker_replay_same_context_login_status": "200",
+        "user_attacker_replay_same_context_login_success": "True",
+        "user_attacker_replay_same_context_login_http_status": "200",
+        "user_attacker_first_entity_id": "None",
+        "user_attacker_first_display_name": "None",
+        "user_attacker_first_policies": "None",
+        "user_attacker_first_identity_policies": "None",
+        "user_attacker_replay_same_context_entity_id": "None",
+        "user_attacker_replay_same_context_display_name": "None",
+        "user_attacker_replay_same_context_policies": "None",
+        "user_attacker_replay_same_context_identity_policies": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "8e1a5bbca337c0ba",
+      "sequence_id": "seq_i3_saml_wrong_connector_callback_mixup",
+      "sequence_description": "Connector mix-up: initiate auth with one connector_id but post the SAMLResponse to a different connector callback endpoint. Dex should reject because the flow must be bound to the initiating connector/session.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I3",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Posting a SAMLResponse to the wrong connector callback caused an HTTP 500 (server error) instead of a clean rejection (e.g., 4xx), suggesting an unhandled error path that could enable DoS or information leakage.",
+      "cve_analog": "none",
+      "evidence": {
+        "user_attacker_mixup_login_http_status": 500,
+        "user_attacker_mixup_login_status": 500,
+        "user_attacker_mixup_login_success": false,
+        "user_init_test_saml_http_status": 200,
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "llm_judge_description": "Posting a SAMLResponse to the wrong connector callback caused an HTTP 500 (server error) instead of a clean rejection (e.g., 4xx), suggesting an unhandled error path that could enable DoS or information leakage."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i3_saml_wrong_connector_callback_mixup",
+      "description": "Connector mix-up: initiate auth with one connector_id but post the SAMLResponse to a different connector callback endpoint. Dex should reject because the flow must be bound to the initiating connector/session.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I3",
+      "invariant_hypothesis": "I3: The SAML callback must be bound to the connector that initiated the flow; posting a response to a different connector callback must not complete authentication.",
+      "cve_analog": "none",
+      "status": "LOGIN_FAILED",
+      "events_total": 5,
+      "events_succeeded": 1,
+      "events_failed": 4,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_type": "saml",
+            "connector_id": "mock",
+            "name": "mock-saml-second-connector",
+            "sso_url": "http://mock-idp/sso",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "name",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "insecure_skip_signature_validation": true,
+            "entity_issuer": "http://localhost:5556/dex/callback",
+            "sso_issuer": "http://mock-idp/issuer",
+            "groups_delim": ",",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+            "grant_types": [
+              "authorization_code"
+            ],
+            "response_types": [
+              "code"
+            ],
+            "skip_approval_screen": true,
+            "always_show_login_screen": true,
+            "password_connector": ""
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email profile",
+            "response_type": "code",
+            "state": "state-init-test-saml",
+            "nonce": "nonce-init-test-saml",
+            "connector_id": "test-saml",
+            "approval_prompt": "auto"
+          },
+          "auth_as": "user_init_test_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "user_init_test_saml_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "mock",
+            "saml_response": "{\"target_identity\":\"attacker-mixup\",\"email\":\"attacker-mixup@example.com\",\"provider\":\"saml\",\"realm\":\"default\"}",
+            "relay_state": "state-init-test-saml"
+          },
+          "auth_as": "user_attacker_mixup",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_mixup",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_mixup_entity_id": "sub",
+            "user_attacker_mixup_display_name": "name",
+            "user_attacker_mixup_policies": "groups",
+            "user_attacker_mixup_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "cleanup_auth_method",
+          "params": {
+            "connector_id": "mock"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {
+            "admin_cleanup_http_status": "http_status"
+          },
+          "phase": "setup"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i3_reject_wrong_connector_callback",
+          "invariant": "I3",
+          "assertion": "user_attacker_mixup_login_status >= 400",
+          "violation_description": "Dex accepted a SAMLResponse on a different connector callback than the one that initiated the flow (connector/session mix-up).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I3"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_init_test_saml_http_status": "200",
+        "user_attacker_mixup_login_success": "False",
+        "user_attacker_mixup_login_status": "500",
+        "user_attacker_mixup_login_http_status": "500",
+        "user_attacker_mixup_entity_id": "None",
+        "user_attacker_mixup_display_name": "None",
+        "user_attacker_mixup_policies": "None",
+        "user_attacker_mixup_identity_policies": "None",
+        "admin_cleanup_http_status": "404"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "6939545818fda216",
+      "sequence_id": "seq_i5_saml_group_gate_bypass_via_delimiter_confusion",
+      "sequence_description": "If allowedGroups is configured, authentication should be gated by exact group membership. Attempt to bypass gating by encoding groups as a single delimited string that might be split unexpectedly.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I5",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "[LLM-Judge] Post-login identity verification fails with 'Invalid bearer token' (403) for both control and attacker flows, preventing assessment of group-gating behavior and suggesting a token issuance/session handling problem in the test run.",
+      "cve_analog": "none",
+      "evidence": {
+        "user_control_groups_login_status": 200,
+        "user_control_groups_flow_http_status": 200,
+        "user_attacker_group_confusion_login_status": 200,
+        "user_attack_groups_flow_http_status": 200,
+        "llm_judge_description": "Post-login identity verification fails with 'Invalid bearer token' (403) for both control and attacker flows, preventing assessment of group-gating behavior and suggesting a token issuance/session handling problem in the test run."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_saml_group_gate_bypass_via_delimiter_confusion",
+      "description": "If allowedGroups is configured, authentication should be gated by exact group membership. Attempt to bypass gating by encoding groups as a single delimited string that might be split unexpectedly.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Dex must not grant access when upstream group intent does not include an allowed group; delimiter/type confusion in groups claim parsing must not bypass allowedGroups gating.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_type": "saml",
+            "connector_id": "test-saml",
+            "name": "test-saml",
+            "sso_url": "http://mock-idp/sso",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [
+              "admins"
+            ],
+            "filter_groups": true,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "http://localhost:5556/dex/callback",
+            "sso_issuer": "http://mock-idp/issuer",
+            "groups_delim": ",",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+            "grant_types": [
+              "authorization_code"
+            ],
+            "response_types": [
+              "code"
+            ],
+            "skip_approval_screen": true,
+            "always_show_login_screen": true,
+            "password_connector": ""
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email groups",
+            "response_type": "code",
+            "state": "state-control-groups",
+            "nonce": "nonce-control-groups",
+            "connector_id": "test-saml",
+            "approval_prompt": "force"
+          },
+          "auth_as": "user_control_groups_flow",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_groups_flow_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"control-admin\",\"email\":\"control-admin@example.com\",\"provider\":\"saml\",\"realm\":\"default\",\"groups\":[\"admins\"]}",
+            "relay_state": "{{user_control_groups_flow_http_status}}"
+          },
+          "auth_as": "user_control_groups",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_groups_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_groups",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_groups_entity_id": "sub",
+            "user_control_groups_display_name": "name",
+            "user_control_groups_policies": "groups",
+            "user_control_groups_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email groups",
+            "response_type": "code",
+            "state": "state-attack-groups",
+            "nonce": "nonce-attack-groups",
+            "connector_id": "test-saml",
+            "approval_prompt": "force"
+          },
+          "auth_as": "user_attack_groups_flow",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attack_groups_flow_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"attacker-group-confusion\",\"email\":\"attacker-group-confusion@example.com\",\"provider\":\"saml\",\"realm\":\"default\",\"groups\":\"users,admins\"}",
+            "relay_state": "{{user_attack_groups_flow_http_status}}"
+          },
+          "auth_as": "user_attacker_group_confusion",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_group_confusion_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_group_confusion",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_group_confusion_entity_id": "sub",
+            "user_attacker_group_confusion_display_name": "name",
+            "user_attacker_group_confusion_policies": "groups",
+            "user_attacker_group_confusion_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_control_allowed_group_should_succeed",
+          "invariant": "I5",
+          "assertion": "user_control_groups_login_status < 400",
+          "violation_description": "Control login with allowed group failed; cannot evaluate allowedGroups gating behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_reject_group_delimiter_type_confusion",
+          "invariant": "I5",
+          "assertion": "user_attacker_group_confusion_login_status >= 400",
+          "violation_description": "Dex accepted a SAML login where groups were provided as a single delimited string, potentially bypassing allowedGroups gating and violating authorization binding.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_groups_flow_http_status": "200",
+        "user_control_groups_login_status": "200",
+        "user_control_groups_login_success": "True",
+        "user_control_groups_login_http_status": "200",
+        "user_control_groups_entity_id": "None",
+        "user_control_groups_display_name": "None",
+        "user_control_groups_policies": "None",
+        "user_control_groups_identity_policies": "None",
+        "user_attack_groups_flow_http_status": "200",
+        "user_attacker_group_confusion_login_status": "200",
+        "user_attacker_group_confusion_login_success": "True",
+        "user_attacker_group_confusion_login_http_status": "200",
+        "user_attacker_group_confusion_entity_id": "None",
+        "user_attacker_group_confusion_display_name": "None",
+        "user_attacker_group_confusion_policies": "None",
+        "user_attacker_group_confusion_identity_policies": "None"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "47211fab9d80e81d",
+      "sequence_id": "seq_i5_saml_group_gate_bypass_via_delimiter_confusion",
+      "sequence_description": "If allowedGroups is configured, authentication should be gated by exact group membership. Attempt to bypass gating by encoding groups as a single delimited string that might be split unexpectedly.",
+      "generation_strategy": "attack",
+      "verdict_path": "plain_llm",
+      "invariant": "I5",
+      "identified_invariant": "",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "LOW",
+      "description": "[LLM-Judge] Admin setup step to enable the auth method failed as 'Unsupported method: CREATECONNECTOR', so the intended allowedGroups gating configuration may not have been applied, invalidating the bypass test conditions.",
+      "cve_analog": "none",
+      "evidence": {
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "llm_judge_description": "Admin setup step to enable the auth method failed as 'Unsupported method: CREATECONNECTOR', so the intended allowedGroups gating configuration may not have been applied, invalidating the bypass test conditions."
+      },
+      "detection_source": "plain_llm",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_i5_saml_group_gate_bypass_via_delimiter_confusion",
+      "description": "If allowedGroups is configured, authentication should be gated by exact group membership. Attempt to bypass gating by encoding groups as a single delimited string that might be split unexpectedly.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I5",
+      "invariant_hypothesis": "I5: Dex must not grant access when upstream group intent does not include an allowed group; delimiter/type confusion in groups claim parsing must not bypass allowedGroups gating.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "enable_auth_method",
+          "params": {
+            "connector_type": "saml",
+            "connector_id": "test-saml",
+            "name": "test-saml",
+            "sso_url": "http://mock-idp/sso",
+            "redirect_uri": "http://localhost:5556/dex/callback",
+            "username_attr": "username",
+            "email_attr": "email",
+            "groups_attr": "groups",
+            "allowed_groups": [
+              "admins"
+            ],
+            "filter_groups": true,
+            "insecure_skip_signature_validation": false,
+            "entity_issuer": "http://localhost:5556/dex/callback",
+            "sso_issuer": "http://mock-idp/issuer",
+            "groups_delim": ",",
+            "nameid_policy_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+            "grant_types": [
+              "authorization_code"
+            ],
+            "response_types": [
+              "code"
+            ],
+            "skip_approval_screen": true,
+            "always_show_login_screen": true,
+            "password_connector": ""
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email groups",
+            "response_type": "code",
+            "state": "state-control-groups",
+            "nonce": "nonce-control-groups",
+            "connector_id": "test-saml",
+            "approval_prompt": "force"
+          },
+          "auth_as": "user_control_groups_flow",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_groups_flow_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"control-admin\",\"email\":\"control-admin@example.com\",\"provider\":\"saml\",\"realm\":\"default\",\"groups\":[\"admins\"]}",
+            "relay_state": "{{user_control_groups_flow_http_status}}"
+          },
+          "auth_as": "user_control_groups",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_groups_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_control_groups",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_groups_entity_id": "sub",
+            "user_control_groups_display_name": "name",
+            "user_control_groups_policies": "groups",
+            "user_control_groups_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "start_oidc_auth",
+          "params": {
+            "client_id": "valence-test-client",
+            "redirect_uri": "http://localhost:8080/callback",
+            "scope": "openid email groups",
+            "response_type": "code",
+            "state": "state-attack-groups",
+            "nonce": "nonce-attack-groups",
+            "connector_id": "test-saml",
+            "approval_prompt": "force"
+          },
+          "auth_as": "user_attack_groups_flow",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attack_groups_flow_http_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "connector_id": "test-saml",
+            "saml_response": "{\"target_identity\":\"attacker-group-confusion\",\"email\":\"attacker-group-confusion@example.com\",\"provider\":\"saml\",\"realm\":\"default\",\"groups\":\"users,admins\"}",
+            "relay_state": "{{user_attack_groups_flow_http_status}}"
+          },
+          "auth_as": "user_attacker_group_confusion",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_group_confusion_login_status": "http_status"
+          },
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {},
+          "auth_as": "session_user_attacker_group_confusion",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_group_confusion_entity_id": "sub",
+            "user_attacker_group_confusion_display_name": "name",
+            "user_attacker_group_confusion_policies": "groups",
+            "user_attacker_group_confusion_identity_policies": "federated_claims"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i5_control_allowed_group_should_succeed",
+          "invariant": "I5",
+          "assertion": "user_control_groups_login_status < 400",
+          "violation_description": "Control login with allowed group failed; cannot evaluate allowedGroups gating behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i5_reject_group_delimiter_type_confusion",
+          "invariant": "I5",
+          "assertion": "user_attacker_group_confusion_login_status >= 400",
+          "violation_description": "Dex accepted a SAML login where groups were provided as a single delimited string, potentially bypassing allowedGroups gating and violating authorization binding.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I5"
+      },
+      "captured_state": {
+        "client_id": "valence-test-client",
+        "client_secret": "valence-test-secret",
+        "redirect_uri": "http://localhost:8080/callback",
+        "connector_id": "mock",
+        "saml_connector_id": "test-saml",
+        "saml_idp_key_path": "docker/dex/saml_idp_key.pem",
+        "saml_idp_cert_path": "docker/dex/saml_idp_cert.pem",
+        "saml_sp_acs_url": "http://localhost:5556/dex/callback",
+        "user_control_groups_flow_http_status": "200",
+        "user_control_groups_login_status": "200",
+        "user_control_groups_login_success": "True",
+        "user_control_groups_login_http_status": "200",
+        "user_control_groups_entity_id": "None",
+        "user_control_groups_display_name": "None",
+        "user_control_groups_policies": "None",
+        "user_control_groups_identity_policies": "None",
+        "user_attack_groups_flow_http_status": "200",
+        "user_attacker_group_confusion_login_status": "200",
+        "user_attacker_group_confusion_login_success": "True",
+        "user_attacker_group_confusion_login_http_status": "200",
+        "user_attacker_group_confusion_entity_id": "None",
+        "user_attacker_group_confusion_display_name": "None",
+        "user_attacker_group_confusion_policies": "None",
+        "user_attacker_group_confusion_identity_policies": "None"
+      }
+    }
+  }
+]

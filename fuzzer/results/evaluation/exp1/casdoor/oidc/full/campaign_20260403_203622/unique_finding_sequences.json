@@ -1,0 +1,1502 @@
+[
+  {
+    "finding": {
+      "finding_id": "b5f5463fe8f4bafa",
+      "sequence_id": "seq_casdoor_i2_saml_expired_then_valid_control",
+      "sequence_description": "I2 expiry enforcement: run a valid control password login, then attempt SAML login with an expired assertion (NotOnOrAfter in the past) for a different identity; verify expired assertion is rejected and does not create an active session.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_expired_saml_login_status >= 400\nEvaluation: user_attacker_expired_saml_login_status=200 >= 400 \u2192 False\nImplication: Expired SAML assertion was accepted (login succeeded) \u2014 freshness/expiry enforcement failure.",
+      "cve_analog": "CVE-2017-11427",
+      "evidence": {
+        "assertion": "user_attacker_expired_saml_login_status >= 400",
+        "evaluation": "user_attacker_expired_saml_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "exp": null,
+          "user_attacker_expired_saml_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_casdoor_i2_saml_expired_then_valid_control",
+      "description": "I2 expiry enforcement: run a valid control password login, then attempt SAML login with an expired assertion (NotOnOrAfter in the past) for a different identity; verify expired assertion is rejected and does not create an active session.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A SAML assertion that is expired (NotOnOrAfter in the past) must not be accepted to create a session, even if other fields are well-formed.",
+      "cve_analog": "CVE-2017-11427",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 4,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "i2_ctrl_pwd_user",
+            "display_name": "I2 Control Pwd User",
+            "email": "i2_ctrl_pwd_user@test.local",
+            "password": "CtrlPwd123456!",
+            "type": "normal-user",
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "app-test",
+            "client_secret": "app-test",
+            "username": "i2_ctrl_pwd_user",
+            "password": "CtrlPwd123456!",
+            "scope": "openid profile email"
+          },
+          "auth_as": "user_control_pwd",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_control_pwd_session_token}}"
+          },
+          "auth_as": "session_user_control_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_pwd_entity_id": "sub",
+            "user_control_pwd_identity_name": "preferred_username",
+            "user_control_pwd_display_name": "name",
+            "user_control_pwd_meta": "$",
+            "user_control_pwd_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{user_control_pwd_session_token}}",
+            "token_type_hint": "access_token",
+            "client_id": "app-test",
+            "client_secret": "app-test"
+          },
+          "auth_as": "session_user_control_pwd",
+          "expected_outcome": "any",
+          "captures": {
+            "active": "user_control_pwd_active",
+            "exp": "user_control_pwd_exp",
+            "iat": "user_control_pwd_iat",
+            "aud": "user_control_pwd_aud",
+            "sub": "user_control_pwd_sub",
+            "http_status": "user_control_pwd_introspect_http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "i2-expired-assertion",
+            "redirect_uri": "http://localhost:8000/callback",
+            "expired_assertion": true
+          },
+          "auth_as": "user_attacker_expired_saml",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attacker_expired_saml_session_token}}"
+          },
+          "auth_as": "session_user_attacker_expired_saml",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_expired_saml_entity_id": "sub",
+            "user_attacker_expired_saml_identity_name": "preferred_username",
+            "user_attacker_expired_saml_display_name": "name",
+            "user_attacker_expired_saml_meta": "$",
+            "user_attacker_expired_saml_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_pwd_login_ok",
+          "invariant": "I2",
+          "assertion": "user_control_pwd_login_status < 400 AND user_control_pwd_active == true",
+          "violation_description": "Control password login or token introspection failed; cannot distinguish expiry enforcement from setup issues.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_saml_rejected",
+          "invariant": "I2",
+          "assertion": "user_attacker_expired_saml_login_status >= 400",
+          "violation_description": "Expired SAML assertion was accepted (login succeeded) \u2014 freshness/expiry enforcement failure.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "session_token": "ee76c5e07842eb71004d",
+        "user_control_pwd_entity_id": "330713fc-b9a3-4afb-b050-38a6e02ae43f",
+        "user_control_pwd_email": "i2_ctrl_pwd_user@test.local",
+        "user_control_pwd_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2N0cmxfcHdkX3VzZXIiLCJjcmVhdGVkVGltZSI6IjIwMjYtMDQtMDNUMjA6NDY6MDlaIiwidXBkYXRlZFRpbWUiOiIyM",
+        "user_control_pwd_metadata": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2N0cmxfcHdkX3VzZXIiLCJjcmVhdGVkVGltZSI6IjIwMjYtMDQtMDNUMjA6NDY6MDlaIiwidXBkYXRlZFRpbWUiOiIyM",
+        "user_control_pwd_login_success": "True",
+        "user_control_pwd_login_status": "200",
+        "user_control_pwd_login_http_status": "200",
+        "identity_id": "330713fc-b9a3-4afb-b050-38a6e02ae43f",
+        "identity_name": "i2_ctrl_pwd_user",
+        "display_name": "I2 Control Pwd User",
+        "email": "i2_ctrl_pwd_user@test.local",
+        "user_control_pwd_identity_name": "i2_ctrl_pwd_user",
+        "user_control_pwd_display_name": "I2 Control Pwd User",
+        "user_control_pwd_meta": "{'sub': '330713fc-b9a3-4afb-b050-38a6e02ae43f', 'iss': 'http://localhost:8000', 'aud': 'valence_285673e008304d9c', 'preferred_username': 'i2_ctrl_pwd_user', 'name': 'I2 Control Pwd User', 'email': 'i2",
+        "user_control_pwd_identity_id": "330713fc-b9a3-4afb-b050-38a6e02ae43f",
+        "active": "None",
+        "exp": "None",
+        "iat": "None",
+        "aud": "None",
+        "sub": "None",
+        "http_status": "None",
+        "user_attacker_expired_saml_entity_id": "admin",
+        "user_attacker_expired_saml_email": "i2_ctrl_pwd_user@test.local",
+        "user_attacker_expired_saml_session_token": "ee76c5e07842eb71004d",
+        "user_attacker_expired_saml_login_success": "True",
+        "user_attacker_expired_saml_login_status": "200",
+        "user_attacker_expired_saml_login_http_status": "200",
+        "user_attacker_expired_saml_identity_name": "None",
+        "user_attacker_expired_saml_display_name": "None",
+        "user_attacker_expired_saml_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "mutation_sweep": "{'total_mutations': 8, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "30f3217988ca5072",
+      "sequence_id": "seq_casdoor_i2_saml_replay_without_onetimeuse_fixed_id",
+      "sequence_description": "I2 replay: perform a control password login, then perform a forged SAML login with a fixed Assertion/@ID (no OneTimeUse), and replay the same Assertion/@ID again; verify the second login is rejected (anti-replay).",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_attacker_saml_replay_login_status >= 400\nEvaluation: user_attacker_saml_replay_login_status=200 >= 400 \u2192 False\nImplication: Replayed SAML assertion (same Assertion/@ID) was accepted \u2014 anti-replay failure.",
+      "cve_analog": "CVE-2020-27838",
+      "evidence": {
+        "assertion": "user_attacker_saml_replay_login_status >= 400",
+        "evaluation": "user_attacker_saml_replay_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_attacker_saml_replay_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_casdoor_i2_saml_replay_without_onetimeuse_fixed_id",
+      "description": "I2 replay: perform a control password login, then perform a forged SAML login with a fixed Assertion/@ID (no OneTimeUse), and replay the same Assertion/@ID again; verify the second login is rejected (anti-replay).",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: Even without an explicit OneTimeUse condition, the SP should not accept the exact same SAML Assertion ID multiple times within a short window (basic replay defense).",
+      "cve_analog": "CVE-2020-27838",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 5,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "i2_ctrl_pwd_user2",
+            "display_name": "I2 Control Pwd User2",
+            "email": "i2_ctrl_pwd_user2@test.local",
+            "password": "CtrlPwd2_123456!",
+            "type": "normal-user",
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "app-test",
+            "client_secret": "app-test",
+            "username": "i2_ctrl_pwd_user2",
+            "password": "CtrlPwd2_123456!",
+            "scope": "openid profile email"
+          },
+          "auth_as": "user_control_pwd2",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_control_pwd2_session_token}}"
+          },
+          "auth_as": "session_user_control_pwd2",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_pwd2_entity_id": "sub",
+            "user_control_pwd2_identity_name": "preferred_username",
+            "user_control_pwd2_display_name": "name",
+            "user_control_pwd2_meta": "$",
+            "user_control_pwd2_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "i2-replay-1",
+            "redirect_uri": "http://localhost:8000/callback",
+            "fixed_assertion_id": "ASSERTION-REPLAY-FIXED-ID-001"
+          },
+          "auth_as": "user_attacker_saml_first",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attacker_saml_first_session_token}}"
+          },
+          "auth_as": "session_user_attacker_saml_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_saml_first_entity_id": "sub",
+            "user_attacker_saml_first_identity_name": "preferred_username",
+            "user_attacker_saml_first_display_name": "name",
+            "user_attacker_saml_first_meta": "$",
+            "user_attacker_saml_first_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "i2-replay-2",
+            "redirect_uri": "http://localhost:8000/callback",
+            "fixed_assertion_id": "ASSERTION-REPLAY-FIXED-ID-001"
+          },
+          "auth_as": "user_attacker_saml_replay",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_attacker_saml_replay_session_token}}"
+          },
+          "auth_as": "session_user_attacker_saml_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_attacker_saml_replay_entity_id": "sub",
+            "user_attacker_saml_replay_identity_name": "preferred_username",
+            "user_attacker_saml_replay_display_name": "name",
+            "user_attacker_saml_replay_meta": "$",
+            "user_attacker_saml_replay_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_pwd2_login_ok",
+          "invariant": "I2",
+          "assertion": "user_control_pwd2_login_status < 400",
+          "violation_description": "Control password login failed; cannot interpret SAML replay results.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_replay_second_use_rejected",
+          "invariant": "I2",
+          "assertion": "user_attacker_saml_replay_login_status >= 400",
+          "violation_description": "Replayed SAML assertion (same Assertion/@ID) was accepted \u2014 anti-replay failure.",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "session_token": "10af5bbab7ee56f84669",
+        "user_control_pwd2_entity_id": "1befded5-9bb5-4c39-b4f8-4e76243a6158",
+        "user_control_pwd2_email": "i2_ctrl_pwd_user2@test.local",
+        "user_control_pwd2_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2N0cmxfcHdkX3VzZXIyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjExWiIsInVwZGF0ZWRUaW1lIjoiM",
+        "user_control_pwd2_metadata": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2N0cmxfcHdkX3VzZXIyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjExWiIsInVwZGF0ZWRUaW1lIjoiM",
+        "user_control_pwd2_login_success": "True",
+        "user_control_pwd2_login_status": "200",
+        "user_control_pwd2_login_http_status": "200",
+        "identity_id": "1befded5-9bb5-4c39-b4f8-4e76243a6158",
+        "identity_name": "i2_ctrl_pwd_user2",
+        "display_name": "I2 Control Pwd User2",
+        "email": "i2_ctrl_pwd_user2@test.local",
+        "user_control_pwd2_identity_name": "i2_ctrl_pwd_user2",
+        "user_control_pwd2_display_name": "I2 Control Pwd User2",
+        "user_control_pwd2_meta": "{'sub': '1befded5-9bb5-4c39-b4f8-4e76243a6158', 'iss': 'http://localhost:8000', 'aud': 'valence_285673e008304d9c', 'preferred_username': 'i2_ctrl_pwd_user2', 'name': 'I2 Control Pwd User2', 'email': '",
+        "user_control_pwd2_identity_id": "1befded5-9bb5-4c39-b4f8-4e76243a6158",
+        "user_attacker_saml_first_entity_id": "admin",
+        "user_attacker_saml_first_email": "i2_ctrl_pwd_user2@test.local",
+        "user_attacker_saml_first_session_token": "36720874899bfaa4d797",
+        "user_attacker_saml_first_login_success": "True",
+        "user_attacker_saml_first_login_status": "200",
+        "user_attacker_saml_first_login_http_status": "200",
+        "user_attacker_saml_first_identity_name": "None",
+        "user_attacker_saml_first_display_name": "None",
+        "user_attacker_saml_first_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_attacker_saml_replay_entity_id": "admin",
+        "user_attacker_saml_replay_email": "i2_ctrl_pwd_user2@test.local",
+        "user_attacker_saml_replay_session_token": "10af5bbab7ee56f84669",
+        "user_attacker_saml_replay_login_success": "True",
+        "user_attacker_saml_replay_login_status": "200",
+        "user_attacker_saml_replay_login_http_status": "200",
+        "user_attacker_saml_replay_identity_name": "None",
+        "user_attacker_saml_replay_display_name": "None",
+        "user_attacker_saml_replay_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "mutation_sweep": "{'total_mutations': 8, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "00c263c1fefcd245",
+      "sequence_id": "seq_casdoor_i2_token_exchange_replay_after_revocation",
+      "sequence_description": "Use a valid access token as subject_token for token exchange (control), revoke the subject token session, then attempt token exchange again with the revoked subject token to test whether revocation is enforced for token-exchange inputs.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_exchanged_after_revoke_login_status >= 400\nEvaluation: user_exchanged_after_revoke_login_status=200 >= 400 \u2192 False\nImplication: Token exchange accepted a revoked access token as subject_token (revocation not enforced for token-exchange inputs).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_exchanged_after_revoke_login_status >= 400",
+        "evaluation": "user_exchanged_after_revoke_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "status": "ok",
+          "user_exchanged_after_revoke_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_casdoor_i2_token_exchange_replay_after_revocation",
+      "description": "Use a valid access token as subject_token for token exchange (control), revoke the subject token session, then attempt token exchange again with the revoked subject token to test whether revocation is enforced for token-exchange inputs.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A revoked access token must not remain usable as a subject_token for RFC 8693 token exchange; revocation should prevent further reuse of the artifact.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 8,
+      "events_succeeded": 5,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "i2_revoked_subject_token_user",
+            "display_name": "I2 Revoked Subject Token User",
+            "email": "i2_revoked_subject_token_user@test.local",
+            "password": "Pwd123456!revsub",
+            "type": "normal-user",
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "username": "i2_revoked_subject_token_user",
+            "password": "Pwd123456!revsub",
+            "client_id": "app-test",
+            "scope": "openid profile"
+          },
+          "auth_as": "user_subject",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{user_subject_session_token}}",
+            "token_type_hint": "access_token",
+            "client_id": "app-test",
+            "client_secret": "{{app_test_client_secret}}"
+          },
+          "auth_as": "session_user_subject",
+          "expected_outcome": "any",
+          "captures": {
+            "active": "user_subject_active",
+            "sub": "user_subject_sub",
+            "aud": "user_subject_aud",
+            "exp": "user_subject_exp",
+            "iat": "user_subject_iat",
+            "http_status": "user_subject_http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "client_id": "app-test",
+            "client_secret": "{{app_test_client_secret}}",
+            "subject_token": "{{user_subject_session_token}}",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "scope": "openid profile",
+            "audience": "app-test"
+          },
+          "auth_as": "user_exchanged_before_revoke",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{user_exchanged_before_revoke_session_token}}",
+            "token_type_hint": "access_token",
+            "client_id": "app-test",
+            "client_secret": "{{app_test_client_secret}}"
+          },
+          "auth_as": "session_user_exchanged_before_revoke",
+          "expected_outcome": "any",
+          "captures": {
+            "active": "user_exchanged_before_revoke_active",
+            "sub": "user_exchanged_before_revoke_sub",
+            "aud": "user_exchanged_before_revoke_aud",
+            "exp": "user_exchanged_before_revoke_exp",
+            "http_status": "user_exchanged_before_revoke_http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "revoke_session",
+          "params": {
+            "logout_all": false
+          },
+          "auth_as": "session_user_subject",
+          "expected_outcome": "any",
+          "captures": {
+            "http_status": "user_subject_revoke_http_status",
+            "status": "user_subject_revoke_status",
+            "message": "user_subject_revoke_message"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{user_subject_session_token}}",
+            "token_type_hint": "access_token",
+            "client_id": "app-test",
+            "client_secret": "{{app_test_client_secret}}"
+          },
+          "auth_as": "session_user_subject",
+          "expected_outcome": "any",
+          "captures": {
+            "active": "user_subject_active_after_revoke",
+            "http_status": "user_subject_http_status_after_revoke"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "client_id": "app-test",
+            "client_secret": "{{app_test_client_secret}}",
+            "subject_token": "{{user_subject_session_token}}",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "scope": "openid profile",
+            "audience": "app-test"
+          },
+          "auth_as": "user_exchanged_after_revoke",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_subject_token_control_active",
+          "invariant": "I2",
+          "assertion": "user_subject_login_status < 400 AND user_subject_http_status < 400 AND user_subject_active == true",
+          "violation_description": "Control subject token acquisition/introspection failed; cannot test revocation freshness.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_exchange_control_succeeds",
+          "invariant": "I2",
+          "assertion": "user_exchanged_before_revoke_login_status < 400 AND user_exchanged_before_revoke_http_status < 400 AND user_exchanged_before_revoke_active == true",
+          "violation_description": "Control token exchange failed; cannot interpret post-revocation exchange behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_revocation_makes_subject_inactive",
+          "invariant": "I2",
+          "assertion": "user_subject_active_after_revoke == false OR user_subject_http_status_after_revoke >= 400",
+          "violation_description": "Revoked subject token still introspects as active; revocation freshness may be broken.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_revoked_subject_token_not_usable_for_exchange",
+          "invariant": "I2",
+          "assertion": "user_exchanged_after_revoke_login_status >= 400",
+          "violation_description": "Token exchange accepted a revoked access token as subject_token (revocation not enforced for token-exchange inputs).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "openid profile",
+        "session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX3Jldm9rZWRfc3ViamVjdF90b2tlbl91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjE1WiIsInVwZ",
+        "user_subject_entity_id": "376ee18f-a998-4258-a531-28024f206ee9",
+        "user_subject_email": "i2_revoked_subject_token_user@test.local",
+        "user_subject_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX3Jldm9rZWRfc3ViamVjdF90b2tlbl91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjE1WiIsInVwZ",
+        "user_subject_metadata": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX3Jldm9rZWRfc3ViamVjdF90b2tlbl91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjE1WiIsInVwZ",
+        "user_subject_login_success": "True",
+        "user_subject_login_status": "200",
+        "user_subject_login_http_status": "200",
+        "active": "None",
+        "sub": "None",
+        "aud": "None",
+        "exp": "None",
+        "iat": "None",
+        "http_status": "None",
+        "refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX3Jldm9rZWRfc3ViamVjdF90b2tlbl91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjE1WiIsInVwZGF0ZWRUaW1lIjoiMjAyNi0wNC0wM1Q",
+        "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX3Jldm9rZWRfc3ViamVjdF90b2tlbl91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjE1WiIsInVwZ",
+        "token_type": "Bearer",
+        "expires_in": "604800",
+        "scope": "openid profile",
+        "user_exchanged_before_revoke_entity_id": "376ee18f-a998-4258-a531-28024f206ee9",
+        "user_exchanged_before_revoke_email": "i2_revoked_subject_token_user@test.local",
+        "user_exchanged_before_revoke_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX3Jldm9rZWRfc3ViamVjdF90b2tlbl91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjE1WiIsInVwZ",
+        "user_exchanged_before_revoke_metadata": "openid profile",
+        "user_exchanged_before_revoke_refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX3Jldm9rZWRfc3ViamVjdF90b2tlbl91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjE1WiIsInVwZGF0ZWRUaW1lIjoiMjAyNi0wNC0wM1Q",
+        "user_exchanged_before_revoke_id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX3Jldm9rZWRfc3ViamVjdF90b2tlbl91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjE1WiIsInVwZ",
+        "user_exchanged_before_revoke_token_type": "Bearer",
+        "user_exchanged_before_revoke_expires_in": "604800",
+        "user_exchanged_before_revoke_scope": "openid profile",
+        "user_exchanged_before_revoke_login_success": "True",
+        "user_exchanged_before_revoke_login_status": "200",
+        "user_exchanged_before_revoke_login_http_status": "200",
+        "status": "ok",
+        "message": "",
+        "user_exchanged_after_revoke_entity_id": "376ee18f-a998-4258-a531-28024f206ee9",
+        "user_exchanged_after_revoke_email": "i2_revoked_subject_token_user@test.local",
+        "user_exchanged_after_revoke_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX3Jldm9rZWRfc3ViamVjdF90b2tlbl91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjE1WiIsInVwZ",
+        "user_exchanged_after_revoke_metadata": "openid profile",
+        "user_exchanged_after_revoke_refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX3Jldm9rZWRfc3ViamVjdF90b2tlbl91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjE1WiIsInVwZGF0ZWRUaW1lIjoiMjAyNi0wNC0wM1Q",
+        "user_exchanged_after_revoke_id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX3Jldm9rZWRfc3ViamVjdF90b2tlbl91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjE1WiIsInVwZ",
+        "user_exchanged_after_revoke_token_type": "Bearer",
+        "user_exchanged_after_revoke_expires_in": "604800",
+        "user_exchanged_after_revoke_scope": "openid profile",
+        "user_exchanged_after_revoke_login_success": "True",
+        "user_exchanged_after_revoke_login_status": "200",
+        "user_exchanged_after_revoke_login_http_status": "200",
+        "mutation_sweep": "{'total_mutations': 8, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "aaac1e4bfdd702f4",
+      "sequence_id": "seq_casdoor_i2_saml_expired_then_nonexpired_same_assertion_id",
+      "sequence_description": "Attempt an expired forged SAML assertion first (should be rejected), then immediately attempt a non-expired assertion reusing the same Assertion/@ID to test whether Casdoor incorrectly marks the ID as consumed even when the first attempt was rejected (DoS-style anti-replay bug) or incorrectly accepts the expired one.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_saml_expired_attempt_login_status >= 400\nEvaluation: user_saml_expired_attempt_login_status=200 >= 400 \u2192 False\nImplication: Expired SAML assertion was accepted (freshness/expiry enforcement failure).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_saml_expired_attempt_login_status >= 400",
+        "evaluation": "user_saml_expired_attempt_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_saml_expired_attempt_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_casdoor_i2_saml_expired_then_nonexpired_same_assertion_id",
+      "description": "Attempt an expired forged SAML assertion first (should be rejected), then immediately attempt a non-expired assertion reusing the same Assertion/@ID to test whether Casdoor incorrectly marks the ID as consumed even when the first attempt was rejected (DoS-style anti-replay bug) or incorrectly accepts the expired one.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: Expired SAML assertions must be rejected, and anti-replay tracking must not be bypassable or incorrectly triggered by rejected attempts; the same Assertion/@ID should not be accepted if it was already accepted, but a rejected expired attempt should not cause acceptance of expired or inconsistent behavior.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 6,
+      "events_succeeded": 5,
+      "events_failed": 1,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "i2_saml_expired_first_user",
+            "display_name": "I2 SAML Expired First User",
+            "email": "i2_saml_expired_first_user@test.local",
+            "password": "Pwd123456!expfirst",
+            "type": "normal-user",
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "username": "i2_saml_expired_first_user",
+            "password": "Pwd123456!expfirst",
+            "client_id": "app-test",
+            "scope": "openid"
+          },
+          "auth_as": "user_control_pwd2",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_control_pwd2_session_token}}"
+          },
+          "auth_as": "session_user_control_pwd2",
+          "expected_outcome": "any",
+          "captures": {
+            "user_control_pwd2_entity_id": "sub",
+            "user_control_pwd2_identity_name": "preferred_username",
+            "user_control_pwd2_display_name": "name",
+            "user_control_pwd2_meta": "$",
+            "user_control_pwd2_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state-expired-1",
+            "redirect_uri": "http://localhost:8000/callback",
+            "fixed_assertion_id": "ASSERTION-EXPIRED-THEN-VALID-001",
+            "expired_assertion": true,
+            "target_identity": "victimB",
+            "email": "victimB@test.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_saml_expired_attempt",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state-valid-2",
+            "redirect_uri": "http://localhost:8000/callback",
+            "fixed_assertion_id": "ASSERTION-EXPIRED-THEN-VALID-001",
+            "target_identity": "victimB",
+            "email": "victimB@test.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_saml_valid_reuse_id",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_saml_valid_reuse_id_session_token}}"
+          },
+          "auth_as": "session_user_saml_valid_reuse_id",
+          "expected_outcome": "any",
+          "captures": {
+            "user_saml_valid_reuse_id_entity_id": "sub",
+            "user_saml_valid_reuse_id_identity_name": "preferred_username",
+            "user_saml_valid_reuse_id_display_name": "name",
+            "user_saml_valid_reuse_id_meta": "$",
+            "user_saml_valid_reuse_id_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_pwd2_ok",
+          "invariant": "I2",
+          "assertion": "user_control_pwd2_login_status < 400 AND user_control_pwd2_http_status < 400",
+          "violation_description": "Control password login/userinfo failed; cannot interpret SAML expiry/replay behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_expired_saml_rejected",
+          "invariant": "I2",
+          "assertion": "user_saml_expired_attempt_login_status >= 400",
+          "violation_description": "Expired SAML assertion was accepted (freshness/expiry enforcement failure).",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_valid_after_expired_same_id_should_not_be_blocked_by_failed_attempt",
+          "invariant": "I2",
+          "assertion": "user_saml_valid_reuse_id_login_status < 400",
+          "violation_description": "A rejected expired assertion attempt poisoned anti-replay state and blocked a subsequent valid assertion with the same ID (incorrect freshness/anti-replay bookkeeping).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "session_token": "ec718c2d05b3f86e76e5",
+        "user_control_pwd2_entity_id": "781f625b-0460-4857-b9d2-92d8f4f9bbc3",
+        "user_control_pwd2_email": "i2_saml_expired_first_user@test.local",
+        "user_control_pwd2_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX3NhbWxfZXhwaXJlZF9maXJzdF91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjE3WiIsInVwZGF0Z",
+        "user_control_pwd2_metadata": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX3NhbWxfZXhwaXJlZF9maXJzdF91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjE3WiIsInVwZGF0Z",
+        "user_control_pwd2_login_success": "True",
+        "user_control_pwd2_login_status": "200",
+        "user_control_pwd2_login_http_status": "200",
+        "identity_id": "781f625b-0460-4857-b9d2-92d8f4f9bbc3",
+        "user_control_pwd2_identity_name": "None",
+        "user_control_pwd2_display_name": "None",
+        "user_control_pwd2_meta": "{'sub': '781f625b-0460-4857-b9d2-92d8f4f9bbc3', 'iss': 'http://localhost:8000', 'aud': 'valence_285673e008304d9c'}",
+        "user_control_pwd2_identity_id": "781f625b-0460-4857-b9d2-92d8f4f9bbc3",
+        "user_saml_expired_attempt_entity_id": "victimB",
+        "user_saml_expired_attempt_email": "victimB@test.local",
+        "user_saml_expired_attempt_session_token": "96c88fda325804f02726",
+        "user_saml_expired_attempt_login_success": "True",
+        "user_saml_expired_attempt_login_status": "200",
+        "user_saml_expired_attempt_login_http_status": "200",
+        "user_saml_valid_reuse_id_entity_id": "victimB",
+        "user_saml_valid_reuse_id_email": "victimB@test.local",
+        "user_saml_valid_reuse_id_session_token": "ec718c2d05b3f86e76e5",
+        "user_saml_valid_reuse_id_login_success": "True",
+        "user_saml_valid_reuse_id_login_status": "200",
+        "user_saml_valid_reuse_id_login_http_status": "200",
+        "user_saml_valid_reuse_id_identity_name": "None",
+        "user_saml_valid_reuse_id_display_name": "None",
+        "user_saml_valid_reuse_id_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "mutation_sweep": "{'total_mutations': 8, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "632618e65f8145ae",
+      "sequence_id": "seq_casdoor_i2_saml_onetimeuse_replay_same_assertion_id",
+      "sequence_description": "SAML OneTimeUse replay: login with a forged assertion that includes OneTimeUse and a fixed Assertion/@ID, then replay the same Assertion/@ID to test whether Casdoor enforces one-time consumption.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_onetimeuse_replay_login_status >= 400\nEvaluation: user_onetimeuse_replay_login_status=200 >= 400 \u2192 False\nImplication: Casdoor accepted a replayed SAML assertion with OneTimeUse / same Assertion ID (anti-replay failure).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_onetimeuse_replay_login_status >= 400",
+        "evaluation": "user_onetimeuse_replay_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_onetimeuse_replay_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_casdoor_i2_saml_onetimeuse_replay_same_assertion_id",
+      "description": "SAML OneTimeUse replay: login with a forged assertion that includes OneTimeUse and a fixed Assertion/@ID, then replay the same Assertion/@ID to test whether Casdoor enforces one-time consumption.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: A SAML assertion marked OneTimeUse (and/or with a fixed Assertion/@ID) must not be accepted more than once; replay should be rejected.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 4,
+      "events_succeeded": 2,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "saml_login",
+          "params": {
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state-onetimeuse-1",
+            "redirect_uri": "http://localhost:8000/callback",
+            "include_onetimeuse": true,
+            "fixed_assertion_id": "ASSERTION-ONETIMEUSE-REPLAY-001",
+            "target_identity": "saml_onetimeuse_user",
+            "email": "saml_onetimeuse_user@test.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_onetimeuse_first",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_onetimeuse_first.session_token}}"
+          },
+          "auth_as": "session_user_onetimeuse_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_onetimeuse_first_entity_id": "sub",
+            "user_onetimeuse_first_identity_name": "preferred_username",
+            "user_onetimeuse_first_display_name": "name",
+            "user_onetimeuse_first_meta": "$",
+            "user_onetimeuse_first_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state-onetimeuse-2",
+            "redirect_uri": "http://localhost:8000/callback",
+            "include_onetimeuse": true,
+            "fixed_assertion_id": "ASSERTION-ONETIMEUSE-REPLAY-001",
+            "target_identity": "saml_onetimeuse_user",
+            "email": "saml_onetimeuse_user@test.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_onetimeuse_replay",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_onetimeuse_replay.session_token}}"
+          },
+          "auth_as": "session_user_onetimeuse_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "user_onetimeuse_replay_entity_id": "sub",
+            "user_onetimeuse_replay_identity_name": "preferred_username",
+            "user_onetimeuse_replay_display_name": "name",
+            "user_onetimeuse_replay_meta": "$",
+            "user_onetimeuse_replay_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_onetimeuse_first_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_onetimeuse_first_login_status < 400",
+          "violation_description": "Control SAML login failed; cannot evaluate OneTimeUse replay behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_onetimeuse_replay_rejected",
+          "invariant": "I2",
+          "assertion": "user_onetimeuse_replay_login_status >= 400",
+          "violation_description": "Casdoor accepted a replayed SAML assertion with OneTimeUse / same Assertion ID (anti-replay failure).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "session_token": "b67fdac60e225e0f65e3",
+        "user_onetimeuse_first_entity_id": "saml_onetimeuse_user",
+        "user_onetimeuse_first_email": "saml_onetimeuse_user@test.local",
+        "user_onetimeuse_first_session_token": "b0521a2c2fba69b0436e",
+        "user_onetimeuse_first_login_success": "True",
+        "user_onetimeuse_first_login_status": "200",
+        "user_onetimeuse_first_login_http_status": "200",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_onetimeuse_first_identity_name": "None",
+        "user_onetimeuse_first_display_name": "None",
+        "user_onetimeuse_first_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_onetimeuse_replay_entity_id": "saml_onetimeuse_user",
+        "user_onetimeuse_replay_email": "saml_onetimeuse_user@test.local",
+        "user_onetimeuse_replay_session_token": "b67fdac60e225e0f65e3",
+        "user_onetimeuse_replay_login_success": "True",
+        "user_onetimeuse_replay_login_status": "200",
+        "user_onetimeuse_replay_login_http_status": "200",
+        "user_onetimeuse_replay_identity_name": "None",
+        "user_onetimeuse_replay_display_name": "None",
+        "user_onetimeuse_replay_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "96d53685cd4f5306",
+      "sequence_id": "seq_casdoor_i2_token_exchange_replay_same_subject_token",
+      "sequence_description": "Token exchange replay: obtain a subject access token via password login, then perform token exchange twice using the same subject_token to test whether Casdoor incorrectly treats token exchange as one-time or allows replay when it should be constrained by policy.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_exchanged_2_replay_login_status >= 400\nEvaluation: user_exchanged_2_replay_login_status=200 >= 400 \u2192 False\nImplication: Token exchange accepted the same subject_token repeatedly (potential replay/over-minting of derived tokens).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_exchanged_2_replay_login_status >= 400",
+        "evaluation": "user_exchanged_2_replay_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_exchanged_2_replay_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_casdoor_i2_token_exchange_replay_same_subject_token",
+      "description": "Token exchange replay: obtain a subject access token via password login, then perform token exchange twice using the same subject_token to test whether Casdoor incorrectly treats token exchange as one-time or allows replay when it should be constrained by policy.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: If Casdoor implements one-time semantics or replay protection for token-exchange artifacts, the same subject_token should not be accepted repeatedly to mint new tokens beyond intended lifetime/usage constraints.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 7,
+      "events_succeeded": 4,
+      "events_failed": 3,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "create_user",
+          "params": {
+            "owner": "test-org",
+            "name": "i2_exchange_replay_user",
+            "display_name": "I2 Exchange Replay User",
+            "email": "i2_exchange_replay_user@test.local",
+            "password": "I2ExchReplayPwd123456",
+            "type": "normal-user",
+            "signup_application": "app-test"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "login_with_password",
+          "params": {
+            "grant_type": "password",
+            "client_id": "app-test",
+            "client_secret": "app-test",
+            "username": "i2_exchange_replay_user",
+            "password": "I2ExchReplayPwd123456",
+            "scope": "openid profile email"
+          },
+          "auth_as": "user_subject",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{user_subject.session_token}}",
+            "token_type_hint": "access_token",
+            "client_id": "app-test",
+            "client_secret": "app-test"
+          },
+          "auth_as": "session_user_subject",
+          "expected_outcome": "any",
+          "captures": {
+            "active": "user_subject_active",
+            "sub": "user_subject_sub",
+            "aud": "user_subject_aud",
+            "exp": "user_subject_exp",
+            "iat": "user_subject_iat",
+            "http_status": "user_subject_http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "client_id": "app-test",
+            "client_secret": "app-test",
+            "subject_token": "{{user_subject.session_token}}",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "scope": "openid"
+          },
+          "auth_as": "user_exchanged_1",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{user_exchanged_1.session_token}}",
+            "token_type_hint": "access_token",
+            "client_id": "app-test",
+            "client_secret": "app-test"
+          },
+          "auth_as": "session_user_exchanged_1",
+          "expected_outcome": "any",
+          "captures": {
+            "active": "user_exchanged_1_active",
+            "sub": "user_exchanged_1_sub",
+            "aud": "user_exchanged_1_aud",
+            "exp": "user_exchanged_1_exp",
+            "iat": "user_exchanged_1_iat",
+            "http_status": "user_exchanged_1_http_status"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "token_exchange",
+          "params": {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "client_id": "app-test",
+            "client_secret": "app-test",
+            "subject_token": "{{user_subject.session_token}}",
+            "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+            "scope": "openid"
+          },
+          "auth_as": "user_exchanged_2_replay",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "introspect_token",
+          "params": {
+            "token": "{{user_exchanged_2_replay.session_token}}",
+            "token_type_hint": "access_token",
+            "client_id": "app-test",
+            "client_secret": "app-test"
+          },
+          "auth_as": "session_user_exchanged_2_replay",
+          "expected_outcome": "any",
+          "captures": {
+            "active": "user_exchanged_2_replay_active",
+            "sub": "user_exchanged_2_replay_sub",
+            "aud": "user_exchanged_2_replay_aud",
+            "exp": "user_exchanged_2_replay_exp",
+            "iat": "user_exchanged_2_replay_iat",
+            "http_status": "user_exchanged_2_replay_http_status"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_subject_token_active",
+          "invariant": "I2",
+          "assertion": "user_subject_login_status < 400 AND user_subject_active == true",
+          "violation_description": "Control password login or introspection failed; cannot evaluate token-exchange replay behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_exchange_1_succeeds",
+          "invariant": "I2",
+          "assertion": "user_exchanged_1_login_status < 400 AND user_exchanged_1_active == true",
+          "violation_description": "Initial token exchange failed; cannot evaluate replay behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_exchange_replay_rejected",
+          "invariant": "I2",
+          "assertion": "user_exchanged_2_replay_login_status >= 400",
+          "violation_description": "Token exchange accepted the same subject_token repeatedly (potential replay/over-minting of derived tokens).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "metadata": "openid",
+        "session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2V4Y2hhbmdlX3JlcGxheV91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjIzWiIsInVwZGF0ZWRUa",
+        "user_subject_entity_id": "22cb3fd3-1229-4007-96ef-cbdcb856d794",
+        "user_subject_email": "i2_exchange_replay_user@test.local",
+        "user_subject_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2V4Y2hhbmdlX3JlcGxheV91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjIzWiIsInVwZGF0ZWRUa",
+        "user_subject_metadata": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2V4Y2hhbmdlX3JlcGxheV91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjIzWiIsInVwZGF0ZWRUa",
+        "user_subject_login_success": "True",
+        "user_subject_login_status": "200",
+        "user_subject_login_http_status": "200",
+        "active": "None",
+        "sub": "None",
+        "aud": "None",
+        "exp": "None",
+        "iat": "None",
+        "http_status": "None",
+        "refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2V4Y2hhbmdlX3JlcGxheV91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjIzWiIsInVwZGF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDo0Njo",
+        "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2V4Y2hhbmdlX3JlcGxheV91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjIzWiIsInVwZGF0ZWRUa",
+        "token_type": "Bearer",
+        "expires_in": "604800",
+        "scope": "openid",
+        "user_exchanged_1_entity_id": "22cb3fd3-1229-4007-96ef-cbdcb856d794",
+        "user_exchanged_1_email": "i2_exchange_replay_user@test.local",
+        "user_exchanged_1_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2V4Y2hhbmdlX3JlcGxheV91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjIzWiIsInVwZGF0ZWRUa",
+        "user_exchanged_1_metadata": "openid",
+        "user_exchanged_1_refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2V4Y2hhbmdlX3JlcGxheV91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjIzWiIsInVwZGF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDo0Njo",
+        "user_exchanged_1_id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2V4Y2hhbmdlX3JlcGxheV91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjIzWiIsInVwZGF0ZWRUa",
+        "user_exchanged_1_token_type": "Bearer",
+        "user_exchanged_1_expires_in": "604800",
+        "user_exchanged_1_scope": "openid",
+        "user_exchanged_1_login_success": "True",
+        "user_exchanged_1_login_status": "200",
+        "user_exchanged_1_login_http_status": "200",
+        "user_exchanged_2_replay_entity_id": "22cb3fd3-1229-4007-96ef-cbdcb856d794",
+        "user_exchanged_2_replay_email": "i2_exchange_replay_user@test.local",
+        "user_exchanged_2_replay_session_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2V4Y2hhbmdlX3JlcGxheV91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjIzWiIsInVwZGF0ZWRUa",
+        "user_exchanged_2_replay_metadata": "openid",
+        "user_exchanged_2_replay_refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2V4Y2hhbmdlX3JlcGxheV91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjIzWiIsInVwZGF0ZWRUaW1lIjoiMjAyNi0wNC0wM1QyMDo0Njo",
+        "user_exchanged_2_replay_id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImNlcnQtYnVpbHQtaW4iLCJ0eXAiOiJKV1QifQ.eyJvd25lciI6InRlc3Qtb3JnIiwibmFtZSI6ImkyX2V4Y2hhbmdlX3JlcGxheV91c2VyIiwiY3JlYXRlZFRpbWUiOiIyMDI2LTA0LTAzVDIwOjQ2OjIzWiIsInVwZGF0ZWRUa",
+        "user_exchanged_2_replay_token_type": "Bearer",
+        "user_exchanged_2_replay_expires_in": "604800",
+        "user_exchanged_2_replay_scope": "openid",
+        "user_exchanged_2_replay_login_success": "True",
+        "user_exchanged_2_replay_login_status": "200",
+        "user_exchanged_2_replay_login_http_status": "200",
+        "mutation_sweep": "{'total_mutations': 8, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': True}"
+      }
+    }
+  },
+  {
+    "finding": {
+      "finding_id": "dd75fdfe5acd0d16",
+      "sequence_id": "seq_casdoor_i2_saml_replay_after_config_change_provider_detach",
+      "sequence_description": "Config-change + re-auth: perform a control SAML login, then change the application configuration to disable SAML assertion signature enforcement (or toggle SAML binding settings), and attempt to replay the same assertion ID to see if anti-replay state is lost across config changes.",
+      "generation_strategy": "attack",
+      "verdict_path": "oracle",
+      "invariant": "I2",
+      "identified_invariant": "I2",
+      "verdict_type": "UNEXPECTED",
+      "confidence": "MEDIUM",
+      "description": "Assertion FAILED: user_cfg_replay_after_change_login_status >= 400\nEvaluation: user_cfg_replay_after_change_login_status=200 >= 400 \u2192 False\nImplication: Casdoor accepted a replayed SAML assertion after an application config change (anti-replay state lost or bypassed).",
+      "cve_analog": "none",
+      "evidence": {
+        "assertion": "user_cfg_replay_after_change_login_status >= 400",
+        "evaluation": "user_cfg_replay_after_change_login_status=200 >= 400 \u2192 False",
+        "captured_values": {
+          "user_cfg_replay_after_change_login_status": 200
+        }
+      },
+      "detection_source": "L3_assertion",
+      "triage_result": ""
+    },
+    "sequence": {
+      "sequence_id": "seq_casdoor_i2_saml_replay_after_config_change_provider_detach",
+      "description": "Config-change + re-auth: perform a control SAML login, then change the application configuration to disable SAML assertion signature enforcement (or toggle SAML binding settings), and attempt to replay the same assertion ID to see if anti-replay state is lost across config changes.",
+      "generation_strategy": "attack",
+      "primary_invariant": "I2",
+      "invariant_hypothesis": "I2: Anti-replay state for consumed SAML assertions must persist across application configuration changes; a previously-consumed assertion must not become reusable after config updates.",
+      "cve_analog": "none",
+      "status": "COMPLETED",
+      "events_total": 5,
+      "events_succeeded": 3,
+      "events_failed": 2,
+      "used_examples": true,
+      "num_examples": -1,
+      "events": [
+        {
+          "event_type": "saml_login",
+          "params": {
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state-cfg-anti-replay-1",
+            "redirect_uri": "http://localhost:8000/callback",
+            "fixed_assertion_id": "ASSERTION-CFG-REPLAY-001",
+            "target_identity": "saml_cfg_replay_user",
+            "email": "saml_cfg_replay_user@test.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_cfg_first",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_cfg_first.session_token}}"
+          },
+          "auth_as": "session_user_cfg_first",
+          "expected_outcome": "any",
+          "captures": {
+            "user_cfg_first_entity_id": "sub",
+            "user_cfg_first_identity_name": "preferred_username",
+            "user_cfg_first_display_name": "name",
+            "user_cfg_first_meta": "$",
+            "user_cfg_first_email": "email"
+          },
+          "phase": "verify"
+        },
+        {
+          "event_type": "update_application",
+          "params": {
+            "owner": "admin",
+            "name": "app-test",
+            "organization": "test-org",
+            "enable_saml_post_binding": true,
+            "enable_saml_assertion_signature": false,
+            "disable_saml_attributes": false,
+            "cert": "cert-built-in",
+            "grant_types": [
+              "password",
+              "authorization_code",
+              "urn:ietf:params:oauth:grant-type:token-exchange"
+            ],
+            "enable_password": true,
+            "redirect_uris": [
+              "http://localhost:8000/callback"
+            ],
+            "token_format": "JWT"
+          },
+          "auth_as": "admin",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "setup"
+        },
+        {
+          "event_type": "saml_login",
+          "params": {
+            "type": "saml",
+            "method": "POST",
+            "application": "app-test",
+            "organization": "test-org",
+            "provider": "provider-saml-test",
+            "state": "state-cfg-anti-replay-2",
+            "redirect_uri": "http://localhost:8000/callback",
+            "fixed_assertion_id": "ASSERTION-CFG-REPLAY-001",
+            "target_identity": "saml_cfg_replay_user",
+            "email": "saml_cfg_replay_user@test.local",
+            "realm": "test-org"
+          },
+          "auth_as": "user_cfg_replay_after_change",
+          "expected_outcome": "any",
+          "captures": {},
+          "phase": "login"
+        },
+        {
+          "event_type": "verify_granted_identity",
+          "params": {
+            "session_token": "{{user_cfg_replay_after_change.session_token}}"
+          },
+          "auth_as": "session_user_cfg_replay_after_change",
+          "expected_outcome": "any",
+          "captures": {
+            "user_cfg_replay_after_change_entity_id": "sub",
+            "user_cfg_replay_after_change_identity_name": "preferred_username",
+            "user_cfg_replay_after_change_display_name": "name",
+            "user_cfg_replay_after_change_meta": "$",
+            "user_cfg_replay_after_change_email": "email"
+          },
+          "phase": "verify"
+        }
+      ],
+      "oracle_checks": [
+        {
+          "check_id": "i2_control_cfg_first_login_succeeds",
+          "invariant": "I2",
+          "assertion": "user_cfg_first_login_status < 400",
+          "violation_description": "Control SAML login failed; cannot evaluate replay-after-config-change behavior.",
+          "cve_analog": ""
+        },
+        {
+          "check_id": "i2_replay_after_config_change_rejected",
+          "invariant": "I2",
+          "assertion": "user_cfg_replay_after_change_login_status >= 400",
+          "violation_description": "Casdoor accepted a replayed SAML assertion after an application config change (anti-replay state lost or bypassed).",
+          "cve_analog": ""
+        }
+      ],
+      "sequence_metadata": {
+        "generation_strategy": "attack",
+        "used_examples": true,
+        "num_examples": -1,
+        "invariant_focus": "I2"
+      },
+      "captured_state": {
+        "organization": "test-org",
+        "application": "app-test",
+        "admin_owner": "admin",
+        "user_owner": "test-org",
+        "redirect_uri": "http://localhost:8000/callback",
+        "provider_name": "provider-saml-test",
+        "isolation_strategy": "A pre-configured test environment exists: organization 'test-org', application 'app-test' (query clientId/clientSecret via GET /api/get-application?id=admin/app-test), and SAML provider 'provider-saml",
+        "session_token": "4384b4302b661eb49c64",
+        "user_cfg_first_entity_id": "saml_cfg_replay_user",
+        "user_cfg_first_email": "saml_cfg_replay_user@test.local",
+        "user_cfg_first_session_token": "601a1187ad70bb2e7540",
+        "user_cfg_first_login_success": "True",
+        "user_cfg_first_login_status": "200",
+        "user_cfg_first_login_http_status": "200",
+        "metadata": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_cfg_first_identity_name": "None",
+        "user_cfg_first_display_name": "None",
+        "user_cfg_first_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "user_cfg_replay_after_change_entity_id": "saml_cfg_replay_user",
+        "user_cfg_replay_after_change_email": "saml_cfg_replay_user@test.local",
+        "user_cfg_replay_after_change_session_token": "4384b4302b661eb49c64",
+        "user_cfg_replay_after_change_login_success": "True",
+        "user_cfg_replay_after_change_login_status": "200",
+        "user_cfg_replay_after_change_login_http_status": "200",
+        "user_cfg_replay_after_change_identity_name": "None",
+        "user_cfg_replay_after_change_display_name": "None",
+        "user_cfg_replay_after_change_meta": "{'status': 'error', 'msg': \"Access token doesn't exist in database\", 'data': None, 'data2': None}",
+        "mutation_sweep": "{'total_mutations': 0, 'violations_raw': 0, 'violations_after_kbf': 0, 'baseline_success': False}"
+      }
+    }
+  }
+]
