@@ -2,7 +2,6 @@
 
 PORTA is the artifact accompanying the CCS 2026 paper *Vulnerabilities in Identity Brokers: From Systematic Detection to Lessons Learned*. It tests seven identity brokers—Keycloak, Vault, Dex, Casdoor, Authentik, Zitadel, and Logto—against five trust-translation invariants.
 
-The canonical project name is **PORTA**. The Python distribution and some internal log messages and environment variables still use the legacy implementation name `valence`/`VALENCE_*`; these names are retained for compatibility and do not denote a second system. `PROTA` and `JANUS` in older prose were stale names.
 
 ## What is authoritative
 
